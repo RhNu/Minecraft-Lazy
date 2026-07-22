@@ -1,6 +1,6 @@
-# Compose
+# Lazy
 
-Compose 是一个面向 Minecraft 1.21.1 NeoForge 的 Kotlin 模组项目。目前项目处于设计阶段，源码只包含可扩展的注册、数据生成与通用工具骨架，不包含可游玩的具体内容。
+Lazy 是一个面向 Minecraft 1.21.1 NeoForge 的 Kotlin 模组项目。目前项目处于设计阶段，源码只包含可扩展的注册、数据生成与通用工具骨架，不包含可游玩的具体内容。
 
 ## 开发环境
 

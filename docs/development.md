@@ -8,7 +8,7 @@ Kotlin 插件版本与 KotlinForForge 5.12.0 捆绑的 Kotlin 运行库保持一
 
 ## 开发运行模组
 
-JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它们不会出现在 Compose 的必需依赖声明中，也不会通过 Maven publication 传递给使用者。
+JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它们不会出现在 Lazy 的必需依赖声明中，也不会通过 Maven publication 传递给使用者。
 
 - JEI 用于检查物品、配方、标签和未来的自定义配方分类。
 - Jade 用于检查方块、方块实体、能力和未来的自定义观察信息。
@@ -22,7 +22,7 @@ JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它�
 - Curios 只在内容需要额外装备槽位后引入。
 - GeckoLib 只在确认存在复杂骨骼动画后引入。
 - YACL、Cloth Config 或相似配置 UI 库只在原生配置文件不足以满足交互需求后选择其一。
-- Compose 仍是单 NeoForge 项目，不使用 Architectury 的跨平台抽象；Architectury API 仅作为 UILib 的固定运行前置存在。
+- Lazy 仍是单 NeoForge 项目，不使用 Architectury 的跨平台抽象；Architectury API 仅作为 UILib 的固定运行前置存在。
 
 ## 界面依赖
 

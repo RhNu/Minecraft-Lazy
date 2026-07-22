@@ -1,5 +1,5 @@
 {
   "values": [
-    "compose:buffer"
+    "lazy:buffer"
   ]
 }

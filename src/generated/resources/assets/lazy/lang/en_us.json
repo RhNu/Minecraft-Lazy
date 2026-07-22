@@ -1,0 +1,13 @@
+{
+  "block.lazy.buffer": "Buffer",
+  "gui.lazy.buffer.clear": "Clear contents",
+  "gui.lazy.buffer.empty": "Empty",
+  "gui.lazy.buffer.fluid_amount": "%s mB",
+  "gui.lazy.buffer.item_amount": "%s items",
+  "message.lazy.buffer.status": "Buffer: %s / %s items, %s / %s mB",
+  "message.lazy.rise.not_found": "No open-sky block found above",
+  "message.lazy.rise.player_only": "This command can only be used by players",
+  "message.lazy.rise.success": "Teleported to the surface",
+  "tab.lazy": "Lazy",
+  "tooltip.lazy.buffer.contents": "%s / %s items, %s / %s mB"
+}

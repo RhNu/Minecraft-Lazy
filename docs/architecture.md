@@ -2,13 +2,13 @@
 
 ## 项目边界
 
-Compose 当前提供模组入口、注册基础设施、缓冲器，以及少量无业务含义的通用工具。其他物品、方块、维度和命令仍属于后续内容工作，在设计确认前不得进入运行源码。
+Lazy 当前提供模组入口、注册基础设施、缓冲器，以及少量无业务含义的通用工具。其他物品、方块、维度和命令仍属于后续内容工作，在设计确认前不得进入运行源码。
 
 项目只面向 Minecraft 1.21.1 NeoForge，不承担 Fabric、Forge 或多加载器兼容层。Minecraft 小版本也是兼容边界的一部分，依赖升级不得隐式改变游戏版本。
 
 ## 包组织
 
-所有 Kotlin 源码位于 `rhx.compose` 包下，并让物理目录与包名保持一致。
+所有 Kotlin 源码位于 `rhx.lazy` 包下，并让物理目录与包名保持一致。
 
 - 根包保存模组入口和 `MOD_ID`。
 - `registry` 保存注册模块、统一挂载入口和注册期工具。
@@ -18,7 +18,7 @@ Compose 当前提供模组入口、注册基础设施、缓冲器，以及少量
 
 ## 注册生命周期
 
-每一种注册表由独立的 `RegistryModule` 管理。`ModRegistries` 是唯一的集中挂载入口，由 Compose 主对象在 KotlinForForge 提供的 `MOD_BUS` 上调用。
+每一种注册表由独立的 `RegistryModule` 管理。`ModRegistries` 是唯一的集中挂载入口，由 Lazy 主对象在 KotlinForForge 提供的 `MOD_BUS` 上调用。
 
 注册项必须保留为 `DeferredBlock`、`DeferredItem` 或 `DeferredHolder` 等延迟持有者。不得在静态初始化或注册装配阶段提前取出游戏对象。供应器在真正的注册阶段解析其他延迟持有者是允许的，例如创建方块对应的 `BlockItem`。
 
@@ -38,6 +38,6 @@ Gradle 的 `data` 运行配置输出到 `src/generated/resources`，并将主资
 
 ## 本地化与资源标识
 
-所有玩家可见文本使用翻译组件，不在代码中硬编码最终显示文案。翻译键使用 `compose` 命名空间并按 `item`、`block`、`gui`、`message`、`tooltip` 等用途分组。
+所有玩家可见文本使用翻译组件，不在代码中硬编码最终显示文案。翻译键使用 `lazy` 命名空间并按 `item`、`block`、`gui`、`message`、`tooltip` 等用途分组。
 
-模组资源位置通过 `composeId` 创建，避免散落命名空间字符串。注册名使用小写蛇形命名，并在注册表、资源路径和数据生成之间保持一致。
+模组资源位置通过 `lazyId` 创建，避免散落命名空间字符串。注册名使用小写蛇形命名，并在注册表、资源路径和数据生成之间保持一致。
