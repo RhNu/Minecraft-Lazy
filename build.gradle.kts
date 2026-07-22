@@ -86,6 +86,11 @@ neoForge {
             sourceSet(sourceSets.main.get())
         }
     }
+
+    unitTest {
+        enable()
+        testedMod = mods[modId]
+    }
 }
 
 val localRuntime by configurations.creating
@@ -129,15 +134,30 @@ repositories {
             includeGroup("com.daqem.uilib")
         }
     }
+    maven {
+        name = "FzzyMaven"
+        url = uri("https://maven.fzzyhmstrs.me/")
+        content {
+            includeGroup("me.fzzyhmstrs")
+        }
+    }
 }
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:${property("kotlin_for_forge_version")}")
     implementation("dev.architectury:architectury-neoforge:${property("architectury_version")}")
     implementation("com.daqem.uilib:uilib-neoforge:${property("uilib_version")}")
+    implementation("me.fzzyhmstrs:fzzy_config:${property("fzzy_config_version")}")
 
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
     localRuntime("maven.modrinth:jade:${property("jade_version")}")
+
+    testImplementation(kotlin("test"))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 val generateModMetadata by tasks.registering(ProcessResources::class) {
@@ -153,6 +173,7 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "mod_authors" to project.property("mod_authors"),
             "mod_description" to project.property("mod_description"),
             "uilib_version_range" to project.property("uilib_version_range"),
+            "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
         )
 
     inputs.properties(replacements)

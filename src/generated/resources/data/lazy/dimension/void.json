@@ -1,0 +1,13 @@
+{
+  "type": "lazy:void",
+  "generator": {
+    "type": "lazy:grid_generator",
+    "settings": {
+      "biome": "lazy:void",
+      "border_block": "minecraft:stone_bricks",
+      "grid_chunk_size": 3,
+      "inner_block": "minecraft:smooth_stone",
+      "layer_height": 128
+    }
+  }
+}

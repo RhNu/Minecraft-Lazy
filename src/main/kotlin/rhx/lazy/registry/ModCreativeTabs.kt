@@ -21,7 +21,10 @@ internal object ModCreativeTabs : RegistryModule {
                     .builder()
                     .title(Component.translatable("tab.lazy"))
                     .icon { ItemStack(ModItems.buffer.get()) }
-                    .displayItems { _, output -> output.accept(ModItems.buffer.get()) }
+                    .displayItems { _, output ->
+                        output.accept(ModItems.buffer.get())
+                        output.accept(ModItems.teleporter.get())
+                    }
                     .build()
             },
         )

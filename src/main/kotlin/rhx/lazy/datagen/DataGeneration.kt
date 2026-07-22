@@ -1,6 +1,8 @@
 package rhx.lazy.datagen
 
 import net.minecraft.core.HolderLookup
+import net.minecraft.core.RegistrySetBuilder
+import net.minecraft.core.registries.Registries
 import net.minecraft.data.PackOutput
 import net.minecraft.data.loot.LootTableProvider
 import net.minecraft.data.loot.packs.VanillaBlockLoot
@@ -8,6 +10,7 @@ import net.minecraft.data.recipes.RecipeCategory
 import net.minecraft.data.recipes.RecipeOutput
 import net.minecraft.data.recipes.RecipeProvider
 import net.minecraft.data.recipes.ShapedRecipeBuilder
+import net.minecraft.tags.ItemTags
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
@@ -17,11 +20,13 @@ import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
 import net.neoforged.neoforge.common.Tags
 import net.neoforged.neoforge.common.data.BlockTagsProvider
+import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider
 import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
 import rhx.lazy.registry.ModBlocks
 import rhx.lazy.registry.ModItems
+import rhx.lazy.world.VoidWorldBootstrap
 import java.util.concurrent.CompletableFuture
 
 @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD)
@@ -36,6 +41,18 @@ internal object DataGeneration {
         generator.addProvider(event.includeServer(), Recipes(output, lookup))
         generator.addProvider(event.includeServer(), LootTables(output, lookup))
         generator.addProvider(event.includeServer(), BlockTags(output, lookup, helper))
+        generator.addProvider(
+            event.includeServer(),
+            DatapackBuiltinEntriesProvider(
+                output,
+                lookup,
+                RegistrySetBuilder()
+                    .add(Registries.BIOME, VoidWorldBootstrap::bootstrapBiome)
+                    .add(Registries.DIMENSION_TYPE, VoidWorldBootstrap::bootstrapDimensionType)
+                    .add(Registries.LEVEL_STEM, VoidWorldBootstrap::bootstrapLevelStem),
+                setOf(MOD_ID),
+            ),
+        )
 
         generator.addProvider(event.includeClient(), BlockStates(output, helper))
         generator.addProvider(event.includeClient(), ItemModels(output, helper))
@@ -57,6 +74,15 @@ internal object DataGeneration {
                 .define('C', Items.CHEST)
                 .unlockedBy("has_iron_ingot", has(Tags.Items.INGOTS_IRON))
                 .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ModItems.teleporter.get())
+                .pattern("EEE")
+                .pattern("EAE")
+                .pattern("EEE")
+                .define('E', Tags.Items.ENDER_PEARLS)
+                .define('A', ItemTags.ANVIL)
+                .unlockedBy("has_ender_pearl", has(Tags.Items.ENDER_PEARLS))
+                .save(output)
         }
     }
 
@@ -66,6 +92,7 @@ internal object DataGeneration {
     ) : ItemModelProvider(output, MOD_ID, helper) {
         override fun registerModels() {
             withExistingParent("buffer", modLoc("block/buffer"))
+            basicItem(ModItems.teleporter.get())
         }
     }
 
@@ -114,6 +141,9 @@ internal object DataGeneration {
     ) : LanguageProvider(output, MOD_ID, "en_us") {
         override fun addTranslations() {
             addBlock({ ModBlocks.buffer.get() }, "Buffer")
+            addItem({ ModItems.teleporter.get() }, "Teleporter")
+            add("biome.lazy.void", "Void")
+            add("dimension.lazy.void", "Void")
             add("tab.lazy", "Lazy")
             add("message.lazy.buffer.status", "Buffer: %s / %s items, %s / %s mB")
             add("gui.lazy.buffer.item_amount", "%s items")
@@ -124,6 +154,28 @@ internal object DataGeneration {
             add("message.lazy.rise.not_found", "No open-sky block found above")
             add("message.lazy.rise.player_only", "This command can only be used by players")
             add("message.lazy.rise.success", "Teleported to the surface")
+            add("tooltip.lazy.teleporter.return", "Return: %s @ %s, %s, %s")
+            add("tooltip.lazy.teleporter.target", "Target: %s @ %s, %s, %s")
+            add("message.lazy.teleporter.cooldown", "Teleporter is cooling down")
+            add("message.lazy.teleporter.charge_not_full", "Charge not full")
+            add("message.lazy.teleporter.dimension_missing", "Teleport failed: target dimension is unavailable")
+            add("message.lazy.teleporter.no_safe_destination", "Teleport failed: no safe destination found")
+            add("message.lazy.teleporter.no_safe_return", "Teleport failed: the current return point is unsafe")
+            add("message.lazy.teleporter.transition_failed", "Teleport failed during dimension transfer")
+            add("message.lazy.teleporter.success", "Teleported successfully; cooldown: %s seconds")
+            add("lazy.teleporter", "Teleporter")
+            add("lazy.teleporter.desc", "Server-authoritative teleporter settings")
+            add("lazy.teleporter.chargeTicks", "Charge time")
+            add("lazy.teleporter.chargeTicks.desc", "Ticks the teleporter must be charged before it activates.")
+            add("lazy.teleporter.cooldownSeconds", "Cooldown")
+            add("lazy.teleporter.cooldownSeconds.desc", "Cooldown in seconds after a successful teleport.")
+            add("lazy.teleporter.safeSearchRadius", "Safe search radius")
+            add("lazy.teleporter.safeSearchRadius.desc", "Horizontal radius searched for a safe destination.")
+            add("lazy.teleporter.createVoidSafetyPlatform", "Create void safety platform")
+            add(
+                "lazy.teleporter.createVoidSafetyPlatform.desc",
+                "Allow the teleporter to add a small platform in the void dimension.",
+            )
         }
     }
 
@@ -132,6 +184,9 @@ internal object DataGeneration {
     ) : LanguageProvider(output, MOD_ID, "zh_cn") {
         override fun addTranslations() {
             addBlock({ ModBlocks.buffer.get() }, "缓冲器")
+            addItem({ ModItems.teleporter.get() }, "传送器")
+            add("biome.lazy.void", "虚空")
+            add("dimension.lazy.void", "虚空")
             add("tab.lazy", "Lazy")
             add("message.lazy.buffer.status", "缓冲器：物品 %s / %s，流体 %s / %s mB")
             add("gui.lazy.buffer.item_amount", "物品 %s")
@@ -142,6 +197,25 @@ internal object DataGeneration {
             add("message.lazy.rise.not_found", "未找到上方可见天空的位置")
             add("message.lazy.rise.player_only", "该命令只能由玩家执行")
             add("message.lazy.rise.success", "已传送到地表")
+            add("tooltip.lazy.teleporter.return", "返回点：%s @ %s, %s, %s")
+            add("tooltip.lazy.teleporter.target", "目标点：%s @ %s, %s, %s")
+            add("message.lazy.teleporter.cooldown", "传送器冷却中")
+            add("message.lazy.teleporter.charge_not_full", "蓄力不足")
+            add("message.lazy.teleporter.dimension_missing", "传送失败：目标维度不可用")
+            add("message.lazy.teleporter.no_safe_destination", "传送失败：未找到安全落点")
+            add("message.lazy.teleporter.no_safe_return", "传送失败：当前位置不能作为安全返回点")
+            add("message.lazy.teleporter.transition_failed", "跨维度传送失败")
+            add("message.lazy.teleporter.success", "传送成功；冷却 %s 秒")
+            add("lazy.teleporter", "传送器")
+            add("lazy.teleporter.desc", "由服务器控制的传送器设置")
+            add("lazy.teleporter.chargeTicks", "蓄力时间")
+            add("lazy.teleporter.chargeTicks.desc", "传送器激活前需要蓄力的游戏刻数。")
+            add("lazy.teleporter.cooldownSeconds", "冷却时间")
+            add("lazy.teleporter.cooldownSeconds.desc", "成功传送后的冷却秒数。")
+            add("lazy.teleporter.safeSearchRadius", "安全搜索半径")
+            add("lazy.teleporter.safeSearchRadius.desc", "搜索安全落点时使用的水平半径。")
+            add("lazy.teleporter.createVoidSafetyPlatform", "创建虚空安全平台")
+            add("lazy.teleporter.createVoidSafetyPlatform.desc", "允许传送器在虚空维度补建小型平台。")
         }
     }
 }

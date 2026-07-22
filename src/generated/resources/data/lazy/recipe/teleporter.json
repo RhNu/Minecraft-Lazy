@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "tag": "minecraft:anvil"
+    },
+    "E": {
+      "tag": "c:ender_pearls"
+    }
+  },
+  "pattern": [
+    "EEE",
+    "EAE",
+    "EEE"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lazy:teleporter"
+  }
+}
