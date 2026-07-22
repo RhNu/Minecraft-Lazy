@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_energy_battery": {
+      "conditions": {
+        "items": [
+          {
+            "items": "lazy:energy_battery"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "lazy:energy_source"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_energy_battery"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "lazy:energy_source"
+    ]
+  }
+}

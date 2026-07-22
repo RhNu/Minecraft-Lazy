@@ -4,6 +4,7 @@ import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.common.NeoForge
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import rhx.lazy.block.EnergySourceInteractions
 import rhx.lazy.command.LazyCommands
 import rhx.lazy.config.ModConfig
 import rhx.lazy.registry.ModRegistries
@@ -18,6 +19,7 @@ object Lazy {
     init {
         ModConfig.init()
         ModRegistries.register(MOD_BUS)
+        NeoForge.EVENT_BUS.addListener(EnergySourceInteractions::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(LazyCommands::register)
         logger.info("Lazy mod initialized")
     }

@@ -1,5 +1,6 @@
 {
   "values": [
-    "lazy:buffer"
+    "lazy:buffer",
+    "lazy:energy_source"
   ]
 }

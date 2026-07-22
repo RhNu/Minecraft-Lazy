@@ -83,6 +83,26 @@ internal object DataGeneration {
                 .define('A', ItemTags.ANVIL)
                 .unlockedBy("has_ender_pearl", has(Tags.Items.ENDER_PEARLS))
                 .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ModItems.energyBattery.get())
+                .pattern("IGI")
+                .pattern("IAI")
+                .pattern("IGI")
+                .define('I', Tags.Items.STORAGE_BLOCKS_IRON)
+                .define('G', Tags.Items.STORAGE_BLOCKS_GOLD)
+                .define('A', ItemTags.ANVIL)
+                .unlockedBy("has_gold_block", has(Tags.Items.STORAGE_BLOCKS_GOLD))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ModItems.energySource.get())
+                .pattern("III")
+                .pattern("GBG")
+                .pattern("III")
+                .define('I', Tags.Items.STORAGE_BLOCKS_IRON)
+                .define('G', Tags.Items.DUSTS_GLOWSTONE)
+                .define('B', ModItems.energyBattery.get())
+                .unlockedBy("has_energy_battery", has(ModItems.energyBattery.get()))
+                .save(output)
         }
     }
 
@@ -93,6 +113,8 @@ internal object DataGeneration {
         override fun registerModels() {
             withExistingParent("buffer", modLoc("block/buffer"))
             basicItem(ModItems.teleporter.get())
+            basicItem(ModItems.energyBattery.get())
+            withExistingParent("energy_source", modLoc("block/energy_source"))
         }
     }
 
@@ -102,6 +124,7 @@ internal object DataGeneration {
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
             simpleBlock(ModBlocks.buffer.get())
+            simpleBlock(ModBlocks.energySource.get())
         }
     }
 
@@ -111,7 +134,10 @@ internal object DataGeneration {
         helper: net.neoforged.neoforge.common.data.ExistingFileHelper?,
     ) : BlockTagsProvider(output, lookup, MOD_ID, helper) {
         override fun addTags(provider: HolderLookup.Provider) {
-            tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE).add(ModBlocks.buffer.get())
+            tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE).add(
+                ModBlocks.buffer.get(),
+                ModBlocks.energySource.get(),
+            )
         }
     }
 
@@ -129,10 +155,14 @@ internal object DataGeneration {
         ) : VanillaBlockLoot(registries) {
             override fun generate() {
                 add(ModBlocks.buffer.get(), noDrop())
+                dropSelf(ModBlocks.energySource.get())
             }
 
             override fun getKnownBlocks(): MutableIterable<Block> =
-                mutableListOf(ModBlocks.buffer.get())
+                mutableListOf(
+                    ModBlocks.buffer.get(),
+                    ModBlocks.energySource.get(),
+                )
         }
     }
 
@@ -141,7 +171,9 @@ internal object DataGeneration {
     ) : LanguageProvider(output, MOD_ID, "en_us") {
         override fun addTranslations() {
             addBlock({ ModBlocks.buffer.get() }, "Buffer")
+            addBlock({ ModBlocks.energySource.get() }, "Energy Source")
             addItem({ ModItems.teleporter.get() }, "Teleporter")
+            addItem({ ModItems.energyBattery.get() }, "Energy Battery")
             add("biome.lazy.void", "Void")
             add("dimension.lazy.void", "Void")
             add("tab.lazy", "Lazy")
@@ -151,6 +183,13 @@ internal object DataGeneration {
             add("gui.lazy.buffer.empty", "Empty")
             add("gui.lazy.buffer.clear", "Clear contents")
             add("tooltip.lazy.buffer.contents", "%s / %s items, %s / %s mB")
+            add("tooltip.lazy.energy.max_transfer", "Max transfer: %s FE/t")
+            add("tooltip.lazy.energy_battery.use", "Sneak-use on an energy-capable block to transfer energy")
+            add("tooltip.lazy.energy_source.active_push", "Sneak-use to toggle active push (off by default)")
+            add("message.lazy.energy_battery.transfer", "Energy transferred: %s FE")
+            add("message.lazy.energy_source.active_push", "Active push: %s")
+            add("message.lazy.energy_source.active_push.enabled", "Enabled")
+            add("message.lazy.energy_source.active_push.disabled", "Disabled")
             add("message.lazy.rise.not_found", "No open-sky block found above")
             add("message.lazy.rise.player_only", "This command can only be used by players")
             add("message.lazy.rise.success", "Teleported to the surface")
@@ -184,7 +223,9 @@ internal object DataGeneration {
     ) : LanguageProvider(output, MOD_ID, "zh_cn") {
         override fun addTranslations() {
             addBlock({ ModBlocks.buffer.get() }, "缓冲器")
+            addBlock({ ModBlocks.energySource.get() }, "能量源")
             addItem({ ModItems.teleporter.get() }, "传送器")
+            addItem({ ModItems.energyBattery.get() }, "能量电池")
             add("biome.lazy.void", "虚空")
             add("dimension.lazy.void", "虚空")
             add("tab.lazy", "Lazy")
@@ -194,6 +235,13 @@ internal object DataGeneration {
             add("gui.lazy.buffer.empty", "空")
             add("gui.lazy.buffer.clear", "清空内容")
             add("tooltip.lazy.buffer.contents", "物品 %s / %s，流体 %s / %s mB")
+            add("tooltip.lazy.energy.max_transfer", "最大传输：%s FE/t")
+            add("tooltip.lazy.energy_battery.use", "潜行对支持能量的方块使用以传输能量")
+            add("tooltip.lazy.energy_source.active_push", "潜行使用以切换主动推送（默认关闭）")
+            add("message.lazy.energy_battery.transfer", "已传输能量：%s FE")
+            add("message.lazy.energy_source.active_push", "主动推送：%s")
+            add("message.lazy.energy_source.active_push.enabled", "已开启")
+            add("message.lazy.energy_source.active_push.disabled", "已关闭")
             add("message.lazy.rise.not_found", "未找到上方可见天空的位置")
             add("message.lazy.rise.player_only", "该命令只能由玩家执行")
             add("message.lazy.rise.success", "已传送到地表")

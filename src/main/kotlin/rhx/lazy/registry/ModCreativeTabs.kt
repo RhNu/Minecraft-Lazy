@@ -24,6 +24,8 @@ internal object ModCreativeTabs : RegistryModule {
                     .displayItems { _, output ->
                         output.accept(ModItems.buffer.get())
                         output.accept(ModItems.teleporter.get())
+                        output.accept(ModItems.energyBattery.get())
+                        output.accept(ModItems.energySource.get())
                     }
                     .build()
             },

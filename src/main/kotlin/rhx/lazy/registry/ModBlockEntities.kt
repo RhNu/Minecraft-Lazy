@@ -6,6 +6,7 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.registries.DeferredRegister
 import rhx.lazy.MOD_ID
 import rhx.lazy.block.entity.BufferBlockEntity
+import rhx.lazy.block.entity.EnergySourceBlockEntity
 import java.util.function.Supplier
 
 internal object ModBlockEntities : RegistryModule {
@@ -18,6 +19,16 @@ internal object ModBlockEntities : RegistryModule {
             Supplier {
                 BlockEntityType.Builder
                     .of(::BufferBlockEntity, ModBlocks.buffer.get())
+                    .buildType()
+            },
+        )
+
+    val energySource =
+        registry.register(
+            "energy_source",
+            Supplier {
+                BlockEntityType.Builder
+                    .of(::EnergySourceBlockEntity, ModBlocks.energySource.get())
                     .buildType()
             },
         )

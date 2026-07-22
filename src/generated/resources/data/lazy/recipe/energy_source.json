@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "lazy:energy_battery"
+    },
+    "G": {
+      "tag": "c:dusts/glowstone"
+    },
+    "I": {
+      "tag": "c:storage_blocks/iron"
+    }
+  },
+  "pattern": [
+    "III",
+    "GBG",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lazy:energy_source"
+  }
+}
