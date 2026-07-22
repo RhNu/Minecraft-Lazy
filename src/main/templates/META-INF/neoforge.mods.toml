@@ -22,3 +22,10 @@ type="required"
 versionRange="${minecraft_version_range}"
 ordering="NONE"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="uilib"
+type="required"
+versionRange="${uilib_version_range}"
+ordering="AFTER"
+side="BOTH"

@@ -1,25 +1,141 @@
 package rhx.compose.datagen
 
+import net.minecraft.core.HolderLookup
+import net.minecraft.data.PackOutput
+import net.minecraft.data.loot.LootTableProvider
+import net.minecraft.data.loot.packs.VanillaBlockLoot
+import net.minecraft.data.recipes.RecipeCategory
+import net.minecraft.data.recipes.RecipeOutput
+import net.minecraft.data.recipes.RecipeProvider
+import net.minecraft.data.recipes.ShapedRecipeBuilder
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
+import net.neoforged.neoforge.client.model.generators.BlockStateProvider
+import net.neoforged.neoforge.client.model.generators.ItemModelProvider
+import net.neoforged.neoforge.common.Tags
+import net.neoforged.neoforge.common.data.BlockTagsProvider
+import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.compose.MOD_ID
+import rhx.compose.registry.ModBlocks
+import rhx.compose.registry.ModItems
+import java.util.concurrent.CompletableFuture
 
-@EventBusSubscriber(modid = MOD_ID)
+@EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 internal object DataGeneration {
     @SubscribeEvent
     fun gatherData(event: GatherDataEvent) {
-        if (event.includeServer()) {
-            registerServerProviders(event)
-        }
-        if (event.includeClient()) {
-            registerClientProviders(event)
+        val generator = event.generator
+        val output = generator.packOutput
+        val helper = event.existingFileHelper
+        val lookup = event.lookupProvider
+
+        generator.addProvider(event.includeServer(), Recipes(output, lookup))
+        generator.addProvider(event.includeServer(), LootTables(output, lookup))
+        generator.addProvider(event.includeServer(), BlockTags(output, lookup, helper))
+
+        generator.addProvider(event.includeClient(), BlockStates(output, helper))
+        generator.addProvider(event.includeClient(), ItemModels(output, helper))
+        generator.addProvider(event.includeClient(), EnglishLanguage(output))
+        generator.addProvider(event.includeClient(), ChineseLanguage(output))
+    }
+
+    private class Recipes(
+        output: PackOutput,
+        lookup: CompletableFuture<HolderLookup.Provider>,
+    ) : RecipeProvider(output, lookup) {
+        override fun buildRecipes(output: RecipeOutput) {
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ModItems.buffer.get())
+                .pattern("I I")
+                .pattern(" C ")
+                .pattern("I I")
+                .define('I', Tags.Items.INGOTS_IRON)
+                .define('C', Items.CHEST)
+                .unlockedBy("has_iron_ingot", has(Tags.Items.INGOTS_IRON))
+                .save(output)
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    private fun registerServerProviders(event: GatherDataEvent) = Unit
+    private class ItemModels(
+        output: PackOutput,
+        helper: net.neoforged.neoforge.common.data.ExistingFileHelper,
+    ) : ItemModelProvider(output, MOD_ID, helper) {
+        override fun registerModels() {
+            withExistingParent("buffer", modLoc("block/buffer"))
+        }
+    }
 
-    @Suppress("UNUSED_PARAMETER")
-    private fun registerClientProviders(event: GatherDataEvent) = Unit
+    private class BlockStates(
+        output: PackOutput,
+        helper: net.neoforged.neoforge.common.data.ExistingFileHelper,
+    ) : BlockStateProvider(output, MOD_ID, helper) {
+        override fun registerStatesAndModels() {
+            simpleBlock(ModBlocks.buffer.get())
+        }
+    }
+
+    private class BlockTags(
+        output: PackOutput,
+        lookup: CompletableFuture<HolderLookup.Provider>,
+        helper: net.neoforged.neoforge.common.data.ExistingFileHelper?,
+    ) : BlockTagsProvider(output, lookup, MOD_ID, helper) {
+        override fun addTags(provider: HolderLookup.Provider) {
+            tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE).add(ModBlocks.buffer.get())
+        }
+    }
+
+    private class LootTables(
+        output: PackOutput,
+        lookup: CompletableFuture<HolderLookup.Provider>,
+    ) : LootTableProvider(
+            output,
+            emptySet(),
+            listOf(SubProviderEntry(::BlockLoot, LootContextParamSets.BLOCK)),
+            lookup,
+        ) {
+        private class BlockLoot(
+            registries: HolderLookup.Provider,
+        ) : VanillaBlockLoot(registries) {
+            override fun generate() {
+                add(ModBlocks.buffer.get(), noDrop())
+            }
+
+            override fun getKnownBlocks(): MutableIterable<Block> =
+                mutableListOf(ModBlocks.buffer.get())
+        }
+    }
+
+    private class EnglishLanguage(
+        output: PackOutput,
+    ) : LanguageProvider(output, MOD_ID, "en_us") {
+        override fun addTranslations() {
+            addBlock({ ModBlocks.buffer.get() }, "Buffer")
+            add("tab.compose", "Compose")
+            add("message.compose.buffer.status", "Buffer: %s / %s items, %s / %s mB")
+            add("gui.compose.buffer.item_amount", "%s items")
+            add("gui.compose.buffer.fluid_amount", "%s mB")
+            add("gui.compose.buffer.empty", "Empty")
+            add("gui.compose.buffer.clear", "Clear contents")
+            add("tooltip.compose.buffer.contents", "%s / %s items, %s / %s mB")
+        }
+    }
+
+    private class ChineseLanguage(
+        output: PackOutput,
+    ) : LanguageProvider(output, MOD_ID, "zh_cn") {
+        override fun addTranslations() {
+            addBlock({ ModBlocks.buffer.get() }, "缓冲器")
+            add("tab.compose", "Compose")
+            add("message.compose.buffer.status", "缓冲器：物品 %s / %s，流体 %s / %s mB")
+            add("gui.compose.buffer.item_amount", "物品 %s")
+            add("gui.compose.buffer.fluid_amount", "%s mB")
+            add("gui.compose.buffer.empty", "空")
+            add("gui.compose.buffer.clear", "清空内容")
+            add("tooltip.compose.buffer.contents", "物品 %s / %s，流体 %s / %s mB")
+        }
+    }
 }
