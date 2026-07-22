@@ -1,0 +1,36 @@
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+bin/
+out/
+
+# Gradle and generated output
+.gradle/
+.kotlin/
+build/
+repo/
+
+# Minecraft development runs
+run/
+runs/
+run-data/
+
+# Workspace and OS files
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# Tool caches
+.cache/
+temp/
+
+# Agents
+agents/
+.agents/
+AGENTS.md
