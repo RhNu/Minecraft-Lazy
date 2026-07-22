@@ -1,14 +1,9 @@
 package rhx.lazy.client.screen
 
-import com.daqem.uilib.api.client.gui.IRenderable
-import com.daqem.uilib.client.gui.AbstractContainerScreen
-import com.daqem.uilib.client.gui.component.AbstractComponent
-import com.daqem.uilib.client.gui.component.SolidColorComponent
-import com.daqem.uilib.client.gui.component.TextComponent
-import com.daqem.uilib.client.gui.component.io.ButtonComponent
-import com.daqem.uilib.client.gui.text.Text
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.inventory.InventoryMenu
@@ -36,245 +31,255 @@ internal class BufferScreen(
         inventoryLabelY = imageHeight + 1_000
     }
 
-    private var clearButton: ButtonComponent? = null
+    private var clearButton: Button? = null
 
-    override fun startScreen() {
-        setBackground(null)
-        setPauseScreen(false)
-        addComponent(SolidColorComponent(0, 0, width, height, SCREEN_SHADE))
-
-        val panel = SolidColorComponent(0, 0, PANEL_WIDTH, PANEL_HEIGHT, PANEL_OUTER)
-        panel.center()
-        panel.addChild(SolidColorComponent(1, 1, PANEL_WIDTH - 2, PANEL_HEIGHT - 2, PANEL_INNER))
-
-        val titleText = Text(font, title)
-        val titleComponent = TextComponent(titleText)
-        titleComponent.setX((PANEL_WIDTH - titleComponent.width) / 2)
-        titleComponent.setY(8)
-        panel.addChild(titleComponent)
-
-        repeat(BufferBlockEntity.ITEM_SLOT_COUNT) { slot ->
-            panel.addChild(BufferItemComponent(8 + slot * 27, 27, slot, menu))
-        }
-        repeat(BufferBlockEntity.FLUID_TANK_COUNT) { tank ->
-            panel.addChild(
-                BufferFluidComponent(
-                    8 + (tank % 2) * 106,
-                    76 + (tank / 2) * 44,
-                    tank,
-                    menu,
-                ),
-            )
-        }
+    override fun init() {
+        super.init()
         clearButton =
-            ButtonComponent(
-                (PANEL_WIDTH - CLEAR_BUTTON_WIDTH) / 2,
-                166,
-                CLEAR_BUTTON_WIDTH,
-                20,
-                Component.translatable("gui.lazy.buffer.clear"),
-            ) { _, _, _, _, mouseButton ->
-                if (mouseButton != 0) {
-                    false
-                } else {
-                    PacketDistributor.sendToServer(ClearBufferPayload(menu.containerId))
-                    true
-                }
-            }.also { button ->
-                button.setEnabled(menu.snapshot.hasContents())
-                panel.addChild(button)
-            }
-        addComponent(panel)
+            addRenderableWidget(
+                Button
+                    .builder(Component.translatable("gui.lazy.buffer.clear")) {
+                        PacketDistributor.sendToServer(ClearBufferPayload(menu.containerId))
+                    }.bounds(
+                        leftPos + (PANEL_WIDTH - CLEAR_BUTTON_WIDTH) / 2,
+                        topPos + CLEAR_BUTTON_Y,
+                        CLEAR_BUTTON_WIDTH,
+                        20,
+                    ).build()
+                    .also { it.active = menu.snapshot.hasContents() },
+            )
     }
 
-    override fun onTickScreen(
+    override fun containerTick() {
+        super.containerTick()
+        clearButton?.active = menu.snapshot.hasContents()
+    }
+
+    override fun render(
         guiGraphics: GuiGraphics,
         mouseX: Int,
         mouseY: Int,
-        delta: Float,
+        partialTick: Float,
     ) {
-        clearButton?.setEnabled(menu.snapshot.hasContents())
+        super.render(guiGraphics, mouseX, mouseY, partialTick)
+        renderTooltip(guiGraphics, mouseX, mouseY)
+        renderBufferTooltip(guiGraphics, mouseX, mouseY)
     }
 
-    override fun onResizeScreenRepositionComponents(
-        width: Int,
-        height: Int,
+    override fun renderBg(
+        guiGraphics: GuiGraphics,
+        partialTick: Float,
+        mouseX: Int,
+        mouseY: Int,
     ) {
-        components.clear()
-        startScreen()
-        components.forEach(IRenderable<*>::startRenderable)
+        guiGraphics.fill(0, 0, width, height, SCREEN_SHADE)
+        guiGraphics.fill(leftPos, topPos, leftPos + PANEL_WIDTH, topPos + PANEL_HEIGHT, PANEL_OUTER)
+        guiGraphics.fill(leftPos + 1, topPos + 1, leftPos + PANEL_WIDTH - 1, topPos + PANEL_HEIGHT - 1, PANEL_INNER)
+
+        repeat(BufferBlockEntity.ITEM_SLOT_COUNT) { slot ->
+            renderItem(guiGraphics, slot)
+        }
+        repeat(BufferBlockEntity.FLUID_TANK_COUNT) { tank ->
+            renderFluidTank(guiGraphics, tank)
+        }
     }
 
     override fun renderLabels(
         guiGraphics: GuiGraphics,
         mouseX: Int,
         mouseY: Int,
-    ) = Unit
+    ) {
+        guiGraphics.drawCenteredString(font, title, imageWidth / 2, 8, TEXT_COLOR)
+    }
 
-    private class BufferItemComponent(
+    private fun renderItem(
+        graphics: GuiGraphics,
+        slot: Int,
+    ) {
+        val x = leftPos + ITEM_START_X + slot * ITEM_SPACING
+        val y = topPos + ITEM_Y
+        graphics.fill(x, y, x + 24, y + 24, SLOT_BORDER)
+        graphics.fill(x + 1, y + 1, x + 23, y + 23, SLOT_BACKGROUND)
+
+        val item = menu.snapshot.items[slot]
+        if (!item.template.isEmpty) {
+            graphics.renderFakeItem(item.template, x + 4, y + 4)
+        }
+        graphics.drawCenteredString(
+            font,
+            item.count.toString(),
+            x + ITEM_COMPONENT_WIDTH / 2,
+            y + 29,
+            TEXT_COLOR,
+        )
+    }
+
+    private fun renderFluidTank(
+        graphics: GuiGraphics,
+        tank: Int,
+    ) {
+        val x = leftPos + FLUID_START_X + (tank % 2) * FLUID_COLUMN_SPACING
+        val y = topPos + FLUID_START_Y + (tank / 2) * FLUID_ROW_SPACING
+        val fluid = menu.snapshot.fluids[tank]
+        val name =
+            if (fluid.isEmpty) {
+                Component.translatable("gui.lazy.buffer.empty").string
+            } else {
+                fluid.hoverName.string
+            }
+        graphics.drawCenteredString(
+            font,
+            font.plainSubstrByWidth(name, FLUID_COMPONENT_WIDTH - 4),
+            x + FLUID_COMPONENT_WIDTH / 2,
+            y,
+            TEXT_COLOR,
+        )
+
+        graphics.fill(x, y + 11, x + FLUID_COMPONENT_WIDTH, y + 25, SLOT_BORDER)
+        graphics.fill(x + 1, y + 12, x + FLUID_COMPONENT_WIDTH - 1, y + 24, SLOT_BACKGROUND)
+        if (!fluid.isEmpty) {
+            renderFluid(graphics, fluid, x, y)
+        }
+        graphics.drawCenteredString(
+            font,
+            Component.translatable("gui.lazy.buffer.fluid_amount", fluid.amount),
+            x + FLUID_COMPONENT_WIDTH / 2,
+            y + 29,
+            TEXT_COLOR,
+        )
+    }
+
+    private fun renderFluid(
+        graphics: GuiGraphics,
+        fluid: FluidStack,
         x: Int,
         y: Int,
-        private val slot: Int,
-        private val menu: BufferMenu,
-    ) : AbstractComponent<BufferItemComponent>(null, x, y, ITEM_COMPONENT_WIDTH, ITEM_COMPONENT_HEIGHT) {
-        override fun render(
-            graphics: GuiGraphics,
-            mouseX: Int,
-            mouseY: Int,
-            delta: Float,
-        ) {
-            graphics.fill(0, 0, 24, 24, SLOT_BORDER)
-            graphics.fill(1, 1, 23, 23, SLOT_BACKGROUND)
+    ) {
+        val extension = IClientFluidTypeExtensions.of(fluid.fluid)
+        val texture = extension.getStillTexture(fluid) ?: return
+        val sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(texture)
+        val fillWidth =
+            ((FLUID_COMPONENT_WIDTH - 4f) * fluid.amount / BufferBlockEntity.FLUID_TANK_CAPACITY)
+                .roundToInt()
+                .coerceIn(1, FLUID_COMPONENT_WIDTH - 4)
+        val tint = extension.getTintColor(fluid)
+        graphics.setColor(
+            ((tint shr 16) and 0xFF) / 255f,
+            ((tint shr 8) and 0xFF) / 255f,
+            (tint and 0xFF) / 255f,
+            ((tint ushr 24) and 0xFF) / 255f,
+        )
+        graphics.blit(x + 2, y + 13, 0, fillWidth, 10, sprite)
+        graphics.setColor(1f, 1f, 1f, 1f)
+    }
 
-            val item = menu.snapshot.items[slot]
-            if (!item.template.isEmpty) {
-                graphics.renderFakeItem(item.template, 4, 4)
-            }
-            graphics.drawCenteredString(
-                Minecraft.getInstance().font,
-                item.count.toString(),
-                width / 2,
-                29,
-                TEXT_COLOR,
-            )
-        }
-
-        override fun renderTooltips(
-            guiGraphics: GuiGraphics,
-            mouseX: Int,
-            mouseY: Int,
-            delta: Float,
-        ) {
-            val item = menu.snapshot.items[slot]
-            if (item.template.isEmpty || !isTotalHovered(mouseX.toDouble(), mouseY.toDouble())) return
-            val minecraft = Minecraft.getInstance()
-            val defaultFlag =
-                if (minecraft.options.advancedItemTooltips) {
-                    TooltipFlag.Default.ADVANCED
-                } else {
-                    TooltipFlag.Default.NORMAL
-                }
-            val lines =
-                item.template
-                    .getTooltipLines(
-                        Item.TooltipContext.of(minecraft.level),
-                        minecraft.player,
-                        ClientTooltipFlag.of(defaultFlag),
-                    ).toMutableList()
-            lines +=
-                Component.translatable(
-                    "gui.lazy.buffer.item_amount",
-                    item.count,
+    private fun renderBufferTooltip(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
+        repeat(BufferBlockEntity.ITEM_SLOT_COUNT) { slot ->
+            val hovering =
+                isHovering(
+                    ITEM_START_X + slot * ITEM_SPACING,
+                    ITEM_Y,
+                    ITEM_COMPONENT_WIDTH,
+                    ITEM_COMPONENT_HEIGHT,
+                    mouseX.toDouble(),
+                    mouseY.toDouble(),
                 )
-            guiGraphics.renderTooltip(
-                minecraft.font,
-                lines,
-                Optional.empty(),
-                item.template,
-                mouseX,
-                mouseY,
-            )
+            if (hovering && renderItemTooltip(guiGraphics, slot, mouseX, mouseY)) {
+                return
+            }
+        }
+        repeat(BufferBlockEntity.FLUID_TANK_COUNT) { tank ->
+            val hovering =
+                isHovering(
+                    FLUID_START_X + (tank % 2) * FLUID_COLUMN_SPACING,
+                    FLUID_START_Y + (tank / 2) * FLUID_ROW_SPACING,
+                    FLUID_COMPONENT_WIDTH,
+                    FLUID_COMPONENT_HEIGHT,
+                    mouseX.toDouble(),
+                    mouseY.toDouble(),
+                )
+            if (hovering && renderFluidTooltip(guiGraphics, tank, mouseX, mouseY)) {
+                return
+            }
         }
     }
 
-    private class BufferFluidComponent(
-        x: Int,
-        y: Int,
-        private val tank: Int,
-        private val menu: BufferMenu,
-    ) : AbstractComponent<BufferFluidComponent>(null, x, y, FLUID_COMPONENT_WIDTH, FLUID_COMPONENT_HEIGHT) {
-        override fun render(
-            graphics: GuiGraphics,
-            mouseX: Int,
-            mouseY: Int,
-            delta: Float,
-        ) {
-            val fluid = menu.snapshot.fluids[tank]
-            val font = Minecraft.getInstance().font
-            val name =
-                if (fluid.isEmpty) {
-                    Component.translatable("gui.lazy.buffer.empty").string
-                } else {
-                    fluid.hoverName.string
-                }
-            graphics.drawCenteredString(
-                font,
-                font.plainSubstrByWidth(name, width - 4),
-                width / 2,
-                0,
-                TEXT_COLOR,
-            )
-
-            graphics.fill(0, 11, width, 25, SLOT_BORDER)
-            graphics.fill(1, 12, width - 1, 24, SLOT_BACKGROUND)
-            if (!fluid.isEmpty) {
-                renderFluid(graphics, fluid)
+    private fun renderItemTooltip(
+        guiGraphics: GuiGraphics,
+        slot: Int,
+        mouseX: Int,
+        mouseY: Int,
+    ): Boolean {
+        val item = menu.snapshot.items[slot]
+        if (item.template.isEmpty) return false
+        val minecraft = Minecraft.getInstance()
+        val defaultFlag =
+            if (minecraft.options.advancedItemTooltips) {
+                TooltipFlag.Default.ADVANCED
+            } else {
+                TooltipFlag.Default.NORMAL
             }
-            graphics.drawCenteredString(
-                font,
-                Component.translatable(
-                    "gui.lazy.buffer.fluid_amount",
-                    fluid.amount,
-                ),
-                width / 2,
-                29,
-                TEXT_COLOR,
-            )
-        }
+        val lines =
+            item.template
+                .getTooltipLines(
+                    Item.TooltipContext.of(minecraft.level),
+                    minecraft.player,
+                    ClientTooltipFlag.of(defaultFlag),
+                ).toMutableList()
+        lines += Component.translatable("gui.lazy.buffer.item_amount", item.count)
+        guiGraphics.renderTooltip(
+            minecraft.font,
+            lines,
+            Optional.empty(),
+            item.template,
+            mouseX,
+            mouseY,
+        )
+        return true
+    }
 
-        private fun renderFluid(
-            graphics: GuiGraphics,
-            fluid: FluidStack,
-        ) {
-            val extension = IClientFluidTypeExtensions.of(fluid.fluid)
-            val texture = extension.getStillTexture(fluid) ?: return
-            val sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(texture)
-            val fillWidth =
-                ((width - 4f) * fluid.amount / BufferBlockEntity.FLUID_TANK_CAPACITY)
-                    .roundToInt()
-                    .coerceIn(1, width - 4)
-            val tint = extension.getTintColor(fluid)
-            graphics.setColor(
-                ((tint shr 16) and 0xFF) / 255f,
-                ((tint shr 8) and 0xFF) / 255f,
-                (tint and 0xFF) / 255f,
-                ((tint ushr 24) and 0xFF) / 255f,
-            )
-            graphics.blit(2, 13, 0, fillWidth, 10, sprite)
-            graphics.setColor(1f, 1f, 1f, 1f)
-        }
-
-        override fun renderTooltips(
-            guiGraphics: GuiGraphics,
-            mouseX: Int,
-            mouseY: Int,
-            delta: Float,
-        ) {
-            val fluid = menu.snapshot.fluids[tank]
-            if (fluid.isEmpty || !isTotalHovered(mouseX.toDouble(), mouseY.toDouble())) return
-            guiGraphics.renderTooltip(
-                Minecraft.getInstance().font,
-                listOf(
-                    fluid.hoverName,
-                    Component.translatable(
-                        "gui.lazy.buffer.fluid_amount",
-                        fluid.amount,
-                    ),
-                ),
-                Optional.empty(),
-                ItemStack.EMPTY,
-                mouseX,
-                mouseY,
-            )
-        }
+    private fun renderFluidTooltip(
+        guiGraphics: GuiGraphics,
+        tank: Int,
+        mouseX: Int,
+        mouseY: Int,
+    ): Boolean {
+        val fluid = menu.snapshot.fluids[tank]
+        if (fluid.isEmpty) return false
+        guiGraphics.renderTooltip(
+            font,
+            listOf(
+                fluid.hoverName,
+                Component.translatable("gui.lazy.buffer.fluid_amount", fluid.amount),
+            ),
+            Optional.empty(),
+            ItemStack.EMPTY,
+            mouseX,
+            mouseY,
+        )
+        return true
     }
 
     companion object {
         private const val PANEL_WIDTH = 224
         private const val PANEL_HEIGHT = 194
         private const val CLEAR_BUTTON_WIDTH = 96
+        private const val CLEAR_BUTTON_Y = 166
+
+        private const val ITEM_START_X = 8
+        private const val ITEM_Y = 27
+        private const val ITEM_SPACING = 27
         private const val ITEM_COMPONENT_WIDTH = 25
         private const val ITEM_COMPONENT_HEIGHT = 46
+
+        private const val FLUID_START_X = 8
+        private const val FLUID_START_Y = 76
+        private const val FLUID_COLUMN_SPACING = 106
+        private const val FLUID_ROW_SPACING = 44
         private const val FLUID_COMPONENT_WIDTH = 102
         private const val FLUID_COMPONENT_HEIGHT = 40
 

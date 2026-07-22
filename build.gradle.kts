@@ -121,20 +121,6 @@ repositories {
         }
     }
     maven {
-        name = "Architectury"
-        url = uri("https://maven.architectury.dev")
-        content {
-            includeGroup("dev.architectury")
-        }
-    }
-    maven {
-        name = "DAQEM"
-        url = uri("https://maven.daqem.com/releases")
-        content {
-            includeGroup("com.daqem.uilib")
-        }
-    }
-    maven {
         name = "FzzyMaven"
         url = uri("https://maven.fzzyhmstrs.me/")
         content {
@@ -145,8 +131,6 @@ repositories {
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:${property("kotlin_for_forge_version")}")
-    implementation("dev.architectury:architectury-neoforge:${property("architectury_version")}")
-    implementation("com.daqem.uilib:uilib-neoforge:${property("uilib_version")}")
     implementation("me.fzzyhmstrs:fzzy_config:${property("fzzy_config_version")}")
 
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
@@ -172,7 +156,6 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "mod_version" to project.property("mod_version"),
             "mod_authors" to project.property("mod_authors"),
             "mod_description" to project.property("mod_description"),
-            "uilib_version_range" to project.property("uilib_version_range"),
             "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
         )
 

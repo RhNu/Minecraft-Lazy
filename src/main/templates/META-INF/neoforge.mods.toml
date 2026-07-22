@@ -24,13 +24,6 @@ ordering="NONE"
 side="BOTH"
 
 [[dependencies.${mod_id}]]
-modId="uilib"
-type="required"
-versionRange="${uilib_version_range}"
-ordering="AFTER"
-side="BOTH"
-
-[[dependencies.${mod_id}]]
 modId="fzzy_config"
 type="required"
 versionRange="${fzzy_config_version_range}"
