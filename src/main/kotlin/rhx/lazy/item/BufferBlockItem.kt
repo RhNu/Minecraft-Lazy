@@ -22,9 +22,9 @@ internal class BufferBlockItem(
     ) {
         val data = stack.get(DataComponents.BLOCK_ENTITY_DATA)
         if (data != null && !data.isEmpty) {
-            val tag = data.copyTag()
-            val itemTotal = tag.getInt(BufferBlockEntity.ITEM_TOTAL_KEY)
-            val fluidTotal = tag.getInt(BufferBlockEntity.FLUID_TOTAL_KEY)
+            val managed = data.copyTag().getCompound(BufferBlockEntity.MANAGED_DATA_KEY)
+            val itemTotal = managed.getInt(BufferBlockEntity.ITEM_TOTAL_FIELD)
+            val fluidTotal = managed.getInt(BufferBlockEntity.FLUID_TOTAL_FIELD)
             if (itemTotal > 0 || fluidTotal > 0) {
                 tooltipComponents +=
                     Component

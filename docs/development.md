@@ -2,9 +2,11 @@
 
 ## 固定工具链
 
-项目使用 Java 21、Gradle 9.2.1、ModDevGradle 2.0.142、NeoForge 21.1.242、Parchment 2024.11.17、Kotlin 2.4.0 和 KotlinForForge 5.12.0。版本集中保存在 `gradle.properties`，构建脚本不得使用 `latest.release`、版本区间解析或其他动态选择器。
+项目使用 Java 21、Gradle 9.2.1、ModDevGradle 2.0.142、NeoForge 21.1.242、Parchment 2024.11.17、Kotlin 2.4.0、KotlinForForge 5.12.0 和 LDLib2 2.2.29。版本集中保存在 `gradle.properties`，构建脚本不得使用 `latest.release`、版本区间解析或其他动态选择器。
 
 Kotlin 插件版本与 KotlinForForge 5.12.0 捆绑的 Kotlin 运行库保持一致。模组元数据使用 `kotlinforforge` 语言加载器，并要求至少 5.12 版本。
+
+LDLib2 是范围 `[2.2.29,2.3.0)`、双端必需的外部模组依赖，不打包进 Lazy JAR。其 `all` 构件从 FirstDark Maven 解析，Yoga、Taffy 与 Kotlin 传递依赖从 Maven Central 补齐。升级 KotlinForForge 或 LDLib2 时必须用 `dependencyInsight` 复查 Kotlin、Yoga 和 Taffy 的最终解析版本。
 
 ## 开发运行模组
 
@@ -26,13 +28,17 @@ JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它�
 
 ## 界面实现
 
-界面优先使用 Minecraft 原生 `Screen`、`AbstractContainerScreen` 与原生控件，并仅在 `client` 包内实现。公共菜单与网络快照不引用 Minecraft 客户端类，确保专用服务器侧隔离。
+GUI、HUD、UI binding/RPC 和方块实体托管优先使用 LDLib2。界面结构使用公共侧安全的 Kotlin DSL，外观通过资源包中的 LSS 定义，并优先继承 LDLib2 `mc.lss` 的原版 Minecraft 主题。公共 UI 代码不得引用 Minecraft 客户端类，确保专用服务器侧隔离。
+
+只读展示使用 S2C binding；会改变世界的操作使用 UI server event，并在处理时重新执行权限、距离和目标有效性校验。固定结构界面必须在两侧创建完全相同的元素树。
+
+渲染器、Shader、编辑器和节点图仅在功能已经确认需要时引入，不预建空框架。
 
 引入任何候选前，应重新核对 Minecraft 1.21.1 与 NeoForge 的稳定版本、许可证、服务端兼容性和 Maven 来源。
 
 ## 常用流程
 
-`./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 刷新数据生成输出。`./gradlew runClient` 启动带 JEI 与 Jade 的开发客户端。
+`./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 刷新数据生成输出。`./gradlew runClient` 启动带 JEI 与 Jade 的开发客户端。发布前还要检查 Lazy JAR 不含 `com/lowdragmc/lowdraglib2`，并用 `dependencyInsight` 核对 Kotlin、Yoga 与 Taffy。
 
 GameTestServer 配置保留用于未来自动化游戏测试。在没有注册 GameTest 时，它可能按 NeoForge 的默认行为以失败退出，因此当前不作为验收命令。
 

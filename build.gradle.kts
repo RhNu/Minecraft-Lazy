@@ -99,6 +99,20 @@ configurations.runtimeClasspath {
 }
 
 repositories {
+    mavenCentral {
+        content {
+            includeGroup("dev.vfyjxf")
+            includeGroup("org.appliedenergistics.yoga")
+            includeGroup("org.jetbrains.kotlin")
+        }
+    }
+    maven {
+        name = "FirstDark"
+        url = uri("https://maven.firstdark.dev/snapshots")
+        content {
+            includeGroup("com.lowdragmc.ldlib2")
+        }
+    }
     maven {
         name = "Kotlin for Forge"
         url = uri("https://thedarkcolour.github.io/KotlinForForge/")
@@ -131,6 +145,9 @@ repositories {
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:${property("kotlin_for_forge_version")}")
+    implementation(
+        "com.lowdragmc.ldlib2:ldlib2-neoforge-${property("minecraft_version")}:${property("ldlib2_version")}:all",
+    )
     implementation("me.fzzyhmstrs:fzzy_config:${property("fzzy_config_version")}")
 
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
@@ -156,6 +173,7 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "mod_version" to project.property("mod_version"),
             "mod_authors" to project.property("mod_authors"),
             "mod_description" to project.property("mod_description"),
+            "ldlib2_version_range" to project.property("ldlib2_version_range"),
             "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
         )
 

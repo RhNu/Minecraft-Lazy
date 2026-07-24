@@ -1,12 +1,11 @@
 package rhx.lazy.block.entity
 
+import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
+import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.nbt.ListTag
-import net.minecraft.nbt.Tag
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
@@ -17,82 +16,60 @@ import kotlin.math.min
 internal class BufferBlockEntity(
     pos: BlockPos,
     state: BlockState,
-) : BlockEntity(ModBlockEntities.buffer.get(), pos, state) {
+) : ManagedBlockEntity(ModBlockEntities.buffer.get(), pos, state) {
+    @field:Persisted
+    @field:LazyManaged
     private val itemTemplates = MutableList(ITEM_SLOT_COUNT) { ItemStack.EMPTY }
-    private val itemCounts = IntArray(ITEM_SLOT_COUNT)
+
+    @field:Persisted
+    @field:LazyManaged
+    private val itemCounts = MutableList(ITEM_SLOT_COUNT) { 0 }
+
+    @field:Persisted
+    @field:LazyManaged
     private val fluids = MutableList(FLUID_TANK_COUNT) { FluidStack.EMPTY }
+
+    @field:Persisted
+    @field:LazyManaged
+    private var itemTotal = 0
+
+    @field:Persisted
+    @field:LazyManaged
+    private var fluidTotal = 0
 
     val itemHandler: IItemHandlerModifiable = BufferItemHandler()
     val fluidHandler: IFluidHandler = BufferFluidHandler()
 
-    var contentVersion: Long = 0
-        private set
-
     val totalItemCount: Int
-        get() = itemCounts.sum()
+        get() = itemTotal
 
     val totalFluidAmount: Int
-        get() = fluids.sumOf(FluidStack::getAmount)
+        get() = fluidTotal
 
     fun hasContents(): Boolean = totalItemCount > 0 || totalFluidAmount > 0
 
     fun clearContents(): Boolean {
         if (!hasContents()) return false
         clearWithoutNotification()
-        contentsChanged()
+        contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD, FLUIDS_FIELD)
         return true
     }
 
-    fun snapshot(): BufferSnapshot =
-        BufferSnapshot(
-            itemTemplates.indices.map { slot ->
-                val count = itemCounts[slot]
-                val template = itemTemplates[slot]
-                BufferItemSnapshot(
-                    if (template.isEmpty || count == 0) ItemStack.EMPTY else template.copyWithCount(1),
-                    count,
-                )
-            },
-            fluids.map { fluid -> if (fluid.isEmpty) FluidStack.EMPTY else fluid.copy() },
-        )
+    fun getItemTemplate(slot: Int): ItemStack {
+        validateItemSlot(slot)
+        val template = itemTemplates[slot]
+        return if (template.isEmpty) ItemStack.EMPTY else template.copy()
+    }
 
-    override fun saveAdditional(
-        tag: CompoundTag,
-        registries: HolderLookup.Provider,
-    ) {
-        super.saveAdditional(tag, registries)
+    fun getItemCount(slot: Int): Int {
+        validateItemSlot(slot)
+        return itemCounts[slot]
+    }
 
-        val itemList = ListTag()
-        itemTemplates.indices.forEach { slot ->
-            val template = itemTemplates[slot]
-            val count = itemCounts[slot]
-            if (!template.isEmpty && count > 0) {
-                itemList.add(
-                    CompoundTag().apply {
-                        putInt(SLOT_KEY, slot)
-                        putInt(COUNT_KEY, count)
-                        put(ITEM_KEY, template.save(registries, CompoundTag()))
-                    },
-                )
-            }
-        }
-        tag.put(ITEMS_KEY, itemList)
-
-        val fluidList = ListTag()
-        fluids.indices.forEach { tank ->
-            val fluid = fluids[tank]
-            if (!fluid.isEmpty) {
-                fluidList.add(
-                    CompoundTag().apply {
-                        putInt(TANK_KEY, tank)
-                        put(FLUID_KEY, fluid.save(registries))
-                    },
-                )
-            }
-        }
-        tag.put(FLUIDS_KEY, fluidList)
-        tag.putInt(ITEM_TOTAL_KEY, totalItemCount)
-        tag.putInt(FLUID_TOTAL_KEY, totalFluidAmount)
+    fun getFluid(slot: Int): FluidStack {
+        validateFluidTank(slot)
+        val fluid = fluids[slot]
+        return if (fluid.isEmpty) FluidStack.EMPTY else fluid.copy()
     }
 
     override fun loadAdditional(
@@ -100,45 +77,52 @@ internal class BufferBlockEntity(
         registries: HolderLookup.Provider,
     ) {
         super.loadAdditional(tag, registries)
-        clearWithoutNotification()
+        normalizeContents()
+    }
 
-        val itemList = tag.getList(ITEMS_KEY, Tag.TAG_COMPOUND.toInt())
-        itemList.forEach { rawEntry ->
-            val entry = rawEntry as CompoundTag
-            val slot = entry.getInt(SLOT_KEY)
-            if (slot !in itemTemplates.indices) return@forEach
-            val template = ItemStack.parse(registries, entry.getCompound(ITEM_KEY)).orElse(ItemStack.EMPTY)
-            val count = entry.getInt(COUNT_KEY).coerceIn(0, ITEM_SLOT_CAPACITY)
-            if (!template.isEmpty && count > 0) {
+    private fun contentsChanged(vararg fields: String) {
+        itemTotal = itemCounts.sum()
+        fluidTotal = fluids.sumOf(FluidStack::getAmount)
+        fields.forEach(::markDirty)
+        markDirty(ITEM_TOTAL_FIELD)
+        markDirty(FLUID_TOTAL_FIELD)
+    }
+
+    private fun clearWithoutNotification() {
+        repeat(ITEM_SLOT_COUNT) { slot ->
+            itemTemplates[slot] = ItemStack.EMPTY
+            itemCounts[slot] = 0
+        }
+        repeat(FLUID_TANK_COUNT) { tank -> fluids[tank] = FluidStack.EMPTY }
+    }
+
+    private fun normalizeContents() {
+        itemTemplates.resize(ITEM_SLOT_COUNT) { ItemStack.EMPTY }
+        itemCounts.resize(ITEM_SLOT_COUNT) { 0 }
+        fluids.resize(FLUID_TANK_COUNT) { FluidStack.EMPTY }
+
+        repeat(ITEM_SLOT_COUNT) { slot ->
+            val template = itemTemplates[slot]
+            val count = itemCounts[slot].coerceIn(0, ITEM_SLOT_CAPACITY)
+            if (template.isEmpty || count == 0) {
+                itemTemplates[slot] = ItemStack.EMPTY
+                itemCounts[slot] = 0
+            } else {
                 itemTemplates[slot] = template.copyWithCount(1)
                 itemCounts[slot] = count
             }
         }
-
-        val fluidList = tag.getList(FLUIDS_KEY, Tag.TAG_COMPOUND.toInt())
-        fluidList.forEach { rawEntry ->
-            val entry = rawEntry as CompoundTag
-            val tank = entry.getInt(TANK_KEY)
-            if (tank !in fluids.indices) return@forEach
-            val fluid = FluidStack.parseOptional(registries, entry.getCompound(FLUID_KEY))
-            if (!fluid.isEmpty) {
-                fluids[tank] = fluid.copyWithAmount(fluid.amount.coerceIn(1, FLUID_TANK_CAPACITY))
-            }
+        repeat(FLUID_TANK_COUNT) { tank ->
+            val fluid = fluids[tank]
+            fluids[tank] =
+                if (fluid.isEmpty || fluid.amount <= 0) {
+                    FluidStack.EMPTY
+                } else {
+                    fluid.copyWithAmount(fluid.amount.coerceAtMost(FLUID_TANK_CAPACITY))
+                }
         }
-        contentVersion++
-    }
-
-    private fun contentsChanged() {
-        contentVersion++
-        setChanged()
-    }
-
-    private fun clearWithoutNotification() {
-        itemTemplates.indices.forEach { slot ->
-            itemTemplates[slot] = ItemStack.EMPTY
-            itemCounts[slot] = 0
-        }
-        fluids.indices.forEach { tank -> fluids[tank] = FluidStack.EMPTY }
+        itemTotal = itemCounts.sum()
+        fluidTotal = fluids.sumOf(FluidStack::getAmount)
     }
 
     private fun validateItemSlot(slot: Int) {
@@ -178,7 +162,7 @@ internal class BufferBlockEntity(
                     itemTemplates[slot] = stack.copyWithCount(1)
                 }
                 itemCounts[slot] += inserted
-                contentsChanged()
+                contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
             }
             return if (inserted == stack.count) ItemStack.EMPTY else stack.copyWithCount(stack.count - inserted)
         }
@@ -198,7 +182,7 @@ internal class BufferBlockEntity(
             if (!simulate) {
                 itemCounts[slot] -= extracted
                 if (itemCounts[slot] == 0) itemTemplates[slot] = ItemStack.EMPTY
-                contentsChanged()
+                contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
             }
             return result
         }
@@ -229,7 +213,7 @@ internal class BufferBlockEntity(
                 itemTemplates[slot] = stack.copyWithCount(1)
                 itemCounts[slot] = stack.count.coerceIn(1, ITEM_SLOT_CAPACITY)
             }
-            contentsChanged()
+            contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
         }
     }
 
@@ -285,7 +269,7 @@ internal class BufferBlockEntity(
             }
 
             val filled = resource.amount - remaining
-            if (action.execute() && filled > 0) contentsChanged()
+            if (action.execute() && filled > 0) contentsChanged(FLUIDS_FIELD)
             return filled
         }
 
@@ -309,7 +293,7 @@ internal class BufferBlockEntity(
                 if (remaining == 0) break
             }
 
-            if (action.execute() && drained > 0) contentsChanged()
+            if (action.execute() && drained > 0) contentsChanged(FLUIDS_FIELD)
             return if (drained == 0) FluidStack.EMPTY else resource.copyWithAmount(drained)
         }
 
@@ -331,15 +315,24 @@ internal class BufferBlockEntity(
         const val TOTAL_ITEM_CAPACITY = ITEM_SLOT_COUNT * ITEM_SLOT_CAPACITY
         const val TOTAL_FLUID_CAPACITY = FLUID_TANK_COUNT * FLUID_TANK_CAPACITY
 
-        internal const val ITEM_TOTAL_KEY = "ItemTotal"
-        internal const val FLUID_TOTAL_KEY = "FluidTotal"
+        internal const val MANAGED_DATA_KEY = "managed"
+        internal const val ITEM_TOTAL_FIELD = "itemTotal"
+        internal const val FLUID_TOTAL_FIELD = "fluidTotal"
 
-        private const val ITEMS_KEY = "Items"
-        private const val FLUIDS_KEY = "Fluids"
-        private const val SLOT_KEY = "Slot"
-        private const val TANK_KEY = "Tank"
-        private const val ITEM_KEY = "Item"
-        private const val FLUID_KEY = "Fluid"
-        private const val COUNT_KEY = "Count"
+        private const val ITEM_TEMPLATES_FIELD = "itemTemplates"
+        private const val ITEM_COUNTS_FIELD = "itemCounts"
+        private const val FLUIDS_FIELD = "fluids"
+    }
+}
+
+private fun <T> MutableList<T>.resize(
+    size: Int,
+    defaultValue: () -> T,
+) {
+    while (this.size > size) {
+        removeAt(lastIndex)
+    }
+    while (this.size < size) {
+        add(defaultValue())
     }
 }

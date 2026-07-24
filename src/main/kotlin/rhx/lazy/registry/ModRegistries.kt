@@ -8,7 +8,6 @@ internal object ModRegistries {
             ModBlocks,
             ModItems,
             ModBlockEntities,
-            ModMenus,
             ModDataComponents,
             ModChunkGenerators,
             ModCreativeTabs,

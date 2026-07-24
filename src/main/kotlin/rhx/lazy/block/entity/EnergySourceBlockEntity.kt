@@ -1,11 +1,12 @@
 package rhx.lazy.block.entity
 
+import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
+import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerLevel
-import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache
 import net.neoforged.neoforge.capabilities.Capabilities
@@ -18,16 +19,20 @@ import java.util.EnumMap
 internal class EnergySourceBlockEntity(
     pos: BlockPos,
     state: BlockState,
-) : BlockEntity(ModBlockEntities.energySource.get(), pos, state) {
+) : ManagedBlockEntity(ModBlockEntities.energySource.get(), pos, state) {
     val energyStorage: IEnergyStorage = InfiniteEnergyStorage()
 
+    @field:Persisted
+    @field:LazyManaged
     private var activePushEnabled = false
     private val neighborEnergyCaches =
         EnumMap<Direction, BlockCapabilityCache<IEnergyStorage, Direction?>>(Direction::class.java)
 
+    fun isActivePushEnabled(): Boolean = activePushEnabled
+
     fun toggleActivePush(): Boolean {
         activePushEnabled = !activePushEnabled
-        setChanged()
+        markDirty(ACTIVE_PUSH_FIELD)
         return activePushEnabled
     }
 
@@ -43,20 +48,11 @@ internal class EnergySourceBlockEntity(
         }
     }
 
-    override fun saveAdditional(
-        tag: CompoundTag,
-        registries: HolderLookup.Provider,
-    ) {
-        super.saveAdditional(tag, registries)
-        tag.putBoolean(ACTIVE_PUSH_KEY, activePushEnabled)
-    }
-
     override fun loadAdditional(
         tag: CompoundTag,
         registries: HolderLookup.Provider,
     ) {
         super.loadAdditional(tag, registries)
-        activePushEnabled = tag.getBoolean(ACTIVE_PUSH_KEY)
         neighborEnergyCaches.clear()
     }
 
@@ -81,6 +77,6 @@ internal class EnergySourceBlockEntity(
         }
 
     private companion object {
-        const val ACTIVE_PUSH_KEY = "ActivePush"
+        const val ACTIVE_PUSH_FIELD = "activePushEnabled"
     }
 }

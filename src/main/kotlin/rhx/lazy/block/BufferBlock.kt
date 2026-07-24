@@ -1,13 +1,13 @@
 package rhx.lazy.block
 
+import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType
+import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
-import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.ItemInteractionResult
-import net.minecraft.world.SimpleMenuProvider
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
@@ -18,8 +18,8 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import rhx.lazy.block.entity.BufferBlockEntity
-import rhx.lazy.menu.BufferMenu
 import rhx.lazy.registry.ModItems
+import rhx.lazy.ui.BufferUI
 
 internal class BufferBlock :
     Block(
@@ -28,7 +28,8 @@ internal class BufferBlock :
             .strength(3.5f)
             .sound(SoundType.METAL),
     ),
-    EntityBlock {
+    EntityBlock,
+    BlockUIMenuType.BlockUI {
     override fun newBlockEntity(
         pos: BlockPos,
         state: BlockState,
@@ -82,6 +83,21 @@ internal class BufferBlock :
             ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
         }
 
+    override fun createUI(holder: BlockUIMenuType.BlockUIHolder): ModularUI = BufferUI.create(holder)
+
+    override fun stillValid(holder: BlockUIMenuType.BlockUIHolder): Boolean {
+        val level = holder.player.level()
+        val blockEntity = level.getBlockEntity(holder.pos) as? BufferBlockEntity
+        return level.getBlockState(holder.pos).`is`(this) &&
+            blockEntity != null &&
+            !blockEntity.isRemoved &&
+            holder.player.distanceToSqr(
+                holder.pos.x + 0.5,
+                holder.pos.y + 0.5,
+                holder.pos.z + 0.5,
+            ) <= MAX_UI_DISTANCE_SQUARED
+    }
+
     private fun handleUse(
         level: Level,
         pos: BlockPos,
@@ -105,14 +121,10 @@ internal class BufferBlock :
         }
 
         val serverPlayer = player as? ServerPlayer ?: return false
-        val provider =
-            SimpleMenuProvider(
-                { containerId, inventory, _ ->
-                    BufferMenu.createServer(containerId, inventory, blockEntity, serverPlayer)
-                },
-                blockEntity.blockState.block.name,
-            )
-        serverPlayer.openMenu(provider) { buffer -> blockEntity.snapshot().write(buffer) }
-        return true
+        return BlockUIMenuType.openUI(serverPlayer, pos)
+    }
+
+    private companion object {
+        const val MAX_UI_DISTANCE_SQUARED = 64.0
     }
 }
