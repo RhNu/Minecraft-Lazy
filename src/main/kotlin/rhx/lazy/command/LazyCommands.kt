@@ -8,6 +8,7 @@ internal object LazyCommands {
     private val subcommands: List<LazySubcommand> =
         listOf(
             RiseCommand,
+            ProtectionCommand,
         )
 
     fun register(event: RegisterCommandsEvent) {

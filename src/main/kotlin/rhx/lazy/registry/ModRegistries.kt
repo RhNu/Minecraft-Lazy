@@ -11,6 +11,7 @@ internal object ModRegistries {
             ModDataComponents,
             ModChunkGenerators,
             ModCreativeTabs,
+            ModAttachments,
         )
 
     fun register(bus: IEventBus) {

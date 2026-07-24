@@ -62,6 +62,24 @@ Lazy 可以保留与内容无关并确有复用价值的工具，但能力注册
 
 需要重新决定命令权限、冷却、维度限制、世界边界、伤害风险、是否允许非玩家执行，以及找不到位置时的反馈。扫描必须有明确上界并避免在主线程执行无界工作。
 
+## 玩家保护
+
+该内容已确认实现。玩家保护通过 `/lazy protection` 命令树控制，当前提供伤害上限（damage cap）功能。
+
+伤害上限限制玩家单次受到的伤害不超过设定阈值。阈值为 0 时等同于免疫。虚空伤害和 `/kill`（`BYPASSES_INVULNERABILITY` 标签）不受限制，始终正常生效。
+
+功能通过 NeoForge Data Attachment 在玩家实体上持久化不可变的 `DamageCapData`（`enabled`、`threshold`），支持 `copyOnDeath` 跨死亡保留。阈值 0 的稳定免疫通过伤害容器创建前的 `EntityInvulnerabilityCheckEvent` 实现；阈值 > 0 时在最低事件优先级的 `LivingIncomingDamageEvent` 中封顶伤害值，随后护甲和附魔正常减算。两条路径均放行 `BYPASSES_INVULNERABILITY` 标签伤害。
+
+命令树如下，权限要求 OP 2：
+
+- `/lazy protection damage_cap` — 查看当前状态
+- `/lazy protection damage_cap on` — 开启
+- `/lazy protection damage_cap off` — 关闭（保留阈值设置）
+- `/lazy protection damage_cap set <value>` — 设置阈值（≥0，0=免疫），不改变开关状态
+- `/lazy protection damage_cap reset` — 移除全部设置，恢复未配置状态
+
+后续可在同一 attachment 和命令树下扩展摔伤免疫、火焰免疫、溺水免疫、击退免疫、饥饿锁定等功能。
+
 ## 数据与资源
 
 旧内容依赖方块状态、模型、物品模型、战利品表、配方、挖掘标签、维度数据以及 `en_us`、`zh_cn` 翻译。Lazy 实现任何内容时都应同时补齐相应数据生成、贴图来源记录和双语本地化。
