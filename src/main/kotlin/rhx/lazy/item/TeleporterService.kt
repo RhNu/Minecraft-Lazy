@@ -49,8 +49,9 @@ internal class TeleporterService(
                 defaultTarget = player.defaultVoidLocation(),
             )
         val requested = route.requestedDestination
-        val targetLevel = player.server.getLevel(requested.dimension)
-            ?: return TeleporterResult.Failure(DIMENSION_MISSING)
+        val targetLevel =
+            player.server.getLevel(requested.dimension)
+                ?: return TeleporterResult.Failure(DIMENSION_MISSING)
         val destination =
             destinationResolver.resolve(
                 level = targetLevel,
@@ -66,8 +67,7 @@ internal class TeleporterService(
         return TeleporterResult.Success(route.completed(destination.location))
     }
 
-    private fun ServerPlayer.captureLocation(): SavedLocation =
-        SavedLocation(level().dimension(), blockPosition(), yRot, xRot)
+    private fun ServerPlayer.captureLocation(): SavedLocation = SavedLocation(level().dimension(), blockPosition(), yRot, xRot)
 
     private fun ServerPlayer.defaultReturnLocation(): SavedLocation =
         SavedLocation(Level.OVERWORLD, server.overworld().sharedSpawnPos, yRot, xRot)

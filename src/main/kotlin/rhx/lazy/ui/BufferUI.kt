@@ -279,8 +279,7 @@ internal object BufferUI {
     private fun blockEntity(holder: BlockUIMenuType.BlockUIHolder): BufferBlockEntity? =
         holder.player.level().getBlockEntity(holder.pos) as? BufferBlockEntity
 
-    private fun fluidHandler(holder: BlockUIMenuType.BlockUIHolder): IFluidHandler =
-        blockEntity(holder)?.fluidHandler ?: EmptyFluidHandler
+    private fun fluidHandler(holder: BlockUIMenuType.BlockUIHolder): IFluidHandler = blockEntity(holder)?.fluidHandler ?: EmptyFluidHandler
 
     private fun isValid(holder: BlockUIMenuType.BlockUIHolder): Boolean {
         val block = holder.blockState.block as? BufferBlock ?: return false

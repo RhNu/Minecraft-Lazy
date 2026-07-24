@@ -26,8 +26,7 @@ internal object ModCreativeTabs : RegistryModule {
                         output.accept(ModItems.teleporter.get())
                         output.accept(ModItems.energyBattery.get())
                         output.accept(ModItems.energySource.get())
-                    }
-                    .build()
+                    }.build()
             },
         )
 

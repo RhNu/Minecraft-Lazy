@@ -91,6 +91,5 @@ internal class EnergySourceBlock :
         level: Level,
         state: BlockState,
         blockEntityType: BlockEntityType<T>,
-    ): BlockEntityTicker<T>? =
-        level.serverTicker(blockEntityType, ModBlockEntities.energySource.get()) { onServerTick() }
+    ): BlockEntityTicker<T>? = level.serverTicker(blockEntityType, ModBlockEntities.energySource.get()) { onServerTick() }
 }

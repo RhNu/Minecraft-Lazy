@@ -1,6 +1,5 @@
 package rhx.lazy.command
 
-import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import rhx.lazy.MOD_ID

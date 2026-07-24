@@ -181,11 +181,13 @@ internal data class GridGeneratorSettings(
             RecordCodecBuilder.create { builder ->
                 builder
                     .group(
-                        Codec.intRange(-64, 317)
+                        Codec
+                            .intRange(-64, 317)
                             .fieldOf("layer_height")
                             .orElse(128)
                             .forGetter(GridGeneratorSettings::layerHeight),
-                        Codec.intRange(1, 64)
+                        Codec
+                            .intRange(1, 64)
                             .fieldOf("grid_chunk_size")
                             .orElse(3)
                             .forGetter(GridGeneratorSettings::gridChunkSize),

@@ -16,8 +16,16 @@ class TeleporterDataTest {
     fun `location and optional endpoints survive codec round trip`() {
         val returnLocation = SavedLocation(Level.OVERWORLD, BlockPos(12, 64, -8), 90.0f, -15.0f)
         val value = TeleporterData(returnLocation, null)
-        val encoded = TeleporterData.CODEC.encodeStart(JsonOps.INSTANCE, value).result().orElseThrow()
-        val decoded = TeleporterData.CODEC.parse(JsonOps.INSTANCE, encoded).result().orElseThrow()
+        val encoded =
+            TeleporterData.CODEC
+                .encodeStart(JsonOps.INSTANCE, value)
+                .result()
+                .orElseThrow()
+        val decoded =
+            TeleporterData.CODEC
+                .parse(JsonOps.INSTANCE, encoded)
+                .result()
+                .orElseThrow()
 
         assertEquals(returnLocation, decoded.returnLocation)
         assertNull(decoded.targetLocation)
@@ -59,10 +67,17 @@ class TeleporterDataTest {
                 0.0f,
                 0.0f,
             )
-        val encoded = SavedLocation.CODEC.encodeStart(JsonOps.INSTANCE, missingDimension).result().orElseThrow()
+        val encoded =
+            SavedLocation.CODEC
+                .encodeStart(JsonOps.INSTANCE, missingDimension)
+                .result()
+                .orElseThrow()
         assertEquals(
             missingDimension,
-            SavedLocation.CODEC.parse(JsonOps.INSTANCE, encoded).result().orElseThrow(),
+            SavedLocation.CODEC
+                .parse(JsonOps.INSTANCE, encoded)
+                .result()
+                .orElseThrow(),
         )
 
         val invalid =

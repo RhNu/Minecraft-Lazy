@@ -23,5 +23,8 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Check Kotlin formatting
+        run: ./gradlew ktlintCheck
+
       - name: Build with Gradle
         run: ./gradlew build

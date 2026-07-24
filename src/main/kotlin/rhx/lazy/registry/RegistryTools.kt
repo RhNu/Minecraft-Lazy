@@ -30,5 +30,4 @@ internal fun <T : Block> registerBlockWithItem(
 
 private fun defaultItemProperties(): Item.Properties = Item.Properties()
 
-internal fun <T : BlockEntity> BlockEntityType.Builder<T>.buildType(): BlockEntityType<T> =
-    BlockEntityTypeBridge.build(this)
+internal fun <T : BlockEntity> BlockEntityType.Builder<T>.buildType(): BlockEntityType<T> = BlockEntityTypeBridge.build(this)

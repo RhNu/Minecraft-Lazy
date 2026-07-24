@@ -40,6 +40,10 @@ GUI、HUD、UI binding/RPC 和方块实体托管优先使用 LDLib2。界面结�
 
 `./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 刷新数据生成输出。`./gradlew runClient` 启动带 JEI 与 Jade 的开发客户端。发布前还要检查 Lazy JAR 不含 `com/lowdragmc/lowdraglib2`，并用 `dependencyInsight` 核对 Kotlin、Yoga 与 Taffy。
 
+## Kotlin 代码风格
+
+项目通过 ktlint 自动校验 Kotlin 与 Kotlin DSL：`./gradlew check` 会包含 `ktlintCheck`，本地可用 `./gradlew ktlintFormat` 自动格式化。需要在提交前自动检查时，执行一次 `./gradlew addKtlintCheckGitPreCommitHook` 安装本地 Git hook；GitHub Actions 也会单独运行 `ktlintCheck`。
+
 GameTestServer 配置保留用于未来自动化游戏测试。在没有注册 GameTest 时，它可能按 NeoForge 的默认行为以失败退出，因此当前不作为验收命令。
 
 本地 Maven 发布输出到被忽略的 `repo` 目录。正式发布仓库、签名、更新检查和发布平台任务均不在当前脚手架范围内。

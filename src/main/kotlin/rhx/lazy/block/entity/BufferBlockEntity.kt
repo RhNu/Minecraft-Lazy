@@ -246,10 +246,11 @@ internal class BufferBlockEntity(
         ): Int {
             if (resource.isEmpty || resource.amount <= 0) return 0
             var remaining = resource.amount
-            val matching = fluids.indices.filter { tank ->
-                val stored = fluids[tank]
-                !stored.isEmpty && FluidStack.isSameFluidSameComponents(stored, resource)
-            }
+            val matching =
+                fluids.indices.filter { tank ->
+                    val stored = fluids[tank]
+                    !stored.isEmpty && FluidStack.isSameFluidSameComponents(stored, resource)
+                }
             val empty = fluids.indices.filter { tank -> fluids[tank].isEmpty }
 
             for (tank in matching + empty) {

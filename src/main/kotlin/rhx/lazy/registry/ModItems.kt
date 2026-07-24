@@ -1,8 +1,8 @@
 package rhx.lazy.registry
 
-import net.neoforged.bus.api.IEventBus
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.Rarity
+import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.registries.DeferredRegister
 import rhx.lazy.MOD_ID
 import rhx.lazy.item.BufferBlockItem
@@ -25,7 +25,8 @@ internal object ModItems : RegistryModule {
             "teleporter",
             Supplier {
                 TeleporterItem(
-                    Item.Properties()
+                    Item
+                        .Properties()
                         .stacksTo(1)
                         .rarity(Rarity.EPIC)
                         .fireResistant(),
@@ -38,7 +39,8 @@ internal object ModItems : RegistryModule {
             "energy_battery",
             Supplier {
                 EnergyBatteryItem(
-                    Item.Properties()
+                    Item
+                        .Properties()
                         .stacksTo(1)
                         .rarity(Rarity.RARE)
                         .fireResistant(),

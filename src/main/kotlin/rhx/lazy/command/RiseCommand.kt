@@ -13,7 +13,8 @@ import net.minecraft.world.phys.Vec3
 internal object RiseCommand : LazySubcommand {
     override fun attachTo(root: LiteralArgumentBuilder<CommandSourceStack>) {
         root.then(
-            Commands.literal("rise")
+            Commands
+                .literal("rise")
                 .executes(::execute),
         )
     }

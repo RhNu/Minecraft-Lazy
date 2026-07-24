@@ -8,6 +8,7 @@ plugins {
     idea
     id("net.neoforged.moddev") version "2.0.142"
     kotlin("jvm") version "2.4.0"
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
 }
 
 val modId = property("mod_id").toString()
@@ -101,6 +102,7 @@ configurations.runtimeClasspath {
 repositories {
     mavenCentral {
         content {
+            includeGroup("com.pinterest.ktlint")
             includeGroup("dev.vfyjxf")
             includeGroup("org.appliedenergistics.yoga")
             includeGroup("org.jetbrains.kotlin")
@@ -140,6 +142,16 @@ repositories {
         content {
             includeGroup("me.fzzyhmstrs")
         }
+    }
+}
+
+ktlint {
+    version.set("1.5.0")
+    outputToConsole.set(true)
+    coloredOutput.set(true)
+
+    filter {
+        exclude("**/generated/**")
     }
 }
 

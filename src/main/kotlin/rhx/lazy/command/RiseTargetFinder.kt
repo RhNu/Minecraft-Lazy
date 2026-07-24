@@ -8,7 +8,10 @@ internal object RiseTargetFinder {
      * Finds the first support block above [start] with two clear blocks above it and sky visibility.
      * The scan is bounded by the world's build height, so command execution cannot run forever.
      */
-    fun find(level: ServerLevel, start: BlockPos): BlockPos? {
+    fun find(
+        level: ServerLevel,
+        start: BlockPos,
+    ): BlockPos? {
         val firstY = start.y.coerceAtLeast(level.minBuildHeight)
         val lastY = level.maxBuildHeight - 3
         if (firstY > lastY) return null
@@ -20,7 +23,10 @@ internal object RiseTargetFinder {
         return null
     }
 
-    private fun isValid(level: ServerLevel, support: BlockPos): Boolean {
+    private fun isValid(
+        level: ServerLevel,
+        support: BlockPos,
+    ): Boolean {
         if (!level.getBlockState(support).blocksMotion()) return false
 
         val feet = support.above()
