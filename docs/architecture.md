@@ -24,7 +24,7 @@ Lazy 当前提供模组入口、注册基础设施、缓冲器、能量电池、
 
 注册项必须保留为 `DeferredBlock`、`DeferredItem` 或 `DeferredHolder` 等延迟持有者。不得在静态初始化或注册装配阶段提前取出游戏对象。供应器在真正的注册阶段解析其他延迟持有者是允许的，例如创建方块对应的 `BlockItem`。
 
-`registerBlockWithItem` 用相同名称成对注册方块和物品，并返回两个延迟持有者。方块实体构建通过 `buildType` 收敛 Minecraft 1.21.1 Java API 的空安全边界。数据组件、区块生成器和创造模式标签页通过各自模块的专用注册器扩展。模组自有界面优先复用 LDLib2 的菜单类型，不为单个界面重复注册菜单和同步 payload。
+方块与对应物品由各自的注册模块使用相同路径注册；自定义 `BlockItem` 通过 `registerBlockItem` 在物品注册供应器内部延迟解析方块持有者。方块实体构建通过 `buildType` 收敛 Minecraft 1.21.1 Java API 的空安全边界。数据组件、区块生成器和创造模式标签页通过各自模块的专用注册器扩展。模组自有界面优先复用 LDLib2 的菜单类型，不为单个界面重复注册菜单和同步 payload。
 
 ## 事件总线与侧隔离
 
@@ -42,7 +42,7 @@ Mojang Codec 继续用于数据驱动对象和跨版本结构化数据，NeoForg
 
 ## 数据生成
 
-Gradle 的 `data` 运行配置输出到 `src/generated/resources`，并将主资源目录作为已有资源输入。当前 `GatherDataEvent` 入口故意不注册 provider，因此正常执行不应生成内容文件。
+Gradle 的 `data` 运行配置输出到 `src/generated/resources`，并将主资源目录作为已有资源输入。`GatherDataEvent` 按客户端与服务端边界装配 provider，正常执行会刷新已经确认内容对应的生成资源。
 
 客户端 provider 与服务端 provider 分开装配，当前生成缓冲器的模型、方块状态、配方、标签、空掉落表和双语本地化。生成资源应保持可重复；缓存文件、Blockbench 工程文件和运行目录不得进入发布 JAR。
 

@@ -13,6 +13,7 @@ import net.minecraft.world.item.UseAnim
 import net.minecraft.world.level.Level
 import rhx.lazy.config.ModConfig
 import rhx.lazy.registry.ModDataComponents
+import rhx.lazy.util.displayActionBar
 
 internal class TeleporterItem(
     properties: Properties,
@@ -30,10 +31,7 @@ internal class TeleporterItem(
 
         val serverPlayer = player as? ServerPlayer ?: return InteractionResultHolder.fail(stack)
         if (serverPlayer.cooldowns.isOnCooldown(this)) {
-            serverPlayer.displayClientMessage(
-                Component.translatable("message.lazy.teleporter.cooldown"),
-                true,
-            )
+            serverPlayer.displayActionBar("message.lazy.teleporter.cooldown")
             return InteractionResultHolder.fail(stack)
         }
 
@@ -53,10 +51,7 @@ internal class TeleporterItem(
 
         val usedTicks = getUseDuration(stack, entity) - timeLeft
         if (usedTicks < ModConfig.teleporter.chargeTicks.get()) {
-            player.displayClientMessage(
-                Component.translatable("message.lazy.teleporter.charge_not_full"),
-                true,
-            )
+            player.displayActionBar("message.lazy.teleporter.charge_not_full")
             return
         }
 
@@ -71,7 +66,7 @@ internal class TeleporterItem(
         when (val result = service.teleport(player, oldData)) {
             is TeleporterResult.Failure -> {
                 player.cooldowns.addCooldown(this, FAILURE_COOLDOWN_TICKS)
-                player.displayClientMessage(Component.translatable(result.translationKey), true)
+                player.displayActionBar(result.translationKey)
             }
 
             is TeleporterResult.Success -> {
@@ -80,10 +75,7 @@ internal class TeleporterItem(
                 if (cooldownSeconds > 0) {
                     player.cooldowns.addCooldown(this, cooldownSeconds * TICKS_PER_SECOND)
                 }
-                player.displayClientMessage(
-                    Component.translatable("message.lazy.teleporter.success", cooldownSeconds),
-                    true,
-                )
+                player.displayActionBar("message.lazy.teleporter.success", cooldownSeconds)
             }
         }
     }

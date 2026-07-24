@@ -18,6 +18,8 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import rhx.lazy.block.entity.EnergySourceBlockEntity
 import rhx.lazy.registry.ModBlockEntities
+import rhx.lazy.util.blockEntityOrNull
+import rhx.lazy.util.displayActionBar
 import rhx.lazy.util.serverTicker
 
 internal class EnergySourceBlock :
@@ -39,12 +41,7 @@ internal class EnergySourceBlock :
         pos: BlockPos,
         player: Player,
         hitResult: BlockHitResult,
-    ): InteractionResult =
-        if (handleUse(level, pos, player)) {
-            InteractionResult.sidedSuccess(level.isClientSide)
-        } else {
-            InteractionResult.PASS
-        }
+    ): InteractionResult = level.sidedUseResult(handleUse(level, pos, player))
 
     override fun useItemOn(
         stack: ItemStack,
@@ -54,12 +51,7 @@ internal class EnergySourceBlock :
         player: Player,
         hand: InteractionHand,
         hitResult: BlockHitResult,
-    ): ItemInteractionResult =
-        if (handleUse(level, pos, player)) {
-            ItemInteractionResult.sidedSuccess(level.isClientSide)
-        } else {
-            ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
-        }
+    ): ItemInteractionResult = level.sidedItemUseResult(handleUse(level, pos, player))
 
     internal fun handleUse(
         level: Level,
@@ -67,7 +59,7 @@ internal class EnergySourceBlock :
         player: Player,
     ): Boolean {
         if (!player.isShiftKeyDown || player.isSpectator) return false
-        val blockEntity = level.getBlockEntity(pos) as? EnergySourceBlockEntity ?: return false
+        val blockEntity = level.blockEntityOrNull(pos, ModBlockEntities.energySource.get()) ?: return false
         if (level.isClientSide) return true
 
         val enabled = blockEntity.toggleActivePush()
@@ -77,12 +69,9 @@ internal class EnergySourceBlock :
             } else {
                 "message.lazy.energy_source.active_push.disabled"
             }
-        player.displayClientMessage(
-            Component.translatable(
-                "message.lazy.energy_source.active_push",
-                Component.translatable(stateKey),
-            ),
-            true,
+        player.displayActionBar(
+            "message.lazy.energy_source.active_push",
+            Component.translatable(stateKey),
         )
         return true
     }

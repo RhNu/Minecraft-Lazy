@@ -6,6 +6,7 @@ import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.Level
+import rhx.lazy.testutil.jsonRoundTrip
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -16,16 +17,7 @@ class TeleporterDataTest {
     fun `location and optional endpoints survive codec round trip`() {
         val returnLocation = SavedLocation(Level.OVERWORLD, BlockPos(12, 64, -8), 90.0f, -15.0f)
         val value = TeleporterData(returnLocation, null)
-        val encoded =
-            TeleporterData.CODEC
-                .encodeStart(JsonOps.INSTANCE, value)
-                .result()
-                .orElseThrow()
-        val decoded =
-            TeleporterData.CODEC
-                .parse(JsonOps.INSTANCE, encoded)
-                .result()
-                .orElseThrow()
+        val decoded = TeleporterData.CODEC.jsonRoundTrip(value)
 
         assertEquals(returnLocation, decoded.returnLocation)
         assertNull(decoded.targetLocation)
@@ -67,17 +59,9 @@ class TeleporterDataTest {
                 0.0f,
                 0.0f,
             )
-        val encoded =
-            SavedLocation.CODEC
-                .encodeStart(JsonOps.INSTANCE, missingDimension)
-                .result()
-                .orElseThrow()
         assertEquals(
             missingDimension,
-            SavedLocation.CODEC
-                .parse(JsonOps.INSTANCE, encoded)
-                .result()
-                .orElseThrow(),
+            SavedLocation.CODEC.jsonRoundTrip(missingDimension),
         )
 
         val invalid =

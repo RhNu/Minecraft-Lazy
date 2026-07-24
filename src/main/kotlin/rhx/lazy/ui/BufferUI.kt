@@ -27,6 +27,8 @@ import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import rhx.lazy.block.BufferBlock
 import rhx.lazy.block.entity.BufferBlockEntity
+import rhx.lazy.registry.ModBlockEntities
+import rhx.lazy.util.blockEntityOrNull
 import rhx.lazy.util.lazyId
 
 internal object BufferUI {
@@ -35,6 +37,7 @@ internal object BufferUI {
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         lateinit var confirmationLayer: UIElement
         lateinit var clearButton: com.lowdragmc.lowdraglib2.gui.ui.elements.Button
+        val model = BufferUiModel(holder)
 
         val root =
             element(
@@ -58,16 +61,15 @@ internal object BufferUI {
                     },
                 ) {
                     bind(
-                        DataBindingBuilder
-                            .componentS2C {
-                                Component.translatable(
-                                    "gui.lazy.buffer.summary",
-                                    blockEntity(holder)?.totalItemCount ?: 0,
-                                    BufferBlockEntity.TOTAL_ITEM_CAPACITY,
-                                    blockEntity(holder)?.totalFluidAmount ?: 0,
-                                    BufferBlockEntity.TOTAL_FLUID_CAPACITY,
-                                )
-                            }.build(),
+                        componentBinding {
+                            Component.translatable(
+                                "gui.lazy.buffer.summary",
+                                model.totalItemCount,
+                                BufferBlockEntity.TOTAL_ITEM_CAPACITY,
+                                model.totalFluidAmount,
+                                BufferBlockEntity.TOTAL_FLUID_CAPACITY,
+                            )
+                        },
                     )
                 }
 
@@ -91,10 +93,7 @@ internal object BufferUI {
                         ) {
                             itemSlot {
                                 bind(
-                                    DataBindingBuilder
-                                        .itemStackS2C {
-                                            blockEntity(holder)?.getItemTemplate(slot) ?: ItemStack.EMPTY
-                                        }.build(),
+                                    itemStackBinding { model.itemTemplate(slot) },
                                 )
                                 withTooltips()
                                 asXeiRecipeIngredient(IngredientIO.NONE)
@@ -105,13 +104,12 @@ internal object BufferUI {
                                 },
                             ) {
                                 bind(
-                                    DataBindingBuilder
-                                        .componentS2C {
-                                            Component.translatable(
-                                                "gui.lazy.buffer.item_count",
-                                                blockEntity(holder)?.getItemCount(slot) ?: 0,
-                                            )
-                                        }.build(),
+                                    componentBinding {
+                                        Component.translatable(
+                                            "gui.lazy.buffer.item_count",
+                                            model.itemCount(slot),
+                                        )
+                                    },
                                 )
                             }
                         }
@@ -149,10 +147,9 @@ internal object BufferUI {
                                         },
                                     ) {
                                         bind(
-                                            DataBindingBuilder
-                                                .componentS2C {
-                                                    fluidName(blockEntity(holder)?.getFluid(tank) ?: FluidStack.EMPTY)
-                                                }.build(),
+                                            componentBinding {
+                                                fluidName(model.fluid(tank))
+                                            },
                                         )
                                     }
                                     fluidSlot(
@@ -160,7 +157,7 @@ internal object BufferUI {
                                             capacity = BufferBlockEntity.FLUID_TANK_CAPACITY
                                             allowClickFilled = false
                                             allowClickDrained = false
-                                            bind(fluidHandler(holder), tank)
+                                            bind(model.fluidHandler, tank)
                                         },
                                     ) {
                                         withTooltips()
@@ -237,8 +234,8 @@ internal object BufferUI {
                                         cls = { +"lazy-buffer__confirmation-button" }
                                         onClick = { confirmationLayer.setVisible(false) }
                                         onServerClick = {
-                                            if (isValid(holder)) {
-                                                blockEntity(holder)?.clearContents()
+                                            if (model.isValid()) {
+                                                model.clearContents()
                                             }
                                         }
                                     },
@@ -259,10 +256,7 @@ internal object BufferUI {
         hasContents.setDisplay(false)
         hasContents.registerValueListener(clearButton::setActive)
         hasContents.bind(
-            DataBindingBuilder
-                .boolS2C { blockEntity(holder)?.hasContents() == true }
-                .initialValue(false)
-                .build(),
+            booleanBinding(model::hasContents),
         )
         root.addChild(hasContents)
 
@@ -276,15 +270,58 @@ internal object BufferUI {
         )
     }
 
-    private fun blockEntity(holder: BlockUIMenuType.BlockUIHolder): BufferBlockEntity? =
-        holder.player.level().getBlockEntity(holder.pos) as? BufferBlockEntity
+    private class BufferUiModel(
+        private val holder: BlockUIMenuType.BlockUIHolder,
+    ) {
+        private val blockEntity: BufferBlockEntity?
+            get() =
+                holder.player.level().blockEntityOrNull(
+                    holder.pos,
+                    ModBlockEntities.buffer.get(),
+                )
 
-    private fun fluidHandler(holder: BlockUIMenuType.BlockUIHolder): IFluidHandler = blockEntity(holder)?.fluidHandler ?: EmptyFluidHandler
+        val totalItemCount: Int
+            get() = blockEntity?.totalItemCount ?: 0
 
-    private fun isValid(holder: BlockUIMenuType.BlockUIHolder): Boolean {
-        val block = holder.blockState.block as? BufferBlock ?: return false
-        return block.stillValid(holder)
+        val totalFluidAmount: Int
+            get() = blockEntity?.totalFluidAmount ?: 0
+
+        val fluidHandler: IFluidHandler
+            get() = blockEntity?.fluidHandler ?: EmptyFluidHandler
+
+        fun itemTemplate(slot: Int): ItemStack = blockEntity?.getItemTemplate(slot) ?: ItemStack.EMPTY
+
+        fun itemCount(slot: Int): Int = blockEntity?.getItemCount(slot) ?: 0
+
+        fun fluid(tank: Int): FluidStack = blockEntity?.getFluid(tank) ?: FluidStack.EMPTY
+
+        fun hasContents(): Boolean = blockEntity?.hasContents() == true
+
+        fun clearContents() {
+            blockEntity?.clearContents()
+        }
+
+        fun isValid(): Boolean {
+            val block = holder.blockState.block as? BufferBlock ?: return false
+            return block.stillValid(holder)
+        }
     }
+
+    private fun componentBinding(value: () -> Component) =
+        DataBindingBuilder
+            .componentS2C { value() }
+            .build()
+
+    private fun itemStackBinding(value: () -> ItemStack) =
+        DataBindingBuilder
+            .itemStackS2C { value() }
+            .build()
+
+    private fun booleanBinding(value: () -> Boolean) =
+        DataBindingBuilder
+            .boolS2C { value() }
+            .initialValue(false)
+            .build()
 
     private fun fluidName(fluid: FluidStack): Component =
         if (fluid.isEmpty) {

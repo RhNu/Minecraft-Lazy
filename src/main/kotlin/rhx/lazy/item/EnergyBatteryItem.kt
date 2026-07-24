@@ -9,6 +9,7 @@ import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.item.context.UseOnContext
 import net.neoforged.neoforge.capabilities.Capabilities
 import rhx.lazy.util.ENERGY_TRANSFER_LIMIT
+import rhx.lazy.util.displayActionBar
 
 internal class EnergyBatteryItem(
     properties: Properties,
@@ -46,10 +47,7 @@ internal class EnergyBatteryItem(
         if (level.isClientSide) return InteractionResult.SUCCESS
 
         val transferred = storage.receiveEnergy(Int.MAX_VALUE, false)
-        player.displayClientMessage(
-            Component.translatable("message.lazy.energy_battery.transfer", transferred),
-            true,
-        )
+        player.displayActionBar("message.lazy.energy_battery.transfer", transferred)
         return InteractionResult.SUCCESS
     }
 }

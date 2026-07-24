@@ -15,21 +15,21 @@ internal object ModItems : RegistryModule {
     val registry: DeferredRegister.Items = DeferredRegister.createItems(MOD_ID)
 
     val buffer =
-        registry.register(
+        registry.registerBlockItem(
             "buffer",
-            Supplier { BufferBlockItem(ModBlocks.buffer.get(), Item.Properties()) },
-        )
+            ModBlocks.buffer,
+        ) { block, properties -> BufferBlockItem(block, properties) }
 
     val teleporter =
         registry.register(
             "teleporter",
             Supplier {
                 TeleporterItem(
-                    Item
-                        .Properties()
-                        .stacksTo(1)
-                        .rarity(Rarity.EPIC)
-                        .fireResistant(),
+                    Item.Properties().apply {
+                        stacksTo(1)
+                        rarity(Rarity.EPIC)
+                        fireResistant()
+                    },
                 )
             },
         )
@@ -39,20 +39,20 @@ internal object ModItems : RegistryModule {
             "energy_battery",
             Supplier {
                 EnergyBatteryItem(
-                    Item
-                        .Properties()
-                        .stacksTo(1)
-                        .rarity(Rarity.RARE)
-                        .fireResistant(),
+                    Item.Properties().apply {
+                        stacksTo(1)
+                        rarity(Rarity.RARE)
+                        fireResistant()
+                    },
                 )
             },
         )
 
     val energySource =
-        registry.register(
+        registry.registerBlockItem(
             "energy_source",
-            Supplier { EnergySourceBlockItem(ModBlocks.energySource.get(), Item.Properties()) },
-        )
+            ModBlocks.energySource,
+        ) { block, properties -> EnergySourceBlockItem(block, properties) }
 
     override fun register(bus: IEventBus) {
         registry.register(bus)

@@ -1,6 +1,5 @@
 package rhx.lazy.block
 
-import net.minecraft.world.InteractionResult
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 
 internal object EnergySourceInteractions {
@@ -12,7 +11,7 @@ internal object EnergySourceInteractions {
         val block = level.getBlockState(event.pos).block as? EnergySourceBlock ?: return
         if (!block.handleUse(level, event.pos, player)) return
 
-        event.setCancellationResult(InteractionResult.sidedSuccess(level.isClientSide))
+        event.setCancellationResult(level.sidedUseResult(handled = true))
         event.setCanceled(true)
     }
 }

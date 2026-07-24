@@ -3,7 +3,6 @@ package rhx.lazy.block
 import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import net.minecraft.core.BlockPos
-import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
@@ -18,8 +17,11 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import rhx.lazy.block.entity.BufferBlockEntity
+import rhx.lazy.registry.ModBlockEntities
 import rhx.lazy.registry.ModItems
 import rhx.lazy.ui.BufferUI
+import rhx.lazy.util.blockEntityOrNull
+import rhx.lazy.util.displayActionBar
 
 internal class BufferBlock :
     Block(
@@ -43,7 +45,7 @@ internal class BufferBlock :
         isMoving: Boolean,
     ) {
         if (!level.isClientSide && state.block !== newState.block) {
-            val blockEntity = level.getBlockEntity(pos) as? BufferBlockEntity
+            val blockEntity = level.blockEntityOrNull(pos, ModBlockEntities.buffer.get())
             if (blockEntity != null) {
                 val dropped = ItemStack(ModItems.buffer.get())
                 if (blockEntity.hasContents()) {
@@ -61,12 +63,7 @@ internal class BufferBlock :
         pos: BlockPos,
         player: Player,
         hitResult: BlockHitResult,
-    ): InteractionResult =
-        if (handleUse(level, pos, player)) {
-            InteractionResult.sidedSuccess(level.isClientSide)
-        } else {
-            InteractionResult.PASS
-        }
+    ): InteractionResult = level.sidedUseResult(handleUse(level, pos, player))
 
     override fun useItemOn(
         stack: ItemStack,
@@ -76,18 +73,13 @@ internal class BufferBlock :
         player: Player,
         hand: InteractionHand,
         hitResult: BlockHitResult,
-    ): ItemInteractionResult =
-        if (handleUse(level, pos, player)) {
-            ItemInteractionResult.sidedSuccess(level.isClientSide)
-        } else {
-            ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
-        }
+    ): ItemInteractionResult = level.sidedItemUseResult(handleUse(level, pos, player))
 
     override fun createUI(holder: BlockUIMenuType.BlockUIHolder): ModularUI = BufferUI.create(holder)
 
     override fun stillValid(holder: BlockUIMenuType.BlockUIHolder): Boolean {
         val level = holder.player.level()
-        val blockEntity = level.getBlockEntity(holder.pos) as? BufferBlockEntity
+        val blockEntity = level.blockEntityOrNull(holder.pos, ModBlockEntities.buffer.get())
         return level.getBlockState(holder.pos).`is`(this) &&
             blockEntity != null &&
             !blockEntity.isRemoved &&
@@ -103,19 +95,16 @@ internal class BufferBlock :
         pos: BlockPos,
         player: Player,
     ): Boolean {
-        val blockEntity = level.getBlockEntity(pos) as? BufferBlockEntity ?: return false
+        val blockEntity = level.blockEntityOrNull(pos, ModBlockEntities.buffer.get()) ?: return false
         if (level.isClientSide) return true
 
         if (player.isShiftKeyDown) {
-            player.displayClientMessage(
-                Component.translatable(
-                    "message.lazy.buffer.status",
-                    blockEntity.totalItemCount,
-                    BufferBlockEntity.TOTAL_ITEM_CAPACITY,
-                    blockEntity.totalFluidAmount,
-                    BufferBlockEntity.TOTAL_FLUID_CAPACITY,
-                ),
-                true,
+            player.displayActionBar(
+                "message.lazy.buffer.status",
+                blockEntity.totalItemCount,
+                BufferBlockEntity.TOTAL_ITEM_CAPACITY,
+                blockEntity.totalFluidAmount,
+                BufferBlockEntity.TOTAL_FLUID_CAPACITY,
             )
             return true
         }

@@ -1,6 +1,5 @@
 package rhx.lazy.command
 
-import com.mojang.brigadier.Command
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
@@ -10,6 +9,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import rhx.lazy.protection.DamageCapData
 import rhx.lazy.registry.ModAttachments
+import rhx.lazy.util.displayActionBar
 
 internal object ProtectionCommand : LazySubcommand {
     private const val PERMISSION_LEVEL = 2
@@ -39,7 +39,7 @@ internal object ProtectionCommand : LazySubcommand {
     }
 
     private fun showStatus(context: CommandContext<CommandSourceStack>): Int =
-        withPlayer(context) { player ->
+        context.withServerPlayer(PLAYER_ONLY) { player ->
             val data = player.getExistingDataOrNull(ModAttachments.damageCap)
             val state =
                 if (data?.enabled == true) {
@@ -60,45 +60,31 @@ internal object ProtectionCommand : LazySubcommand {
         }
 
     private fun enable(context: CommandContext<CommandSourceStack>): Int =
-        withPlayer(context) { player ->
+        context.withServerPlayer(PLAYER_ONLY) { player ->
             updateData(player) { it.copy(enabled = true) }
-            player.displayClientMessage(Component.translatable("message.lazy.protection.damage_cap.on"), true)
+            player.displayActionBar("message.lazy.protection.damage_cap.on")
         }
 
     private fun disable(context: CommandContext<CommandSourceStack>): Int =
-        withPlayer(context) { player ->
+        context.withServerPlayer(PLAYER_ONLY) { player ->
             player.getExistingDataOrNull(ModAttachments.damageCap)?.let { data ->
                 player.setData(ModAttachments.damageCap, data.copy(enabled = false))
             }
-            player.displayClientMessage(Component.translatable("message.lazy.protection.damage_cap.off"), true)
+            player.displayActionBar("message.lazy.protection.damage_cap.off")
         }
 
     private fun setThreshold(context: CommandContext<CommandSourceStack>): Int =
-        withPlayer(context) { player ->
+        context.withServerPlayer(PLAYER_ONLY) { player ->
             val value = IntegerArgumentType.getInteger(context, "value")
             updateData(player) { it.copy(threshold = value) }
-            player.displayClientMessage(Component.translatable("message.lazy.protection.damage_cap.set", value), true)
+            player.displayActionBar("message.lazy.protection.damage_cap.set", value)
         }
 
     private fun reset(context: CommandContext<CommandSourceStack>): Int =
-        withPlayer(context) { player ->
+        context.withServerPlayer(PLAYER_ONLY) { player ->
             player.removeData(ModAttachments.damageCap)
-            player.displayClientMessage(Component.translatable("message.lazy.protection.damage_cap.reset"), true)
+            player.displayActionBar("message.lazy.protection.damage_cap.reset")
         }
-
-    private inline fun withPlayer(
-        context: CommandContext<CommandSourceStack>,
-        action: (ServerPlayer) -> Unit,
-    ): Int {
-        val player = context.source.entity as? ServerPlayer
-        if (player == null) {
-            context.source.sendFailure(Component.translatable("message.lazy.protection.damage_cap.player_only"))
-            return 0
-        }
-
-        action(player)
-        return Command.SINGLE_SUCCESS
-    }
 
     private inline fun updateData(
         player: ServerPlayer,
@@ -107,4 +93,6 @@ internal object ProtectionCommand : LazySubcommand {
         val current = player.getExistingDataOrNull(ModAttachments.damageCap) ?: DamageCapData()
         player.setData(ModAttachments.damageCap, transform(current))
     }
+
+    private const val PLAYER_ONLY = "message.lazy.protection.damage_cap.player_only"
 }
