@@ -3,6 +3,8 @@ package rhx.lazy.feature.teleporter
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.server.level.TicketType
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.portal.DimensionTransition
 import net.minecraft.world.phys.Vec3
@@ -83,6 +85,8 @@ internal class TeleporterService(
         targetLevel: ServerLevel,
         destination: ResolvedDestination,
     ): Boolean {
+        val targetChunk = ChunkPos(BlockPos.containing(destination.position))
+        targetLevel.chunkSource.addRegionTicket(TicketType.POST_TELEPORT, targetChunk, 1, id)
         val result =
             changeDimension(
                 DimensionTransition(
