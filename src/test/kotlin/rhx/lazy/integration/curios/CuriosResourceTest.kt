@@ -10,7 +10,7 @@ class CuriosResourceTest {
     fun `teleporter slot is available to players and uses its strict validator`() {
         val slot = readJson("/data/lazy/curios/slots/teleporter.json")
         assertEquals(1, slot["size"].asInt)
-        assertEquals("curios:slot/empty_curio_slot", slot["icon"].asString)
+        assertEquals("lazy:slot/empty_teleporter_slot", slot["icon"].asString)
         assertEquals(listOf("lazy:teleporter_slot"), slot["validators"].asJsonArray.map { it.asString })
 
         val entities = readJson("/data/lazy/curios/entities/teleporter.json")

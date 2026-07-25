@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="16"
+     height="16"
+     viewBox="0 0 16 16"
+     shape-rendering="crispEdges">
+  <!-- Draft source: transparent overlay for machine_casing_base.svg. -->
+
+  <!-- Near-square recessed socket: clipped corners and a higher-contrast directional bevel. -->
+  <path fill="#3c494f"
+        d="M6 5h4v1h1v4h-1v1H6v-1H5V6h1z"/>
+  <rect x="6" y="5" width="4" height="1" fill="#829297"/>
+  <rect x="5" y="6" width="1" height="4" fill="#718087"/>
+
+  <!-- Softer two-step shadow keeps the lower-right edge dimensional instead of flat black. -->
+  <rect x="6" y="10" width="2" height="1" fill="#46535a"/>
+  <rect x="8" y="10" width="2" height="1" fill="#3b484e"/>
+  <rect x="10" y="6" width="1" height="2" fill="#4a585e"/>
+  <rect x="10" y="8" width="1" height="2" fill="#3b484e"/>
+
+  <!-- Compact power core; only a few colored pixels distinguish the variant. -->
+  <rect x="6" y="6" width="4" height="4" fill="#0d575d"/>
+  <rect x="7" y="6" width="2" height="1" fill="#168c92"/>
+  <rect x="6" y="7" width="4" height="2" fill="#12aeb4"/>
+  <rect x="7" y="7" width="2" height="1" fill="#a8fff1"/>
+  <rect x="7" y="9" width="2" height="1" fill="#0b7279"/>
+</svg>

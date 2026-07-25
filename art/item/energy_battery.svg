@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="16"
+     height="16"
+     viewBox="0 0 16 16"
+     shape-rendering="crispEdges">
+  <!-- Source texture: compact vertical battery in the mod's blue machine palette. -->
+
+  <!-- Raised positive terminal. -->
+  <rect x="6" y="1" width="4" height="1" fill="#171b25"/>
+  <rect x="5" y="2" width="6" height="2" fill="#171b25"/>
+  <rect x="6" y="2" width="4" height="1" fill="#7e8990"/>
+  <rect x="6" y="3" width="4" height="1" fill="#3b464d"/>
+
+  <!-- Battery silhouette with clipped corners. -->
+  <path fill="#171b25"
+        d="M5 3h6v1h1v10h-1v1H5v-1H4V4h1z"/>
+
+  <!-- Directional metal bevel. -->
+  <rect x="5" y="4" width="6" height="10" fill="#354149"/>
+  <rect x="5" y="4" width="6" height="1" fill="#738087"/>
+  <rect x="5" y="5" width="1" height="9" fill="#59666d"/>
+  <rect x="10" y="5" width="1" height="9" fill="#242f36"/>
+  <rect x="6" y="13" width="4" height="1" fill="#202a31"/>
+
+  <!-- Recessed charge window. -->
+  <rect x="6" y="5" width="4" height="7" fill="#102a35"/>
+  <rect x="6" y="5" width="4" height="1" fill="#173d49"/>
+  <rect x="6" y="6" width="1" height="6" fill="#1b4b56"/>
+  <rect x="9" y="6" width="1" height="6" fill="#0b222d"/>
+
+  <!-- Full blue charge, split into pixel bands for a glass-and-energy texture. -->
+  <rect x="7" y="6" width="2" height="1" fill="#a9fff3"/>
+  <rect x="7" y="7" width="2" height="2" fill="#39d5d9"/>
+  <rect x="7" y="9" width="2" height="2" fill="#1e9fba"/>
+  <rect x="7" y="11" width="2" height="1" fill="#246f9f"/>
+
+  <!-- Small reflected pixels keep the casing consistent with the block highlights. -->
+  <rect x="5" y="6" width="1" height="2" fill="#68757b"/>
+  <rect x="10" y="11" width="1" height="2" fill="#1e282f"/>
+</svg>

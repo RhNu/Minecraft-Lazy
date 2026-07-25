@@ -163,8 +163,8 @@ internal object DataGeneration {
                 .size(1)
                 .icon(
                     ResourceLocation.fromNamespaceAndPath(
-                        "curios",
-                        "slot/empty_curio_slot",
+                        MOD_ID,
+                        "slot/empty_teleporter_slot",
                     ),
                 ).addValidator(CuriosTeleporterIntegration.teleporterSlotValidator)
             createEntities(CuriosTeleporterIntegration.TELEPORTER_SLOT)
