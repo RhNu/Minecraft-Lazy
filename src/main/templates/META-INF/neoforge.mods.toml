@@ -44,5 +44,13 @@ versionRange="${curios_version_range}"
 ordering="AFTER"
 side="BOTH"
 
+[[dependencies.${mod_id}]]
+modId="silentgear"
+type="optional"
+versionRange="${silent_gear_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Restores Silent Gear state after repairs"
+
 [modproperties.fzzy_config]
 fzzy_config="${mod_id}"

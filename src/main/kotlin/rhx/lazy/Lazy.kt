@@ -13,6 +13,7 @@ import rhx.lazy.feature.repairer.RepairerConfigs
 import rhx.lazy.feature.teleporter.TeleporterConfigs
 import rhx.lazy.integration.curios.CuriosTeleporterIntegration
 import rhx.lazy.integration.curios.CuriosTeleporterNetworking
+import rhx.lazy.integration.repair.RepairCompatibilities
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 internal const val MOD_ID = "lazy"
@@ -25,6 +26,7 @@ object Lazy {
         TeleporterConfigs.init()
         RepairerConfigs.init()
         LazyRegistries.register(MOD_BUS)
+        RepairCompatibilities.init()
         CuriosTeleporterIntegration.registerPredicates()
         MOD_BUS.addListener(CuriosTeleporterNetworking::register)
         NeoForge.EVENT_BUS.addListener(EnergySourceInteractions::onRightClickBlock)

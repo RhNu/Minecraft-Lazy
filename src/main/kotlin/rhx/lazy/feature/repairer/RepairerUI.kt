@@ -135,6 +135,7 @@ internal object RepairerUI {
                 RepairerConfigs.settings.minimumRepairPercent.get(),
                 RepairerConfigs.settings.maximumRepairPercent.get(),
                 holder.player.random,
+                holder.player,
             )
         }
 
