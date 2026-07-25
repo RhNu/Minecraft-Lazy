@@ -10,27 +10,47 @@ Lazy 当前提供模组入口、注册基础设施、缓冲器、能量电池、
 
 所有 Kotlin 源码位于 `rhx.lazy` 包下，并让物理目录与包名保持一致。
 
-- 根包保存模组入口和 `MOD_ID`。
-- `registry` 保存注册模块、统一挂载入口和注册期工具。
-- `datagen` 保存数据生成事件入口与未来 provider 装配。
-- `config` 保存 Fzzy Config 管理的服务器权威运行参数。
-- `world` 保存虚空维度资源键、生成器和数据包 bootstrap。
-- `util` 只保存与具体内容无关、经过复用证明的小型工具。
-- 未来客户端专用代码放入 `client`，不得被公共初始化路径直接引用。
+```text
+rhx.lazy
+├─ Lazy.kt
+├─ core
+│  ├─ command
+│  ├─ datagen
+│  └─ registry
+├─ feature
+│  ├─ buffer
+│  ├─ energy
+│  ├─ protection
+│  ├─ rise
+│  ├─ teleporter
+│  └─ voidworld
+└─ integration
+   └─ curios
+      └─ client
+```
+
+- 根包只保存模组入口和 `MOD_ID`。
+- `core` 保存经过跨领域复用证明的 Minecraft 扩展、公共基类，以及命令、数据生成和注册的全局装配入口。
+- `feature` 使用垂直切片组织业务；方块、物品、方块实体、界面、事件、配置和注册跟随各自领域，不再按 Minecraft 类型横向分包。
+- `integration` 保存第三方模组适配。集成可以依赖 `core` 和 `feature`，业务领域不得反向依赖集成。
+- `feature.teleporter` 可以依赖独立的 `feature.voidworld`；其他跨领域依赖应保持显式且数量有限。
+- 当前没有对外公开的扩展契约，因此不创建空的 `api` 包。出现真实外部调用方后再定义稳定 API。
+
+测试包镜像主源码领域结构；跨领域测试工具放入 `rhx.lazy.core.testing`。
 
 ## 注册生命周期
 
-每一种注册表由独立的 `RegistryModule` 管理。`ModRegistries` 是唯一的集中挂载入口，由 Lazy 主对象在 KotlinForForge 提供的 `MOD_BUS` 上调用。
+每个领域由自己的注册对象持有一个或多个 `DeferredRegister`，并实现 `RegistryModule` 统一挂载。当前分别使用 `BufferRegistries`、`EnergyRegistries`、`TeleporterRegistries`、`ProtectionRegistries` 和 `VoidWorldRegistries`；`LazyRegistries` 是唯一的集中挂载入口，由 Lazy 主对象在 KotlinForForge 提供的 `MOD_BUS` 上调用。
 
 注册项必须保留为 `DeferredBlock`、`DeferredItem` 或 `DeferredHolder` 等延迟持有者。不得在静态初始化或注册装配阶段提前取出游戏对象。供应器在真正的注册阶段解析其他延迟持有者是允许的，例如创建方块对应的 `BlockItem`。
 
-方块与对应物品由各自的注册模块使用相同路径注册；自定义 `BlockItem` 通过 `registerBlockItem` 在物品注册供应器内部延迟解析方块持有者。方块实体构建通过 `buildType` 收敛 Minecraft 1.21.1 Java API 的空安全边界。数据组件、区块生成器和创造模式标签页通过各自模块的专用注册器扩展。模组自有界面优先复用 LDLib2 的菜单类型，不为单个界面重复注册菜单和同步 payload。
+方块与对应物品由同一领域注册对象使用相同路径注册；自定义 `BlockItem` 通过 `core.registry.registerBlockItem` 在物品注册供应器内部延迟解析方块持有者。方块实体构建通过 `core.registry.buildType` 收敛 Minecraft 1.21.1 Java API 的空安全边界。能力注册由领域内的 `BufferCapabilities` 和 `EnergyCapabilities` 处理；全局创造模式标签页由 `LazyCreativeTabRegistry` 组合各领域物品。模组自有界面优先复用 LDLib2 的菜单类型，不为单个界面重复注册菜单和同步 payload。
 
 ## 事件总线与侧隔离
 
 注册表和数据生成等生命周期事件使用模组事件总线。游戏运行事件只有在出现相应功能时才挂载到 NeoForge 游戏事件总线。
 
-客户端类只能从客户端事件订阅器或显式客户端入口触达。公共注册模块只能引用双方都存在的类型，避免专用服务器在类加载阶段解析客户端类。
+客户端类只能放入显式的 `client` 子包并从客户端事件订阅器触达。当前快捷键代码位于 `integration.curios.client`，公共注册模块和业务领域均不得引用该包，避免专用服务器在类加载阶段解析客户端类。
 
 LDLib2 UI 树必须能在逻辑服务端与客户端以相同结构构造。与方块实体有关的值通过 binding 延迟读取；不得根据仅一侧存在的方块实体增删元素，以免两侧同步序号错位。UI server event 只负责传递意图，改变世界前仍须在服务端重新校验方块、方块实体、玩家和距离。
 

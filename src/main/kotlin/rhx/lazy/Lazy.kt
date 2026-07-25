@@ -5,13 +5,13 @@ import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.common.NeoForge
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import rhx.lazy.block.EnergySourceInteractions
-import rhx.lazy.command.LazyCommands
-import rhx.lazy.config.ModConfig
-import rhx.lazy.curios.CuriosIntegration
-import rhx.lazy.network.ModNetworking
-import rhx.lazy.protection.DamageCapHandler
-import rhx.lazy.registry.ModRegistries
+import rhx.lazy.core.command.LazyCommands
+import rhx.lazy.core.registry.LazyRegistries
+import rhx.lazy.feature.energy.EnergySourceInteractions
+import rhx.lazy.feature.protection.DamageCapHandler
+import rhx.lazy.feature.teleporter.TeleporterConfigs
+import rhx.lazy.integration.curios.CuriosTeleporterIntegration
+import rhx.lazy.integration.curios.CuriosTeleporterNetworking
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 internal const val MOD_ID = "lazy"
@@ -21,10 +21,10 @@ object Lazy {
     internal val logger: Logger = LogManager.getLogger(MOD_ID)
 
     init {
-        ModConfig.init()
-        ModRegistries.register(MOD_BUS)
-        CuriosIntegration.registerPredicates()
-        MOD_BUS.addListener(ModNetworking::register)
+        TeleporterConfigs.init()
+        LazyRegistries.register(MOD_BUS)
+        CuriosTeleporterIntegration.registerPredicates()
+        MOD_BUS.addListener(CuriosTeleporterNetworking::register)
         NeoForge.EVENT_BUS.addListener(EnergySourceInteractions::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(LazyCommands::register)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onInvulnerabilityCheck)
