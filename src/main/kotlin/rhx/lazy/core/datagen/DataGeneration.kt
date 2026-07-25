@@ -20,7 +20,6 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
 import net.neoforged.neoforge.common.Tags
-import net.neoforged.neoforge.common.data.BlockTagsProvider
 import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
@@ -46,7 +45,6 @@ internal object DataGeneration {
 
         generator.addProvider(event.includeServer(), Recipes(output, lookup))
         generator.addProvider(event.includeServer(), LootTables(output, lookup))
-        generator.addProvider(event.includeServer(), BlockTags(output, lookup, helper))
         generator.addProvider(
             event.includeServer(),
             CuriosData(output, helper, lookup),
@@ -147,20 +145,6 @@ internal object DataGeneration {
             simpleBlock(BufferRegistries.block.get())
             simpleBlock(EnergyRegistries.sourceBlock.get())
             simpleBlock(RepairerRegistries.block.get())
-        }
-    }
-
-    private class BlockTags(
-        output: PackOutput,
-        lookup: CompletableFuture<HolderLookup.Provider>,
-        helper: net.neoforged.neoforge.common.data.ExistingFileHelper?,
-    ) : BlockTagsProvider(output, lookup, MOD_ID, helper) {
-        override fun addTags(provider: HolderLookup.Provider) {
-            tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE).add(
-                BufferRegistries.block.get(),
-                EnergyRegistries.sourceBlock.get(),
-                RepairerRegistries.block.get(),
-            )
         }
     }
 

@@ -25,7 +25,7 @@ internal class BufferBlock :
     Block(
         Properties
             .of()
-            .strength(3.5f)
+            .strength(0.5f)
             .sound(SoundType.METAL),
     ),
     EntityBlock,
