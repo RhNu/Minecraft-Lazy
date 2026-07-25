@@ -1,4 +1,4 @@
-package rhx.lazy.item
+package rhx.lazy.teleport
 
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel

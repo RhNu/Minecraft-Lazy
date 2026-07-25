@@ -1,4 +1,4 @@
-package rhx.lazy.item
+package rhx.lazy.teleport
 
 import com.mojang.serialization.JsonOps
 import net.minecraft.core.BlockPos

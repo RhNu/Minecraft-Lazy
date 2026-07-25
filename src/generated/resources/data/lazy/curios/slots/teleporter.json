@@ -1,0 +1,7 @@
+{
+  "icon": "curios:slot/empty_curio_slot",
+  "size": 1,
+  "validators": [
+    "lazy:teleporter_slot"
+  ]
+}

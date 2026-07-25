@@ -1,4 +1,4 @@
-package rhx.lazy.item
+package rhx.lazy.teleport
 
 internal data class TeleporterRoute(
     val requestedDestination: SavedLocation,

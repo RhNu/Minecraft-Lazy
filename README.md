@@ -10,6 +10,7 @@ Lazy 是一个面向 Minecraft 1.21.1 NeoForge 的 Kotlin 模组项目。目前�
 - ModDevGradle 2.0.142
 - Kotlin 2.4.0
 - KotlinForForge 5.12.0
+- Curios API 9.5.1+1.21.1
 
 ## 常用命令
 

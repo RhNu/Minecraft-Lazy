@@ -1,4 +1,4 @@
-package rhx.lazy.item
+package rhx.lazy.teleport
 
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder

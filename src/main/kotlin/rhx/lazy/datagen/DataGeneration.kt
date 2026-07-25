@@ -10,6 +10,7 @@ import net.minecraft.data.recipes.RecipeCategory
 import net.minecraft.data.recipes.RecipeOutput
 import net.minecraft.data.recipes.RecipeProvider
 import net.minecraft.data.recipes.ShapedRecipeBuilder
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.tags.ItemTags
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
@@ -21,15 +22,18 @@ import net.neoforged.neoforge.client.model.generators.ItemModelProvider
 import net.neoforged.neoforge.common.Tags
 import net.neoforged.neoforge.common.data.BlockTagsProvider
 import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider
+import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
+import rhx.lazy.curios.CuriosIntegration
 import rhx.lazy.registry.ModBlocks
 import rhx.lazy.registry.ModItems
 import rhx.lazy.world.VoidWorldBootstrap
+import top.theillusivec4.curios.api.CuriosDataProvider
 import java.util.concurrent.CompletableFuture
 
-@EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = MOD_ID)
 internal object DataGeneration {
     @SubscribeEvent
     fun gatherData(event: GatherDataEvent) {
@@ -41,6 +45,10 @@ internal object DataGeneration {
         generator.addProvider(event.includeServer(), Recipes(output, lookup))
         generator.addProvider(event.includeServer(), LootTables(output, lookup))
         generator.addProvider(event.includeServer(), BlockTags(output, lookup, helper))
+        generator.addProvider(
+            event.includeServer(),
+            CuriosData(output, helper, lookup),
+        )
         generator.addProvider(
             event.includeServer(),
             DatapackBuiltinEntriesProvider(
@@ -141,6 +149,29 @@ internal object DataGeneration {
         }
     }
 
+    private class CuriosData(
+        output: PackOutput,
+        helper: ExistingFileHelper,
+        lookup: CompletableFuture<HolderLookup.Provider>,
+    ) : CuriosDataProvider(MOD_ID, output, helper, lookup) {
+        override fun generate(
+            registries: HolderLookup.Provider,
+            fileHelper: ExistingFileHelper,
+        ) {
+            createSlot(CuriosIntegration.TELEPORTER_SLOT)
+                .size(1)
+                .icon(
+                    ResourceLocation.fromNamespaceAndPath(
+                        "curios",
+                        "slot/empty_curio_slot",
+                    ),
+                ).addValidator(CuriosIntegration.teleporterSlotValidator)
+            createEntities(CuriosIntegration.TELEPORTER_SLOT)
+                .addPlayer()
+                .addSlots(CuriosIntegration.TELEPORTER_SLOT)
+        }
+    }
+
     private class LootTables(
         output: PackOutput,
         lookup: CompletableFuture<HolderLookup.Provider>,
@@ -217,6 +248,9 @@ internal object DataGeneration {
             add("message.lazy.teleporter.no_safe_return", "Teleport failed: the current return point is unsafe")
             add("message.lazy.teleporter.transition_failed", "Teleport failed during dimension transfer")
             add("message.lazy.teleporter.success", "Teleported successfully; cooldown: %s seconds")
+            add("curios.identifier.teleporter", "Teleporter")
+            add("key.categories.lazy", "Lazy")
+            add("key.lazy.teleporter.activate", "Activate Teleporter")
             add("lazy.teleporter", "Teleporter")
             add("lazy.teleporter.desc", "Server-authoritative teleporter settings")
             add("lazy.teleporter.chargeTicks", "Charge time")
@@ -284,6 +318,9 @@ internal object DataGeneration {
             add("message.lazy.teleporter.no_safe_return", "传送失败：当前位置不能作为安全返回点")
             add("message.lazy.teleporter.transition_failed", "跨维度传送失败")
             add("message.lazy.teleporter.success", "传送成功；冷却 %s 秒")
+            add("curios.identifier.teleporter", "传送器")
+            add("key.categories.lazy", "懒狗工具箱")
+            add("key.lazy.teleporter.activate", "激活传送器")
             add("lazy.teleporter", "传送器")
             add("lazy.teleporter.desc", "由服务器控制的传送器设置")
             add("lazy.teleporter.chargeTicks", "蓄力时间")

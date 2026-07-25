@@ -13,6 +13,9 @@ import net.minecraft.world.item.UseAnim
 import net.minecraft.world.level.Level
 import rhx.lazy.config.ModConfig
 import rhx.lazy.registry.ModDataComponents
+import rhx.lazy.teleport.SavedLocation
+import rhx.lazy.teleport.TeleporterActivation
+import rhx.lazy.teleport.TeleporterData
 import rhx.lazy.util.displayActionBar
 
 internal class TeleporterItem(
@@ -30,7 +33,7 @@ internal class TeleporterItem(
         }
 
         val serverPlayer = player as? ServerPlayer ?: return InteractionResultHolder.fail(stack)
-        if (serverPlayer.cooldowns.isOnCooldown(this)) {
+        if (TeleporterActivation.isOnCooldown(serverPlayer)) {
             serverPlayer.displayActionBar("message.lazy.teleporter.cooldown")
             return InteractionResultHolder.fail(stack)
         }
@@ -47,7 +50,7 @@ internal class TeleporterItem(
     ) {
         if (level.isClientSide) return
         val player = entity as? ServerPlayer ?: return
-        if (player.cooldowns.isOnCooldown(this)) return
+        if (TeleporterActivation.isOnCooldown(player)) return
 
         val usedTicks = getUseDuration(stack, entity) - timeLeft
         if (usedTicks < ModConfig.teleporter.chargeTicks.get()) {
@@ -55,29 +58,7 @@ internal class TeleporterItem(
             return
         }
 
-        val service =
-            TeleporterService(
-                TeleporterSettings(
-                    safeSearchRadius = ModConfig.teleporter.safeSearchRadius.get(),
-                    createVoidSafetyPlatform = ModConfig.teleporter.createVoidSafetyPlatform.get(),
-                ),
-            )
-        val oldData = stack.get(ModDataComponents.teleporterData.get()) ?: TeleporterData.EMPTY
-        when (val result = service.teleport(player, oldData)) {
-            is TeleporterResult.Failure -> {
-                player.cooldowns.addCooldown(this, FAILURE_COOLDOWN_TICKS)
-                player.displayActionBar(result.translationKey)
-            }
-
-            is TeleporterResult.Success -> {
-                stack.set(ModDataComponents.teleporterData.get(), result.newData)
-                val cooldownSeconds = ModConfig.teleporter.cooldownSeconds.get()
-                if (cooldownSeconds > 0) {
-                    player.cooldowns.addCooldown(this, cooldownSeconds * TICKS_PER_SECOND)
-                }
-                player.displayActionBar("message.lazy.teleporter.success", cooldownSeconds)
-            }
-        }
+        TeleporterActivation.activate(player, stack)
     }
 
     override fun getUseAnimation(stack: ItemStack): UseAnim = UseAnim.BOW
@@ -113,8 +94,6 @@ internal class TeleporterItem(
         )
 
     private companion object {
-        const val TICKS_PER_SECOND = 20
-        const val FAILURE_COOLDOWN_TICKS = 10
         const val MAX_USE_TICKS = 72_001
     }
 }

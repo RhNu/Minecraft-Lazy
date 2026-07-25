@@ -143,6 +143,13 @@ repositories {
             includeGroup("me.fzzyhmstrs")
         }
     }
+    maven {
+        name = "Curios"
+        url = uri("https://maven.theillusivec4.top/")
+        content {
+            includeGroup("top.theillusivec4.curios")
+        }
+    }
 }
 
 ktlint {
@@ -161,11 +168,20 @@ dependencies {
         "com.lowdragmc.ldlib2:ldlib2-neoforge-${property("minecraft_version")}:${property("ldlib2_version")}:all",
     )
     implementation("me.fzzyhmstrs:fzzy_config:${property("fzzy_config_version")}")
+    compileOnly(
+        "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}:api",
+    )
+    runtimeOnly(
+        "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}",
+    )
 
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
     localRuntime("maven.modrinth:jade:${property("jade_version")}")
 
     testImplementation(kotlin("test"))
+    testCompileOnly(
+        "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}:api",
+    )
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -187,6 +203,7 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "mod_description" to project.property("mod_description"),
             "ldlib2_version_range" to project.property("ldlib2_version_range"),
             "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
+            "curios_version_range" to project.property("curios_version_range"),
         )
 
     inputs.properties(replacements)

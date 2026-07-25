@@ -8,6 +8,8 @@ Kotlin 插件版本与 KotlinForForge 5.12.0 捆绑的 Kotlin 运行库保持一
 
 LDLib2 是范围 `[2.2.29,2.3.0)`、双端必需的外部模组依赖，不打包进 Lazy JAR。其 `all` 构件从 FirstDark Maven 解析，Yoga、Taffy 与 Kotlin 传递依赖从 Maven Central 补齐。升级 KotlinForForge 或 LDLib2 时必须用 `dependencyInsight` 复查 Kotlin、Yoga 和 Taffy 的最终解析版本。
 
+Curios API 9.5.1+1.21.1 是范围 `[9.5.1+1.21.1,10.0.0)`、双端必需的外部模组依赖，用于传送器装备槽位、自定义槽位校验与槽位物品查询。编译使用官方 API classifier，开发运行和发布环境加载完整 Curios 模组；Lazy 不打包 Curios，也不提供无 Curios 运行模式。
+
 ## 开发运行模组
 
 JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它们不会出现在 Lazy 的必需依赖声明中，也不会通过 Maven publication 传递给使用者。
@@ -21,7 +23,6 @@ JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它�
 - spark 适合分析服务器 tick、分配与卡顿，作为调查性能问题时的临时运行模组，不固定进基础环境。
 - EMI 可作为 JEI 的替代界面或兼容性测试对象，默认不与 JEI 同时固定加载。
 - Patchouli 只在确认需要游戏内手册后引入。
-- Curios 只在内容需要额外装备槽位后引入。
 - GeckoLib 只在确认存在复杂骨骼动画后引入。
 - YACL、Cloth Config 或相似配置 UI 库只在原生配置文件不足以满足交互需求后选择其一。
 - Lazy 仍是单 NeoForge 项目，不引入跨平台抽象层。
