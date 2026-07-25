@@ -1,0 +1,46 @@
+.lazy-repairer {
+  width: 176;
+  height: 143;
+  padding-all: 7;
+  gap-row: 5;
+  align-items: center;
+}
+
+.lazy-repairer__title {
+  width: 100%;
+  height: 10;
+  horizontal-align: center;
+  text-color: #404040;
+  text-shadow: false;
+}
+
+.lazy-repairer__controls {
+  width: 100%;
+  height: 18;
+  gap-column: 8;
+  justify-content: center;
+  align-items: center;
+}
+
+.lazy-repairer__slot {
+  width: 18;
+  height: 18;
+}
+
+.lazy-repairer__button {
+  width: 18;
+  height: 18;
+  padding-all: 1;
+}
+
+.lazy-repairer__inventory-title {
+  width: 162;
+  height: 9;
+  text-color: #404040;
+  text-shadow: false;
+}
+
+.lazy-repairer__inventory {
+  width: 162;
+  height: 77;
+}

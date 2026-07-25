@@ -28,6 +28,7 @@ import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
+import rhx.lazy.feature.repairer.RepairerRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import rhx.lazy.feature.voidworld.VoidWorldBootstrap
 import rhx.lazy.integration.curios.CuriosTeleporterIntegration
@@ -112,6 +113,16 @@ internal object DataGeneration {
                 .define('B', EnergyRegistries.batteryItem.get())
                 .unlockedBy("has_energy_battery", has(EnergyRegistries.batteryItem.get()))
                 .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, RepairerRegistries.item.get())
+                .pattern("III")
+                .pattern(" A ")
+                .pattern("CCC")
+                .define('I', Tags.Items.INGOTS_COPPER)
+                .define('A', ItemTags.ANVIL)
+                .define('C', Tags.Items.STORAGE_BLOCKS_COPPER)
+                .unlockedBy("has_copper_ingot", has(Tags.Items.INGOTS_COPPER))
+                .save(output)
         }
     }
 
@@ -124,6 +135,7 @@ internal object DataGeneration {
             basicItem(TeleporterRegistries.item.get())
             basicItem(EnergyRegistries.batteryItem.get())
             withExistingParent("energy_source", modLoc("block/energy_source"))
+            withExistingParent("repairer", modLoc("block/repairer"))
         }
     }
 
@@ -134,6 +146,7 @@ internal object DataGeneration {
         override fun registerStatesAndModels() {
             simpleBlock(BufferRegistries.block.get())
             simpleBlock(EnergyRegistries.sourceBlock.get())
+            simpleBlock(RepairerRegistries.block.get())
         }
     }
 
@@ -146,6 +159,7 @@ internal object DataGeneration {
             tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE).add(
                 BufferRegistries.block.get(),
                 EnergyRegistries.sourceBlock.get(),
+                RepairerRegistries.block.get(),
             )
         }
     }
@@ -188,12 +202,14 @@ internal object DataGeneration {
             override fun generate() {
                 add(BufferRegistries.block.get(), noDrop())
                 dropSelf(EnergyRegistries.sourceBlock.get())
+                dropSelf(RepairerRegistries.block.get())
             }
 
             override fun getKnownBlocks(): MutableIterable<Block> =
                 mutableListOf(
                     BufferRegistries.block.get(),
                     EnergyRegistries.sourceBlock.get(),
+                    RepairerRegistries.block.get(),
                 )
         }
     }
@@ -204,6 +220,7 @@ internal object DataGeneration {
         override fun addTranslations() {
             addBlock({ BufferRegistries.block.get() }, "Buffer")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "Energy Source")
+            addBlock({ RepairerRegistries.block.get() }, "Repairer")
             addItem({ TeleporterRegistries.item.get() }, "Teleporter")
             addItem({ EnergyRegistries.batteryItem.get() }, "Energy Battery")
             add("biome.lazy.void", "Void")
@@ -221,6 +238,7 @@ internal object DataGeneration {
             add("gui.lazy.buffer.confirm", "Clear")
             add("gui.lazy.buffer.cancel", "Cancel")
             add("gui.lazy.buffer.unavailable", "Buffer is no longer available")
+            add("gui.lazy.repairer.repair", "Repair item")
             add("tooltip.lazy.buffer.contents", "%s / %s items, %s / %s mB")
             add("tooltip.lazy.energy.max_transfer", "Max transfer: %s FE/t")
             add("tooltip.lazy.energy_battery.use", "Sneak-use on an energy-capable block to transfer energy")
@@ -265,6 +283,18 @@ internal object DataGeneration {
                 "lazy.teleporter.createVoidSafetyPlatform.desc",
                 "Allow the teleporter to add a small platform in the void dimension.",
             )
+            add("lazy.repairer", "Repairer")
+            add("lazy.repairer.desc", "Server-authoritative repairer settings")
+            add("lazy.repairer.minimumRepairPercent", "Minimum repair percentage")
+            add(
+                "lazy.repairer.minimumRepairPercent.desc",
+                "Minimum percentage of an item's maximum durability repaired per button press.",
+            )
+            add("lazy.repairer.maximumRepairPercent", "Maximum repair percentage")
+            add(
+                "lazy.repairer.maximumRepairPercent.desc",
+                "Maximum percentage of an item's maximum durability repaired per button press.",
+            )
         }
     }
 
@@ -274,6 +304,7 @@ internal object DataGeneration {
         override fun addTranslations() {
             addBlock({ BufferRegistries.block.get() }, "缓冲器")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "能量源")
+            addBlock({ RepairerRegistries.block.get() }, "修复器")
             addItem({ TeleporterRegistries.item.get() }, "传送器")
             addItem({ EnergyRegistries.batteryItem.get() }, "能量电池")
             add("biome.lazy.void", "虚空")
@@ -291,6 +322,7 @@ internal object DataGeneration {
             add("gui.lazy.buffer.confirm", "确认清空")
             add("gui.lazy.buffer.cancel", "取消")
             add("gui.lazy.buffer.unavailable", "缓冲器已不可用")
+            add("gui.lazy.repairer.repair", "修复物品")
             add("tooltip.lazy.buffer.contents", "物品 %s / %s，流体 %s / %s mB")
             add("tooltip.lazy.energy.max_transfer", "最大传输：%s FE/t")
             add("tooltip.lazy.energy_battery.use", "潜行对支持能量的方块使用以传输能量")
@@ -332,6 +364,18 @@ internal object DataGeneration {
             add("lazy.teleporter.safeSearchRadius.desc", "搜索安全落点时使用的水平半径。")
             add("lazy.teleporter.createVoidSafetyPlatform", "创建虚空安全平台")
             add("lazy.teleporter.createVoidSafetyPlatform.desc", "允许传送器在虚空维度补建小型平台。")
+            add("lazy.repairer", "修复器")
+            add("lazy.repairer.desc", "由服务端控制的修复器设置")
+            add("lazy.repairer.minimumRepairPercent", "最低修复百分比")
+            add(
+                "lazy.repairer.minimumRepairPercent.desc",
+                "每次按下按钮时，最少修复物品最大耐久的百分比。",
+            )
+            add("lazy.repairer.maximumRepairPercent", "最高修复百分比")
+            add(
+                "lazy.repairer.maximumRepairPercent.desc",
+                "每次按下按钮时，最多修复物品最大耐久的百分比。",
+            )
         }
     }
 }

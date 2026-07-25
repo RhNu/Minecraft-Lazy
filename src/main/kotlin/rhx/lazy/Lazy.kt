@@ -9,6 +9,7 @@ import rhx.lazy.core.command.LazyCommands
 import rhx.lazy.core.registry.LazyRegistries
 import rhx.lazy.feature.energy.EnergySourceInteractions
 import rhx.lazy.feature.protection.DamageCapHandler
+import rhx.lazy.feature.repairer.RepairerConfigs
 import rhx.lazy.feature.teleporter.TeleporterConfigs
 import rhx.lazy.integration.curios.CuriosTeleporterIntegration
 import rhx.lazy.integration.curios.CuriosTeleporterNetworking
@@ -22,6 +23,7 @@ object Lazy {
 
     init {
         TeleporterConfigs.init()
+        RepairerConfigs.init()
         LazyRegistries.register(MOD_BUS)
         CuriosTeleporterIntegration.registerPredicates()
         MOD_BUS.addListener(CuriosTeleporterNetworking::register)

@@ -2,7 +2,7 @@
 
 ## 项目边界
 
-Lazy 当前提供模组入口、注册基础设施、缓冲器、能量电池、能量源、虚空网格维度、配套传送器，以及少量无业务含义的通用工具。其他物品、方块和维度仍属于后续内容工作，在设计确认前不得进入运行源码。
+Lazy 当前提供模组入口、注册基础设施、修复器、缓冲器、能量电池、能量源、虚空网格维度、配套传送器，以及少量无业务含义的通用工具。其他物品、方块和维度仍属于后续内容工作，在设计确认前不得进入运行源码。
 
 项目只面向 Minecraft 1.21.1 NeoForge，不承担 Fabric、Forge 或多加载器兼容层。Minecraft 小版本也是兼容边界的一部分，依赖升级不得隐式改变游戏版本。
 
@@ -21,6 +21,7 @@ rhx.lazy
 │  ├─ buffer
 │  ├─ energy
 │  ├─ protection
+│  ├─ repairer
 │  ├─ rise
 │  ├─ teleporter
 │  └─ voidworld
@@ -40,7 +41,7 @@ rhx.lazy
 
 ## 注册生命周期
 
-每个领域由自己的注册对象持有一个或多个 `DeferredRegister`，并实现 `RegistryModule` 统一挂载。当前分别使用 `BufferRegistries`、`EnergyRegistries`、`TeleporterRegistries`、`ProtectionRegistries` 和 `VoidWorldRegistries`；`LazyRegistries` 是唯一的集中挂载入口，由 Lazy 主对象在 KotlinForForge 提供的 `MOD_BUS` 上调用。
+每个领域由自己的注册对象持有一个或多个 `DeferredRegister`，并实现 `RegistryModule` 统一挂载。当前分别使用 `RepairerRegistries`、`BufferRegistries`、`EnergyRegistries`、`TeleporterRegistries`、`ProtectionRegistries` 和 `VoidWorldRegistries`；`LazyRegistries` 是唯一的集中挂载入口，由 Lazy 主对象在 KotlinForForge 提供的 `MOD_BUS` 上调用。
 
 注册项必须保留为 `DeferredBlock`、`DeferredItem` 或 `DeferredHolder` 等延迟持有者。不得在静态初始化或注册装配阶段提前取出游戏对象。供应器在真正的注册阶段解析其他延迟持有者是允许的，例如创建方块对应的 `BlockItem`。
 

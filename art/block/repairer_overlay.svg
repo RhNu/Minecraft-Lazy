@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="16"
+     height="16"
+     viewBox="0 0 16 16"
+     shape-rendering="crispEdges">
+  <!-- Transparent overlay for machine_casing_base.svg. -->
+
+  <!-- Recessed work plate. -->
+  <path fill="#3c494f"
+        d="M4 4h8v1h1v7h-1v1H4v-1H3V5h1z"/>
+  <rect x="4" y="4" width="8" height="1" fill="#829297"/>
+  <rect x="3" y="5" width="1" height="7" fill="#718087"/>
+  <rect x="4" y="12" width="8" height="1" fill="#364349"/>
+  <rect x="12" y="5" width="1" height="7" fill="#354248"/>
+  <rect x="4" y="5" width="8" height="7" fill="#46545a"/>
+
+  <!-- Compact gear: the repairer identity must survive the tiny overlay area. -->
+  <path fill="#0b7279"
+        d="M7 5h2v1h2v2h1v2h-1v2H9v1H7v-1H5v-2H4V8h1V6h2z"/>
+  <path fill="#12aeb4"
+        d="M7 6h2v1h2v2H9v2H7V9H5V8h2z"/>
+  <rect x="7" y="7" width="2" height="2" fill="#46545a"/>
+  <rect x="7" y="7" width="1" height="1" fill="#a8fff1"/>
+  <rect x="9" y="9" width="1" height="1" fill="#0b7279"/>
+</svg>
