@@ -10,7 +10,7 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
-import rhx.lazy.integration.beyonddimensions.FakeDimensionNetworkStorage
+import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -82,7 +82,7 @@ class BufferBlockEntityPersistenceTest {
     fun `buffer block item carries managed data for placement`() {
         val source =
             newBuffer(
-                FakeDimensionNetworkStorage().apply {
+                FakeNetworkStorage().apply {
                     itemCapacity = 0
                     fluidCapacity = 0
                 },
@@ -92,7 +92,7 @@ class BufferBlockEntityPersistenceTest {
             FluidStack(Fluids.LAVA, 32_000),
             IFluidHandler.FluidAction.EXECUTE,
         )
-        source.enableNetworkForwarding(FakeDimensionNetworkStorage.TEST_NETWORK_ID)
+        source.enableNetworkForwarding(FakeNetworkStorage.TEST_NETWORK_ID)
 
         val dropped = ItemStack(BufferRegistries.item.get())
         source.saveToItem(dropped, registries)
@@ -104,12 +104,12 @@ class BufferBlockEntityPersistenceTest {
         assertEquals(180, restored.getItemCount(0))
         assertEquals(32_000, restored.getFluid(0).amount)
         assertTrue(restored.isNetworkForwardingEnabled)
-        assertEquals(FakeDimensionNetworkStorage.TEST_NETWORK_ID.value, restored.boundDimensionNetworkId)
+        assertEquals(FakeNetworkStorage.TEST_NETWORK_ID.value, restored.boundDimensionNetworkId)
     }
 
-    private fun newBuffer(): BufferBlockEntity = newBuffer(FakeDimensionNetworkStorage(isAvailable = false))
+    private fun newBuffer(): BufferBlockEntity = newBuffer(FakeNetworkStorage(isAvailable = false))
 
-    private fun newBuffer(storage: FakeDimensionNetworkStorage): BufferBlockEntity =
+    private fun newBuffer(storage: FakeNetworkStorage): BufferBlockEntity =
         BufferBlockEntity(
             BlockPos.ZERO,
             BufferRegistries.block.get().defaultBlockState(),

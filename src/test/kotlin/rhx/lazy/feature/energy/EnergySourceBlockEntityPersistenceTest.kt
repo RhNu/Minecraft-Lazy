@@ -3,7 +3,7 @@ package rhx.lazy.feature.energy
 import net.minecraft.core.BlockPos
 import net.minecraft.core.RegistryAccess
 import net.minecraft.core.registries.BuiltInRegistries
-import rhx.lazy.integration.beyonddimensions.FakeDimensionNetworkStorage
+import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -13,7 +13,7 @@ class EnergySourceBlockEntityPersistenceTest {
 
     @Test
     fun `active push survives managed data round trip`() {
-        val storage = FakeDimensionNetworkStorage()
+        val storage = FakeNetworkStorage()
         val source =
             EnergySourceBlockEntity(
                 BlockPos.ZERO,
@@ -23,7 +23,7 @@ class EnergySourceBlockEntityPersistenceTest {
         assertEquals(EnergyOutputMode.ADJACENT, source.cycleOutputMode())
         assertEquals(
             EnergyOutputMode.NETWORK,
-            source.cycleOutputMode(FakeDimensionNetworkStorage.TEST_NETWORK_ID),
+            source.cycleOutputMode(FakeNetworkStorage.TEST_NETWORK_ID),
         )
         assertEquals(EnergyOutputMode.BOTH, source.cycleOutputMode())
 

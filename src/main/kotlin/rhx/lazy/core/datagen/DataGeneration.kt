@@ -10,7 +10,6 @@ import net.minecraft.data.recipes.RecipeCategory
 import net.minecraft.data.recipes.RecipeOutput
 import net.minecraft.data.recipes.RecipeProvider
 import net.minecraft.data.recipes.ShapedRecipeBuilder
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.tags.ItemTags
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
@@ -30,8 +29,6 @@ import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import rhx.lazy.feature.voidworld.VoidWorldBootstrap
-import rhx.lazy.integration.curios.CuriosTeleporterIntegration
-import top.theillusivec4.curios.api.CuriosDataProvider
 import java.util.concurrent.CompletableFuture
 
 @EventBusSubscriber(modid = MOD_ID)
@@ -45,10 +42,6 @@ internal object DataGeneration {
 
         generator.addProvider(event.includeServer(), Recipes(output, lookup))
         generator.addProvider(event.includeServer(), LootTables(output, lookup))
-        generator.addProvider(
-            event.includeServer(),
-            CuriosData(output, helper, lookup),
-        )
         generator.addProvider(
             event.includeServer(),
             DatapackBuiltinEntriesProvider(
@@ -145,29 +138,6 @@ internal object DataGeneration {
             simpleBlock(BufferRegistries.block.get())
             simpleBlock(EnergyRegistries.sourceBlock.get())
             simpleBlock(RepairerRegistries.block.get())
-        }
-    }
-
-    private class CuriosData(
-        output: PackOutput,
-        helper: ExistingFileHelper,
-        lookup: CompletableFuture<HolderLookup.Provider>,
-    ) : CuriosDataProvider(MOD_ID, output, helper, lookup) {
-        override fun generate(
-            registries: HolderLookup.Provider,
-            fileHelper: ExistingFileHelper,
-        ) {
-            createSlot(CuriosTeleporterIntegration.TELEPORTER_SLOT)
-                .size(1)
-                .icon(
-                    ResourceLocation.fromNamespaceAndPath(
-                        MOD_ID,
-                        "slot/empty_teleporter_slot",
-                    ),
-                ).addValidator(CuriosTeleporterIntegration.teleporterSlotValidator)
-            createEntities(CuriosTeleporterIntegration.TELEPORTER_SLOT)
-                .addPlayer()
-                .addSlots(CuriosTeleporterIntegration.TELEPORTER_SLOT)
         }
     }
 

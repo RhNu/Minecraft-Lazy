@@ -111,6 +111,19 @@ class RepairerBlockEntityTest {
     }
 
     @Test
+    fun `repair remains successful when an integration hook fails`() {
+        val hooks =
+            ItemRepairHookRegistry().apply {
+                register { _, _ -> throw IllegalStateException("integration failure") }
+            }
+        val repairer = newRepairer(hooks)
+        repairer.itemHandler.insertItem(0, damagedStack(Items.IRON_PICKAXE, damage = 100), false)
+
+        assertTrue(repairer.repairOnce(5, 5, RandomSource.create(42)))
+        assertEquals(87, repairer.itemHandler.getStackInSlot(0).damageValue)
+    }
+
+    @Test
     fun `a low durability tool still repairs by at least one point`() {
         val repairer = newRepairer()
         repairer.itemHandler.insertItem(0, damagedStack(Items.FISHING_ROD, damage = 10), false)
@@ -163,10 +176,11 @@ class RepairerBlockEntityTest {
         assertTrue(repairer.takeStoredItemForDrop().isEmpty)
     }
 
-    private fun newRepairer(): RepairerBlockEntity =
+    private fun newRepairer(itemRepairHook: ItemRepairHook = ItemRepairHooks): RepairerBlockEntity =
         RepairerBlockEntity(
             BlockPos.ZERO,
             RepairerRegistries.block.get().defaultBlockState(),
+            itemRepairHook,
         )
 
     private fun damagedStack(

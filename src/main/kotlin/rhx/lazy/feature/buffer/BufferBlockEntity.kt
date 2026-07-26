@@ -11,16 +11,16 @@ import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.ManagedBlockEntity
-import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkId
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkStorage
+import rhx.lazy.core.storage.NetworkStorage
+import rhx.lazy.core.storage.NetworkStorageId
+import rhx.lazy.core.storage.NetworkStoragePort
+import rhx.lazy.core.storage.NetworkStorageResult
 import kotlin.math.min
 
 internal class BufferBlockEntity(
     pos: BlockPos,
     state: BlockState,
-    private val dimensionNetworkStorage: DimensionNetworkStorage = BeyondDimensionsIntegration,
+    private val networkStorage: NetworkStoragePort = NetworkStorage,
 ) : ManagedBlockEntity(BufferRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
@@ -74,7 +74,7 @@ internal class BufferBlockEntity(
         return true
     }
 
-    fun enableNetworkForwarding(networkId: DimensionNetworkId) {
+    fun enableNetworkForwarding(networkId: NetworkStorageId) {
         networkForwardingEnabled = true
         dimensionNetworkId = networkId.value
         networkStateChanged()
@@ -130,9 +130,9 @@ internal class BufferBlockEntity(
         markDirty(DIMENSION_NETWORK_ID_FIELD)
     }
 
-    private fun networkIdOrNull(): DimensionNetworkId? =
+    private fun networkIdOrNull(): NetworkStorageId? =
         if (networkForwardingEnabled && dimensionNetworkId >= 0) {
-            DimensionNetworkId(dimensionNetworkId)
+            NetworkStorageId(dimensionNetworkId)
         } else {
             null
         }
@@ -152,13 +152,13 @@ internal class BufferBlockEntity(
 
             when (
                 val result =
-                    dimensionNetworkStorage.insertItem(
+                    networkStorage.insertItem(
                         networkId,
                         template.copyWithCount(stored),
                         simulate = false,
                     )
             ) {
-                is DimensionNetworkResult.Success -> {
+                is NetworkStorageResult.Success -> {
                     val remainder = result.value.count.coerceIn(0, stored)
                     if (remainder != stored) {
                         itemCounts[slot] = remainder
@@ -179,8 +179,8 @@ internal class BufferBlockEntity(
                 val stored = fluids[tank]
                 if (stored.isEmpty || stored.amount <= 0) continue
 
-                when (val result = dimensionNetworkStorage.insertFluid(networkId, stored, simulate = false)) {
-                    is DimensionNetworkResult.Success -> {
+                when (val result = networkStorage.insertFluid(networkId, stored, simulate = false)) {
+                    is NetworkStorageResult.Success -> {
                         val remainder = result.value.amount.coerceIn(0, stored.amount)
                         if (remainder != stored.amount) {
                             fluids[tank] =
@@ -290,8 +290,8 @@ internal class BufferBlockEntity(
             val networkId = networkIdOrNull() ?: return stack
             if (level?.isClientSide == true) return stack
 
-            return when (val result = dimensionNetworkStorage.insertItem(networkId, stack, simulate)) {
-                is DimensionNetworkResult.Success -> result.value
+            return when (val result = networkStorage.insertItem(networkId, stack, simulate)) {
+                is NetworkStorageResult.Success -> result.value
                 else -> {
                     if (!simulate) disableNetworkForwarding()
                     stack
@@ -415,8 +415,8 @@ internal class BufferBlockEntity(
             val networkId = networkIdOrNull() ?: return resource
             if (level?.isClientSide == true) return resource
 
-            return when (val result = dimensionNetworkStorage.insertFluid(networkId, resource, simulate)) {
-                is DimensionNetworkResult.Success -> result.value
+            return when (val result = networkStorage.insertFluid(networkId, resource, simulate)) {
+                is NetworkStorageResult.Success -> result.value
                 else -> {
                     if (!simulate) disableNetworkForwarding()
                     resource

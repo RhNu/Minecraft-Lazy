@@ -22,8 +22,8 @@ import rhx.lazy.core.displayActionBar
 import rhx.lazy.core.serverTicker
 import rhx.lazy.core.sidedItemUseResult
 import rhx.lazy.core.sidedUseResult
-import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
+import rhx.lazy.core.storage.NetworkStorage
+import rhx.lazy.core.storage.NetworkStorageResult
 
 internal class EnergySourceBlock :
     Block(
@@ -68,9 +68,9 @@ internal class EnergySourceBlock :
         val serverPlayer = player as? ServerPlayer ?: return false
         val primaryNetworkId =
             if (blockEntity.nextModeNeedsNetwork()) {
-                when (val result = BeyondDimensionsIntegration.primaryNetwork(serverPlayer)) {
-                    is DimensionNetworkResult.Success -> result.value
-                    DimensionNetworkResult.NetworkNotFound -> {
+                when (val result = NetworkStorage.primaryNetwork(serverPlayer)) {
+                    is NetworkStorageResult.Success -> result.value
+                    NetworkStorageResult.NetworkNotFound -> {
                         player.displayActionBar("message.lazy.beyond_dimensions.no_primary_network")
                         return true
                     }

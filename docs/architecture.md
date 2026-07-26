@@ -16,7 +16,8 @@ rhx.lazy
 ├─ core
 │  ├─ command
 │  ├─ datagen
-│  └─ registry
+│  ├─ registry
+│  └─ storage
 ├─ feature
 │  ├─ buffer
 │  ├─ energy
@@ -27,15 +28,18 @@ rhx.lazy
 │  └─ voidworld
 └─ integration
    ├─ beyonddimensions
-   └─ curios
-      └─ client
+   ├─ curios
+   │  └─ client
+   └─ silentgear
 ```
 
 - 根包只保存模组入口和 `MOD_ID`。
 - `core` 保存经过跨领域复用证明的 Minecraft 扩展、公共基类，以及命令、数据生成和注册的全局装配入口。
 - `feature` 使用垂直切片组织业务；方块、物品、方块实体、界面、事件、配置和注册跟随各自领域，不再按 Minecraft 类型横向分包。
 - `integration` 保存第三方模组适配。集成可以依赖 `core` 和 `feature`，业务领域不得反向依赖集成。
-- 可选集成使用只包含 Minecraft/NeoForge 类型的内部门面隔离第三方符号；具体适配器只能在确认对应模组已加载后解析。当前 Beyond Dimensions 门面以网络 ID 为边界，包装物品、流体和 FE 的查询、模拟、插入与提取，不承担网络成员和权限管理。
+- 可选集成通过 `IntegrationModule` 统一公共侧与客户端初始化，并由唯一的显式模块列表确定顺序。bootstrap 的字段、签名和初始化器不得引用第三方类型；只有确认对应模组已加载后才能解析 adapter。模组已安装但初始化失败属于启动错误，不静默降级。
+- 跨领域网络存储端口位于 `core.storage`，只暴露 Minecraft/NeoForge 类型并最多安装一个提供者。当前 Beyond Dimensions adapter 以网络 ID 为边界，包装物品、流体和 FE 的查询、模拟、插入与提取；预期的网络缺失与意外 API 失败使用不同结果表示。
+- Repairer 的修复后处理接口由领域自身持有，第三方适配器只注册回调。回调可并存且不得重复注册；单个回调失败不回滚基础修复。
 - `feature.teleporter` 可以依赖独立的 `feature.voidworld`；其他跨领域依赖应保持显式且数量有限。
 - 当前没有对外公开的扩展契约，因此不创建空的 `api` 包。出现真实外部调用方后再定义稳定 API。
 
@@ -53,7 +57,7 @@ rhx.lazy
 
 注册表和数据生成等生命周期事件使用模组事件总线。游戏运行事件只有在出现相应功能时才挂载到 NeoForge 游戏事件总线。
 
-客户端类只能放入显式的 `client` 子包并从客户端事件订阅器触达。当前快捷键代码位于 `integration.curios.client`，公共注册模块和业务领域均不得引用该包，避免专用服务器在类加载阶段解析客户端类。
+客户端类只能放入显式的 `client` 子包并从 `LazyClient` 组合入口触达。当前快捷键代码位于 `integration.curios.client`，只有本地加载 Curios 时才挂载事件；公共注册模块和业务领域均不得引用该包，避免专用服务器在类加载阶段解析客户端类。跨端可选 payload 必须声明为 optional，并在发送前确认连接已经协商对应 channel。
 
 LDLib2 UI 树必须能在逻辑服务端与客户端以相同结构构造。与方块实体有关的值通过 binding 延迟读取；不得根据仅一侧存在的方块实体增删元素，以免两侧同步序号错位。UI server event 只负责传递意图，改变世界前仍须在服务端重新校验方块、方块实体、玩家和距离。
 
@@ -65,7 +69,7 @@ Mojang Codec 继续用于数据驱动对象和跨版本结构化数据，NeoForg
 
 ## 数据生成
 
-Gradle 的 `data` 运行配置输出到 `src/generated/resources`，并将主资源目录作为已有资源输入。`GatherDataEvent` 按客户端与服务端边界装配 provider，正常执行会刷新已经确认内容对应的生成资源。
+Gradle 的 `data` 运行配置使用包含全部可选兼容模组的 integrations 类路径，输出到 `src/generated/resources`，并将主资源目录作为已有资源输入。基础 `GatherDataEvent` 与各集成分别装配自己的 provider，正常执行会刷新已经确认内容对应的生成资源。
 
 客户端 provider 与服务端 provider 分开装配，当前生成缓冲器的模型、方块状态、配方、标签、空掉落表和双语本地化。生成资源应保持可重复；缓存文件、Blockbench 工程文件和运行目录不得进入发布 JAR。
 

@@ -29,8 +29,8 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import rhx.lazy.core.blockEntityOrNull
 import rhx.lazy.core.displayActionBar
 import rhx.lazy.core.lazyId
-import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
+import rhx.lazy.core.storage.NetworkStorage
+import rhx.lazy.core.storage.NetworkStorageResult
 
 internal object BufferUI {
     private val stylesheet = lazyId("lss/buffer.lss")
@@ -39,7 +39,7 @@ internal object BufferUI {
         lateinit var confirmationLayer: UIElement
         lateinit var clearButton: com.lowdragmc.lowdraglib2.gui.ui.elements.Button
         val model = BufferUiModel(holder)
-        val networkControlsVisible = BeyondDimensionsIntegration.isAvailable
+        val networkControlsVisible = NetworkStorage.isAvailable
 
         val root =
             element(
@@ -346,8 +346,8 @@ internal object BufferUI {
                 return
             }
 
-            when (val result = BeyondDimensionsIntegration.primaryNetwork(player)) {
-                is DimensionNetworkResult.Success -> {
+            when (val result = NetworkStorage.primaryNetwork(player)) {
+                is NetworkStorageResult.Success -> {
                     entity.enableNetworkForwarding(result.value)
                     if (entity.isNetworkForwardingEnabled) {
                         player.displayActionBar(
@@ -359,7 +359,7 @@ internal object BufferUI {
                     }
                 }
 
-                DimensionNetworkResult.NetworkNotFound -> {
+                NetworkStorageResult.NetworkNotFound -> {
                     player.displayActionBar("message.lazy.beyond_dimensions.no_primary_network")
                 }
 

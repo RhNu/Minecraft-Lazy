@@ -10,6 +10,7 @@ internal object CuriosTeleporterNetworking {
     fun register(event: RegisterPayloadHandlersEvent) {
         event
             .registrar(NETWORK_VERSION)
+            .optional()
             .playToServer(
                 ActivateEquippedTeleporterPayload.type,
                 ActivateEquippedTeleporterPayload.streamCodec,
@@ -22,7 +23,13 @@ internal object CuriosTeleporterNetworking {
         context: IPayloadContext,
     ) {
         val player = context.player() as? ServerPlayer ?: return
-        val stack = CuriosTeleporterLocator.findEquipped(player) ?: return
+        val stack =
+            when (val result = CuriosTeleporterLocator.findEquipped(player)) {
+                is EquippedTeleporterResult.Found -> result.stack
+                EquippedTeleporterResult.NotFound,
+                EquippedTeleporterResult.Failed,
+                -> return
+            }
         if (player.isChangingDimension || !requestLimiter.tryAcquire(player, player.tickCount)) return
 
         TeleporterActivation.activate(player, stack)

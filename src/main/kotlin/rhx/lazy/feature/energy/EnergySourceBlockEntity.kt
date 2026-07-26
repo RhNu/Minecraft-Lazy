@@ -12,16 +12,16 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.energy.IEnergyStorage
 import rhx.lazy.core.ManagedBlockEntity
-import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkId
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
-import rhx.lazy.integration.beyonddimensions.DimensionNetworkStorage
+import rhx.lazy.core.storage.NetworkStorage
+import rhx.lazy.core.storage.NetworkStorageId
+import rhx.lazy.core.storage.NetworkStoragePort
+import rhx.lazy.core.storage.NetworkStorageResult
 import java.util.EnumMap
 
 internal class EnergySourceBlockEntity(
     pos: BlockPos,
     state: BlockState,
-    private val dimensionNetworkStorage: DimensionNetworkStorage = BeyondDimensionsIntegration,
+    private val networkStorage: NetworkStoragePort = NetworkStorage,
 ) : ManagedBlockEntity(EnergyRegistries.sourceBlockEntity.get(), pos, state) {
     val energyStorage: IEnergyStorage = InfiniteEnergyStorage()
 
@@ -53,11 +53,11 @@ internal class EnergySourceBlockEntity(
         }
 
     fun nextModeNeedsNetwork(): Boolean =
-        dimensionNetworkStorage.isAvailable &&
+        networkStorage.isAvailable &&
             outputMode() == EnergyOutputMode.ADJACENT
 
-    fun cycleOutputMode(primaryNetworkId: DimensionNetworkId? = null): EnergyOutputMode? {
-        if (!dimensionNetworkStorage.isAvailable) {
+    fun cycleOutputMode(primaryNetworkId: NetworkStorageId? = null): EnergyOutputMode? {
+        if (!networkStorage.isAvailable) {
             activePushEnabled = !activePushEnabled
             networkPushEnabled = false
             dimensionNetworkId = INVALID_NETWORK_ID
@@ -145,20 +145,20 @@ internal class EnergySourceBlockEntity(
     private fun pushToDimensionNetwork() {
         val networkId =
             if (dimensionNetworkId >= 0) {
-                DimensionNetworkId(dimensionNetworkId)
+                NetworkStorageId(dimensionNetworkId)
             } else {
                 disableNetworkPush()
                 return
             }
 
         when (
-            dimensionNetworkStorage.insertEnergy(
+            networkStorage.insertEnergy(
                 networkId,
                 ENERGY_TRANSFER_LIMIT.toLong(),
                 simulate = false,
             )
         ) {
-            is DimensionNetworkResult.Success -> Unit
+            is NetworkStorageResult.Success -> Unit
             else -> disableNetworkPush()
         }
     }

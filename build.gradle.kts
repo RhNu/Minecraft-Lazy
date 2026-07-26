@@ -13,7 +13,7 @@ plugins {
 
 val modId = property("mod_id").toString()
 val localRuntime by configurations.creating
-val beyondDimensionsRuntime by configurations.creating
+val integrationsRuntime by configurations.creating
 
 version = property("mod_version").toString()
 group = property("mod_group_id").toString()
@@ -40,20 +40,20 @@ sourceSets.main {
     }
 }
 
-val beyondDimensionsRun by sourceSets.creating {
+val integrationsRun by sourceSets.creating {
     runtimeClasspath += sourceSets.main.get().output
 }
 
-configurations.named(beyondDimensionsRun.implementationConfigurationName) {
+configurations.named(integrationsRun.implementationConfigurationName) {
     extendsFrom(configurations.implementation.get())
 }
-configurations.named(beyondDimensionsRun.runtimeOnlyConfigurationName) {
-    extendsFrom(configurations.runtimeOnly.get(), localRuntime, beyondDimensionsRuntime)
+configurations.named(integrationsRun.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.runtimeOnly.get(), localRuntime, integrationsRuntime)
 }
 
 neoForge {
     version = property("neo_version").toString()
-    addModdingDependenciesTo(beyondDimensionsRun)
+    addModdingDependenciesTo(integrationsRun)
 
     parchment {
         minecraftVersion = property("parchment_minecraft_version").toString()
@@ -72,16 +72,16 @@ neoForge {
             systemProperty("neoforge.enabledGameTestNamespaces", modId)
         }
 
-        create("clientBeyondDimensions") {
+        create("clientIntegrations") {
             client()
-            sourceSet = beyondDimensionsRun
+            sourceSet = integrationsRun
             systemProperty("neoforge.enabledGameTestNamespaces", modId)
         }
 
-        create("serverBeyondDimensions") {
+        create("serverIntegrations") {
             server()
             programArgument("--nogui")
-            sourceSet = beyondDimensionsRun
+            sourceSet = integrationsRun
             systemProperty("neoforge.enabledGameTestNamespaces", modId)
         }
 
@@ -92,6 +92,7 @@ neoForge {
 
         create("data") {
             data()
+            sourceSet = integrationsRun
             programArguments.addAll(
                 "--mod",
                 modId,
@@ -202,20 +203,18 @@ dependencies {
     compileOnly(
         "maven.modrinth:beyonddimensions:${property("beyond_dimensions_version")}",
     )
-    runtimeOnly(
+    integrationsRuntime(
         "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}",
     )
-
-    beyondDimensionsRuntime(
+    integrationsRuntime("maven.modrinth:silent-gear:${property("silent_gear_version")}")
+    integrationsRuntime("maven.modrinth:silent-lib:${property("silent_lib_version")}")
+    integrationsRuntime(
         "maven.modrinth:beyonddimensions:${property("beyond_dimensions_version")}",
     )
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
     localRuntime("maven.modrinth:jade:${property("jade_version")}")
 
     testImplementation(kotlin("test"))
-    testCompileOnly(
-        "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}:api",
-    )
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

@@ -3,17 +3,20 @@ package rhx.lazy.integration.curios.client
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
-import net.neoforged.api.distmarker.Dist
-import net.neoforged.bus.api.SubscribeEvent
-import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
 import net.neoforged.neoforge.client.settings.KeyConflictContext
 import net.neoforged.neoforge.network.PacketDistributor
-import rhx.lazy.MOD_ID
+import rhx.lazy.integration.ClientIntegrationContext
 import rhx.lazy.integration.curios.ActivateEquippedTeleporterPayload
 
-@EventBusSubscriber(modid = MOD_ID, value = [Dist.CLIENT])
+internal object CuriosClientAdapter {
+    fun initialize(context: ClientIntegrationContext) {
+        context.modBus.addListener(TeleporterKeyMappings::register)
+        context.gameBus.addListener(TeleporterKeyHandler::onClientTick)
+    }
+}
+
 internal object TeleporterKeyMappings {
     val activate =
         KeyMapping(
@@ -24,19 +27,19 @@ internal object TeleporterKeyMappings {
             "key.categories.lazy",
         )
 
-    @SubscribeEvent
     fun register(event: RegisterKeyMappingsEvent) {
         event.register(activate)
     }
 }
 
-@EventBusSubscriber(modid = MOD_ID, value = [Dist.CLIENT])
 internal object TeleporterKeyHandler {
-    @SubscribeEvent
     fun onClientTick(event: ClientTickEvent.Post) {
-        if (Minecraft.getInstance().player == null) return
+        val minecraft = Minecraft.getInstance()
+        if (minecraft.player == null) return
 
         while (TeleporterKeyMappings.activate.consumeClick()) {
+            val connection = minecraft.connection ?: continue
+            if (!connection.hasChannel(ActivateEquippedTeleporterPayload.type)) continue
             PacketDistributor.sendToServer(ActivateEquippedTeleporterPayload)
         }
     }

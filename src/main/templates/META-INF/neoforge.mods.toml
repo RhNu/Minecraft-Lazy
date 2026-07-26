@@ -39,10 +39,11 @@ side="BOTH"
 
 [[dependencies.${mod_id}]]
 modId="curios"
-type="required"
+type="optional"
 versionRange="${curios_version_range}"
 ordering="AFTER"
 side="BOTH"
+reason="Enables the teleporter equipment slot and activation key"
 
 [[dependencies.${mod_id}]]
 modId="silentgear"

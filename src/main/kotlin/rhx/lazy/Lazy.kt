@@ -11,10 +11,7 @@ import rhx.lazy.feature.energy.EnergySourceInteractions
 import rhx.lazy.feature.protection.DamageCapHandler
 import rhx.lazy.feature.repairer.RepairerConfigs
 import rhx.lazy.feature.teleporter.TeleporterConfigs
-import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
-import rhx.lazy.integration.curios.CuriosTeleporterIntegration
-import rhx.lazy.integration.curios.CuriosTeleporterNetworking
-import rhx.lazy.integration.repair.RepairCompatibilities
+import rhx.lazy.integration.LazyIntegrations
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 internal const val MOD_ID = "lazy"
@@ -27,10 +24,7 @@ object Lazy {
         TeleporterConfigs.init()
         RepairerConfigs.init()
         LazyRegistries.register(MOD_BUS)
-        BeyondDimensionsIntegration.init()
-        RepairCompatibilities.init()
-        CuriosTeleporterIntegration.registerPredicates()
-        MOD_BUS.addListener(CuriosTeleporterNetworking::register)
+        LazyIntegrations.initialize(MOD_BUS)
         NeoForge.EVENT_BUS.addListener(EnergySourceInteractions::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(LazyCommands::register)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onInvulnerabilityCheck)

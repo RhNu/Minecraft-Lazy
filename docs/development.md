@@ -8,9 +8,9 @@ Kotlin 插件版本与 KotlinForForge 5.12.0 捆绑的 Kotlin 运行库保持一
 
 LDLib2 是范围 `[2.2.29,2.3.0)`、双端必需的外部模组依赖，不打包进 Lazy JAR。其 `all` 构件从 FirstDark Maven 解析，Yoga、Taffy 与 Kotlin 传递依赖从 Maven Central 补齐。升级 KotlinForForge 或 LDLib2 时必须用 `dependencyInsight` 复查 Kotlin、Yoga 和 Taffy 的最终解析版本。
 
-Curios API 9.5.1+1.21.1 是范围 `[9.5.1+1.21.1,10.0.0)`、双端必需的外部模组依赖，用于传送器装备槽位、自定义槽位校验与槽位物品查询。编译使用官方 API classifier，开发运行和发布环境加载完整 Curios 模组；Lazy 不打包 Curios，也不提供无 Curios 运行模式。
+Curios API 9.5.1+1.21.1 是范围 `[9.5.1+1.21.1,10.0.0)`、双端可选的兼容依赖，用于传送器装备槽位、自定义槽位校验与槽位物品查询。编译使用官方 API classifier，基础开发运行与发布环境不自动携带 Curios；未安装时只关闭装备槽、快捷键和对应 payload。payload 使用可选协商，客户端发送前检查服务端 channel，允许两侧安装状态不一致。
 
-Beyond Dimensions 0.7.26 是范围 `[0.7.26,0.8.0)`、双端可选的兼容依赖。编译通过 Modrinth Maven 使用 `compileOnly` 制品，普通开发运行和发布环境不自动携带该模组；`clientBeyondDimensions` 与 `serverBeyondDimensions` 运行配置用于显式验证安装后的物品、流体和 FE 网络交互。兼容入口只在检测到 `beyonddimensions` 后加载独立适配器，其余源码不得直接引用上游类型。
+Silent Gear 4.2.1.1 与 Beyond Dimensions 0.7.26 都是双端可选兼容依赖，版本范围分别为 `[4.2.1.1,4.3.0)` 与 `[0.7.26,0.8.0)`。三项集成统一使用 `compileOnly` 编译，只有 integrations 开发运行类路径加载完整模组及 SilentLib；Lazy 不打包或传递这些模组。兼容 bootstrap 只在检测到对应 mod id 后解析 adapter，第三方类型不得离开各自 integration 包。
 
 ## 开发运行模组
 
@@ -41,9 +41,9 @@ GUI、HUD、UI binding/RPC 和方块实体托管优先使用 LDLib2。界面结�
 
 ## 常用流程
 
-`./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 刷新数据生成输出。`./gradlew runClient` 启动带 JEI 与 Jade 的开发客户端。发布前还要检查 Lazy JAR 不含 `com/lowdragmc/lowdraglib2`，并用 `dependencyInsight` 核对 Kotlin、Yoga 与 Taffy。
+`./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 使用 integrations 类路径刷新基础与 Curios 数据生成输出。`./gradlew runClient` 启动只带 JEI 与 Jade、但不带可选集成模组的开发客户端。发布前还要检查 Lazy JAR 不含 `com/lowdragmc/lowdraglib2`，并用 `dependencyInsight` 核对 Kotlin、Yoga 与 Taffy。
 
-Beyond Dimensions 兼容使用 `./gradlew runClientBeyondDimensions` 和 `./gradlew runServerBeyondDimensions` 验证；普通 `runClient`、`runServer` 与单元测试不包含该可选模组，用于持续检查无兼容依赖时的类加载安全性。
+完整兼容组合使用 `./gradlew runClientIntegrations` 和 `./gradlew runServerIntegrations` 验证 Curios、Silent Gear 与 Beyond Dimensions；普通 `runClient`、`runServer` 与单元测试不包含任何可选集成模组，用于持续检查类加载安全性。
 
 ## Kotlin 代码风格
 

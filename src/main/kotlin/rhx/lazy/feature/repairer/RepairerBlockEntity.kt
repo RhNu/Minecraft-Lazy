@@ -11,11 +11,11 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.ManagedBlockEntity
-import rhx.lazy.integration.repair.RepairCompatibilities
 
 internal class RepairerBlockEntity(
     pos: BlockPos,
     state: BlockState,
+    private val itemRepairHook: ItemRepairHook = ItemRepairHooks,
 ) : ManagedBlockEntity(RepairerRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
@@ -37,7 +37,7 @@ internal class RepairerBlockEntity(
         val repairPercent = percentRange.first + random.nextInt(percentRange.last - percentRange.first + 1)
         val amount = repairAmount(storedItem.maxDamage, repairPercent)
         storedItem.damageValue = (storedItem.damageValue - amount).coerceAtLeast(0)
-        RepairCompatibilities.afterRepair(storedItem, player)
+        itemRepairHook.afterRepair(storedItem, player)
         markDirty(STORED_ITEM_FIELD)
         return true
     }
