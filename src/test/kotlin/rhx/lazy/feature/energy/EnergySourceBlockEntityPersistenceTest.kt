@@ -6,13 +6,14 @@ import net.minecraft.core.registries.BuiltInRegistries
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class EnergySourceBlockEntityPersistenceTest {
     private val registries = RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY)
 
     @Test
-    fun `active push survives managed data round trip`() {
+    fun `network push survives managed data round trip`() {
         val storage = FakeNetworkStorage()
         val source =
             EnergySourceBlockEntity(
@@ -20,12 +21,12 @@ class EnergySourceBlockEntityPersistenceTest {
                 EnergyRegistries.sourceBlock.get().defaultBlockState(),
                 storage,
             )
-        assertEquals(EnergyOutputMode.ADJACENT, source.cycleOutputMode())
-        assertEquals(
-            EnergyOutputMode.NETWORK,
-            source.cycleOutputMode(FakeNetworkStorage.TEST_NETWORK_ID),
+        assertTrue(
+            source.setOutputMode(
+                EnergyOutputMode.NETWORK,
+                FakeNetworkStorage.TEST_NETWORK_ID,
+            ),
         )
-        assertEquals(EnergyOutputMode.BOTH, source.cycleOutputMode())
 
         val restored =
             EnergySourceBlockEntity(
@@ -35,8 +36,8 @@ class EnergySourceBlockEntityPersistenceTest {
             )
         restored.loadWithComponents(source.saveWithFullMetadata(registries), registries)
 
-        assertTrue(restored.isActivePushEnabled())
+        assertFalse(restored.isActivePushEnabled())
         assertTrue(restored.isNetworkPushEnabled())
-        assertEquals(EnergyOutputMode.BOTH, restored.outputMode())
+        assertEquals(EnergyOutputMode.NETWORK, restored.outputMode())
     }
 }

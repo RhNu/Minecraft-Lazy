@@ -21,7 +21,7 @@ internal class EnergySourceBlockItem(
         tooltipComponents.addEnergyTransferTooltip(ENERGY_TRANSFER_LIMIT)
         tooltipComponents +=
             Component
-                .translatable("tooltip.lazy.energy_source.active_push")
+                .translatable("tooltip.lazy.energy_source.output_mode")
                 .withStyle(ChatFormatting.GRAY)
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag)
     }

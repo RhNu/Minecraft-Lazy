@@ -46,52 +46,38 @@ internal class EnergySourceBlockEntity(
 
     fun outputMode(): EnergyOutputMode =
         when {
-            activePushEnabled && networkPushEnabled -> EnergyOutputMode.BOTH
-            activePushEnabled -> EnergyOutputMode.ADJACENT
             networkPushEnabled -> EnergyOutputMode.NETWORK
-            else -> EnergyOutputMode.OFF
+            activePushEnabled -> EnergyOutputMode.ACTIVE
+            else -> EnergyOutputMode.PASSIVE
         }
 
-    fun nextModeNeedsNetwork(): Boolean =
-        networkStorage.isAvailable &&
-            outputMode() == EnergyOutputMode.ADJACENT
+    fun setOutputMode(
+        mode: EnergyOutputMode,
+        primaryNetworkId: NetworkStorageId? = null,
+    ): Boolean {
+        when (mode) {
+            EnergyOutputMode.PASSIVE -> {
+                activePushEnabled = false
+                networkPushEnabled = false
+                dimensionNetworkId = INVALID_NETWORK_ID
+            }
 
-    fun cycleOutputMode(primaryNetworkId: NetworkStorageId? = null): EnergyOutputMode? {
-        if (!networkStorage.isAvailable) {
-            activePushEnabled = !activePushEnabled
-            networkPushEnabled = false
-            dimensionNetworkId = INVALID_NETWORK_ID
-            outputStateChanged()
-            return outputMode()
-        }
-
-        when (outputMode()) {
-            EnergyOutputMode.OFF -> {
+            EnergyOutputMode.ACTIVE -> {
                 activePushEnabled = true
                 networkPushEnabled = false
                 dimensionNetworkId = INVALID_NETWORK_ID
             }
 
-            EnergyOutputMode.ADJACENT -> {
-                val networkId = primaryNetworkId ?: return null
+            EnergyOutputMode.NETWORK -> {
+                if (!networkStorage.isAvailable) return false
+                val networkId = primaryNetworkId ?: return false
                 activePushEnabled = false
                 networkPushEnabled = true
                 dimensionNetworkId = networkId.value
             }
-
-            EnergyOutputMode.NETWORK -> {
-                activePushEnabled = true
-                networkPushEnabled = true
-            }
-
-            EnergyOutputMode.BOTH -> {
-                activePushEnabled = false
-                networkPushEnabled = false
-                dimensionNetworkId = INVALID_NETWORK_ID
-            }
         }
         outputStateChanged()
-        return outputMode()
+        return true
     }
 
     fun onServerTick() {
@@ -119,6 +105,9 @@ internal class EnergySourceBlockEntity(
         if (networkPushEnabled && dimensionNetworkId < 0) {
             networkPushEnabled = false
             dimensionNetworkId = INVALID_NETWORK_ID
+        }
+        if (networkPushEnabled && activePushEnabled) {
+            activePushEnabled = false
         }
     }
 
@@ -185,8 +174,7 @@ internal class EnergySourceBlockEntity(
 }
 
 internal enum class EnergyOutputMode {
-    OFF,
-    ADJACENT,
+    PASSIVE,
+    ACTIVE,
     NETWORK,
-    BOTH,
 }

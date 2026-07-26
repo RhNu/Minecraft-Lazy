@@ -7,7 +7,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import rhx.lazy.core.command.LazyCommands
 import rhx.lazy.core.registry.LazyRegistries
-import rhx.lazy.feature.energy.EnergySourceInteractions
 import rhx.lazy.feature.protection.DamageCapHandler
 import rhx.lazy.feature.repairer.RepairerConfigs
 import rhx.lazy.feature.teleporter.TeleporterConfigs
@@ -25,7 +24,6 @@ object Lazy {
         RepairerConfigs.init()
         LazyRegistries.register(MOD_BUS)
         LazyIntegrations.initialize(MOD_BUS)
-        NeoForge.EVENT_BUS.addListener(EnergySourceInteractions::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(LazyCommands::register)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onInvulnerabilityCheck)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onIncomingDamage)
