@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="16"
+     height="16"
+     viewBox="0 0 16 16"
+     shape-rendering="crispEdges">
+  <!-- Transparent overlay for machine_casing_base.svg. -->
+
+  <!-- Dark planter tray with a bright steel rim. -->
+  <rect x="3" y="9" width="10" height="1" fill="#9aa5a7"/>
+  <rect x="4" y="10" width="8" height="3" fill="#29363a"/>
+  <rect x="5" y="10" width="6" height="2" fill="#6a442d"/>
+  <rect x="4" y="12" width="8" height="1" fill="#202a2e"/>
+
+  <!-- A compact sprout: deliberately symbolic, not a rendered live crop. -->
+  <rect x="7" y="5" width="2" height="5" fill="#3f7f35"/>
+  <rect x="8" y="4" width="1" height="2" fill="#6bb94b"/>
+  <rect x="4" y="5" width="3" height="1" fill="#5da640"/>
+  <rect x="5" y="6" width="3" height="1" fill="#73c653"/>
+  <rect x="9" y="6" width="3" height="1" fill="#4c9238"/>
+  <rect x="9" y="7" width="2" height="1" fill="#6fbd4e"/>
+  <rect x="7" y="5" width="1" height="1" fill="#a6e56f"/>
+
+  <!-- Red output-status lamp. -->
+  <rect x="12" y="3" width="1" height="1" fill="#f06a53"/>
+</svg>

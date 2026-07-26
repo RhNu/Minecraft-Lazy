@@ -154,6 +154,9 @@ repositories {
         url = uri("https://maven.blamejared.com")
         content {
             includeGroup("mezz.jei")
+            includeGroup("net.darkhax.bookshelf")
+            includeGroup("net.darkhax.botanypots")
+            includeGroup("net.darkhax.pricklemc")
         }
     }
     maven {
@@ -203,6 +206,15 @@ dependencies {
     compileOnly(
         "maven.modrinth:beyonddimensions:${property("beyond_dimensions_version")}",
     )
+    compileOnly(
+        "net.darkhax.botanypots:botanypots-neoforge-${property("minecraft_version")}:${property("botany_pots_version")}",
+    )
+    compileOnly(
+        "net.darkhax.bookshelf:bookshelf-neoforge-${property("minecraft_version")}:${property("bookshelf_version")}",
+    )
+    compileOnly(
+        "net.darkhax.pricklemc:prickle-neoforge-${property("minecraft_version")}:${property("prickle_version")}",
+    )
     integrationsRuntime(
         "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}",
     )
@@ -210,6 +222,18 @@ dependencies {
     integrationsRuntime("maven.modrinth:silent-lib:${property("silent_lib_version")}")
     integrationsRuntime(
         "maven.modrinth:beyonddimensions:${property("beyond_dimensions_version")}",
+    )
+    integrationsRuntime(
+        "net.darkhax.botanypots:botanypots-neoforge-${property("minecraft_version")}:${property("botany_pots_version")}",
+    )
+    integrationsRuntime(
+        "net.darkhax.bookshelf:bookshelf-neoforge-${property("minecraft_version")}:${property("bookshelf_version")}",
+    )
+    integrationsRuntime(
+        "net.darkhax.pricklemc:prickle-neoforge-${property("minecraft_version")}:${property("prickle_version")}",
+    )
+    integrationsRuntime(
+        "maven.modrinth:botany-pots-tiers:${property("botany_pots_tiers_version")}",
     )
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
     localRuntime("maven.modrinth:jade:${property("jade_version")}")
@@ -239,6 +263,8 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "curios_version_range" to project.property("curios_version_range"),
             "silent_gear_version_range" to project.property("silent_gear_version_range"),
             "beyond_dimensions_version_range" to project.property("beyond_dimensions_version_range"),
+            "botany_pots_version_range" to project.property("botany_pots_version_range"),
+            "botany_pots_tiers_version_range" to project.property("botany_pots_tiers_version_range"),
         )
 
     inputs.properties(replacements)

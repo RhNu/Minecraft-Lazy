@@ -266,6 +266,7 @@ internal object DataGeneration {
                 "lazy.repairer.maximumRepairPercent.desc",
                 "Maximum percentage of an item's maximum durability repaired per button press.",
             )
+            LanguageContributions.english().forEach(::add)
         }
     }
 
@@ -364,6 +365,7 @@ internal object DataGeneration {
                 "lazy.repairer.maximumRepairPercent.desc",
                 "每次按下按钮时，最多修复物品最大耐久的百分比。",
             )
+            LanguageContributions.chinese().forEach(::add)
         }
     }
 }

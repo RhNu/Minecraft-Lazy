@@ -8,6 +8,7 @@ import rhx.lazy.core.storage.NetworkStorageResult
 import rhx.lazy.feature.repairer.ItemRepairHookResult
 import rhx.lazy.feature.repairer.ItemRepairHooks
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
+import rhx.lazy.integration.botanypots.BotanyPotsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
 import rhx.lazy.integration.silentgear.SilentGearIntegrationModule
 import kotlin.test.Test
@@ -25,6 +26,7 @@ class IntegrationClassloadingTest {
             IntegrationManager(
                 listOf(
                     BeyondDimensionsIntegrationModule,
+                    BotanyPotsIntegrationModule,
                     SilentGearIntegrationModule,
                     CuriosIntegrationModule,
                 ),
@@ -55,10 +57,11 @@ class IntegrationClassloadingTest {
     }
 
     private companion object {
-        val OPTIONAL_MODS = listOf("beyonddimensions", "silentgear", "curios")
+        val OPTIONAL_MODS = listOf("beyonddimensions", "botanypots", "silentgear", "curios")
         val OPTIONAL_API_CLASSES =
             listOf(
                 "com.wintercogs.beyonddimensions.api.dimensionnet.DimensionsNet",
+                "net.darkhax.botanypots.common.api.context.BotanyPotContext",
                 "net.silentchaos512.gear.util.GearData",
                 "top.theillusivec4.curios.api.CuriosApi",
             )

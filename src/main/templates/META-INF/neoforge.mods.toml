@@ -61,5 +61,21 @@ ordering="AFTER"
 side="BOTH"
 reason="Enables direct item, fluid, and energy transfer to dimensional networks"
 
+[[dependencies.${mod_id}]]
+modId="botanypots"
+type="optional"
+versionRange="${botany_pots_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables the Planter integration machine"
+
+[[dependencies.${mod_id}]]
+modId="botanypotstiers"
+type="optional"
+versionRange="${botany_pots_tiers_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables tiered Botany Pot multipliers in the Planter"
+
 [modproperties.fzzy_config]
 fzzy_config="${mod_id}"
