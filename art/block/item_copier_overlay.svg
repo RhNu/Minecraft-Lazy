@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="16"
+     height="16"
+     viewBox="0 0 16 16"
+     shape-rendering="crispEdges">
+  <!-- Transparent overlay for machine_casing_base.svg. -->
+
+  <!-- Recessed copying plate. -->
+  <path fill="#3c494f"
+        d="M3 4h10v1h1v7h-1v1H3v-1H2V5h1z"/>
+  <rect x="3" y="4" width="10" height="1" fill="#829297"/>
+  <rect x="2" y="5" width="1" height="7" fill="#718087"/>
+  <rect x="3" y="12" width="10" height="1" fill="#364349"/>
+  <rect x="13" y="5" width="1" height="7" fill="#354248"/>
+  <rect x="3" y="5" width="10" height="7" fill="#46545a"/>
+
+  <!-- Source item and duplicated result. -->
+  <rect x="4" y="6" width="3" height="3" fill="#9156c9"/>
+  <rect x="4" y="6" width="2" height="1" fill="#d8b5ff"/>
+  <rect x="5" y="9" width="3" height="2" fill="#653692"/>
+  <rect x="6" y="8" width="2" height="2" fill="#b878ee"/>
+
+  <!-- Bright transfer arrow. -->
+  <rect x="8" y="7" width="2" height="1" fill="#a8fff1"/>
+  <rect x="9" y="6" width="1" height="3" fill="#12aeb4"/>
+  <rect x="10" y="7" width="1" height="1" fill="#12aeb4"/>
+
+  <!-- Output item, shifted to read as a second copy. -->
+  <rect x="10" y="8" width="2" height="2" fill="#653692"/>
+  <rect x="11" y="7" width="2" height="3" fill="#b878ee"/>
+  <rect x="11" y="7" width="2" height="1" fill="#e4c8ff"/>
+</svg>

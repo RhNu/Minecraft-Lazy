@@ -2,7 +2,7 @@
 
 ## 项目边界
 
-Lazy 当前提供模组入口、注册基础设施、修复器、缓冲器、能量电池、能量源、虚空网格维度、配套传送器，以及少量无业务含义的通用工具。其他物品、方块和维度仍属于后续内容工作，在设计确认前不得进入运行源码。
+Lazy 当前提供模组入口、注册基础设施、修复器、缓冲器、能量电池、能量源、物品复制器、虚空网格维度、配套传送器，以及少量无业务含义的通用工具。其他物品、方块和维度仍属于后续内容工作，在设计确认前不得进入运行源码。
 
 项目只面向 Minecraft 1.21.1 NeoForge，不承担 Fabric、Forge 或多加载器兼容层。Minecraft 小版本也是兼容边界的一部分，依赖升级不得隐式改变游戏版本。
 
@@ -21,6 +21,7 @@ rhx.lazy
 ├─ feature
 │  ├─ buffer
 │  ├─ energy
+│  ├─ itemcopier
 │  ├─ protection
 │  ├─ repairer
 │  ├─ rise
@@ -51,7 +52,7 @@ rhx.lazy
 
 注册项必须保留为 `DeferredBlock`、`DeferredItem` 或 `DeferredHolder` 等延迟持有者。不得在静态初始化或注册装配阶段提前取出游戏对象。供应器在真正的注册阶段解析其他延迟持有者是允许的，例如创建方块对应的 `BlockItem`。
 
-方块与对应物品由同一领域注册对象使用相同路径注册；自定义 `BlockItem` 通过 `core.registry.registerBlockItem` 在物品注册供应器内部延迟解析方块持有者。方块实体构建通过 `core.registry.buildType` 收敛 Minecraft 1.21.1 Java API 的空安全边界。能力注册由领域内的 `BufferCapabilities` 和 `EnergyCapabilities` 处理；全局创造模式标签页由 `LazyCreativeTabRegistry` 组合各领域物品。模组自有界面优先复用 LDLib2 的菜单类型，不为单个界面重复注册菜单和同步 payload。
+方块与对应物品由同一领域注册对象使用相同路径注册；自定义 `BlockItem` 通过 `core.registry.registerBlockItem` 在物品注册供应器内部延迟解析方块持有者。方块实体构建通过 `core.registry.buildType` 收敛 Minecraft 1.21.1 Java API 的空安全边界。能力注册由领域内的 `BufferCapabilities` 和 `EnergyCapabilities` 处理；物品复制器只查询邻接物品能力，不对外注册自身能力。全局创造模式标签页由 `LazyCreativeTabRegistry` 组合各领域物品。模组自有界面优先复用 LDLib2 的菜单类型，不为单个界面重复注册菜单和同步 payload。
 
 ## 事件总线与侧隔离
 

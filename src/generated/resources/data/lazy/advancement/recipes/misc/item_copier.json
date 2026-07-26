@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_iron_block": {
+      "conditions": {
+        "items": [
+          {
+            "items": "#c:storage_blocks/iron"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "lazy:item_copier"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_iron_block"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "lazy:item_copier"
+    ]
+  }
+}

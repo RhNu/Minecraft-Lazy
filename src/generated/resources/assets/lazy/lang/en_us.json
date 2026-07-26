@@ -2,6 +2,7 @@
   "biome.lazy.void": "Void",
   "block.lazy.buffer": "Buffer",
   "block.lazy.energy_source": "Energy Source",
+  "block.lazy.item_copier": "Item Copier",
   "block.lazy.planter": "Planter",
   "block.lazy.repairer": "Repairer",
   "curios.identifier.teleporter": "Teleporter",
@@ -29,6 +30,11 @@
   "gui.lazy.energy_source.network.description": "Pushes energy to the selected dimension network",
   "gui.lazy.energy_source.passive": "Passive",
   "gui.lazy.energy_source.passive.description": "Only allows adjacent devices to pull energy",
+  "gui.lazy.item_copier.interval": "%s ticks",
+  "gui.lazy.item_copier.interval.description": "Click to cycle the push interval",
+  "gui.lazy.item_copier.template.description": "Click with a carried item to mark it; click with an empty cursor to clear",
+  "gui.lazy.item_copier.template.empty": "No item selected",
+  "gui.lazy.item_copier.template.selected": "Copying: %s",
   "gui.lazy.planter.disabled": "Disabled",
   "gui.lazy.planter.downward": "Automatic downward output",
   "gui.lazy.planter.enabled": "Enabled",
@@ -94,6 +100,8 @@
   "tooltip.lazy.energy.max_transfer": "Max transfer: %s FE/t",
   "tooltip.lazy.energy_battery.use": "Sneak-use on an energy-capable block to transfer energy",
   "tooltip.lazy.energy_source.output_mode": "Use to configure the output mode (passive by default)",
+  "tooltip.lazy.item_copier.interval": "Push interval: %s ticks",
+  "tooltip.lazy.item_copier.template": "Template: %s",
   "tooltip.lazy.teleporter.return": "Return: %s @ %s, %s, %s",
   "tooltip.lazy.teleporter.target": "Target: %s @ %s, %s, %s"
 }

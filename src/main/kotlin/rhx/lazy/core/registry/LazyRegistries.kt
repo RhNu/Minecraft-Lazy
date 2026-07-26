@@ -3,6 +3,7 @@ package rhx.lazy.core.registry
 import net.neoforged.bus.api.IEventBus
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
+import rhx.lazy.feature.itemcopier.ItemCopierRegistries
 import rhx.lazy.feature.protection.ProtectionRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
@@ -15,6 +16,7 @@ internal object LazyRegistries {
             BufferRegistries,
             TeleporterRegistries,
             EnergyRegistries,
+            ItemCopierRegistries,
             RepairerRegistries,
             VoidWorldRegistries,
             LazyCreativeTabRegistry,

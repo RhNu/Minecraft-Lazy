@@ -2,6 +2,7 @@
   "biome.lazy.void": "虚空",
   "block.lazy.buffer": "缓冲器",
   "block.lazy.energy_source": "能量源",
+  "block.lazy.item_copier": "物品复制器",
   "block.lazy.planter": "种植机",
   "block.lazy.repairer": "修复器",
   "curios.identifier.teleporter": "传送器",
@@ -29,6 +30,11 @@
   "gui.lazy.energy_source.network.description": "向选中的维度网络推送能量",
   "gui.lazy.energy_source.passive": "被动",
   "gui.lazy.energy_source.passive.description": "仅允许相邻设备主动抽取能量",
+  "gui.lazy.item_copier.interval": "%s 刻",
+  "gui.lazy.item_copier.interval.description": "点击循环切换推送间隔",
+  "gui.lazy.item_copier.template.description": "鼠标携带物品时点击进行标记；空鼠标点击清空",
+  "gui.lazy.item_copier.template.empty": "未标记物品",
+  "gui.lazy.item_copier.template.selected": "正在复制：%s",
   "gui.lazy.planter.disabled": "已关闭",
   "gui.lazy.planter.downward": "自动向下输出",
   "gui.lazy.planter.enabled": "已开启",
@@ -94,6 +100,8 @@
   "tooltip.lazy.energy.max_transfer": "最大传输：%s FE/t",
   "tooltip.lazy.energy_battery.use": "潜行对支持能量的方块使用以传输能量",
   "tooltip.lazy.energy_source.output_mode": "使用以配置输出模式（默认被动）",
+  "tooltip.lazy.item_copier.interval": "推送间隔：%s 刻",
+  "tooltip.lazy.item_copier.template": "模板：%s",
   "tooltip.lazy.teleporter.return": "返回点：%s @ %s, %s, %s",
   "tooltip.lazy.teleporter.target": "目标点：%s @ %s, %s, %s"
 }

@@ -26,6 +26,7 @@ import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
+import rhx.lazy.feature.itemcopier.ItemCopierRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import rhx.lazy.feature.voidworld.VoidWorldBootstrap
@@ -114,6 +115,15 @@ internal object DataGeneration {
                 .define('C', Tags.Items.STORAGE_BLOCKS_COPPER)
                 .unlockedBy("has_copper_ingot", has(Tags.Items.INGOTS_COPPER))
                 .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ItemCopierRegistries.item.get())
+                .pattern("BBB")
+                .pattern("BCB")
+                .pattern("BBB")
+                .define('B', Tags.Items.STORAGE_BLOCKS_IRON)
+                .define('C', Items.CHEST)
+                .unlockedBy("has_iron_block", has(Tags.Items.STORAGE_BLOCKS_IRON))
+                .save(output)
         }
     }
 
@@ -126,6 +136,7 @@ internal object DataGeneration {
             basicItem(TeleporterRegistries.item.get())
             basicItem(EnergyRegistries.batteryItem.get())
             withExistingParent("energy_source", modLoc("block/energy_source"))
+            withExistingParent("item_copier", modLoc("block/item_copier"))
             withExistingParent("repairer", modLoc("block/repairer"))
         }
     }
@@ -137,6 +148,7 @@ internal object DataGeneration {
         override fun registerStatesAndModels() {
             simpleBlock(BufferRegistries.block.get())
             simpleBlock(EnergyRegistries.sourceBlock.get())
+            simpleBlock(ItemCopierRegistries.block.get())
             simpleBlock(RepairerRegistries.block.get())
         }
     }
@@ -156,6 +168,7 @@ internal object DataGeneration {
             override fun generate() {
                 add(BufferRegistries.block.get(), noDrop())
                 dropSelf(EnergyRegistries.sourceBlock.get())
+                add(ItemCopierRegistries.block.get(), noDrop())
                 dropSelf(RepairerRegistries.block.get())
             }
 
@@ -163,6 +176,7 @@ internal object DataGeneration {
                 mutableListOf(
                     BufferRegistries.block.get(),
                     EnergyRegistries.sourceBlock.get(),
+                    ItemCopierRegistries.block.get(),
                     RepairerRegistries.block.get(),
                 )
         }
@@ -174,6 +188,7 @@ internal object DataGeneration {
         override fun addTranslations() {
             addBlock({ BufferRegistries.block.get() }, "Buffer")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "Energy Source")
+            addBlock({ ItemCopierRegistries.block.get() }, "Item Copier")
             addBlock({ RepairerRegistries.block.get() }, "Repairer")
             addItem({ TeleporterRegistries.item.get() }, "Teleporter")
             addItem({ EnergyRegistries.batteryItem.get() }, "Energy Battery")
@@ -213,6 +228,16 @@ internal object DataGeneration {
             add("gui.lazy.energy_source.active.description", "Pushes energy to all six adjacent faces each tick")
             add("gui.lazy.energy_source.network", "Network push")
             add("gui.lazy.energy_source.network.description", "Pushes energy to the selected dimension network")
+            add("gui.lazy.item_copier.template.empty", "No item selected")
+            add("gui.lazy.item_copier.template.selected", "Copying: %s")
+            add(
+                "gui.lazy.item_copier.template.description",
+                "Click with a carried item to mark it; click with an empty cursor to clear",
+            )
+            add("gui.lazy.item_copier.interval", "%s ticks")
+            add("gui.lazy.item_copier.interval.description", "Click to cycle the push interval")
+            add("tooltip.lazy.item_copier.template", "Template: %s")
+            add("tooltip.lazy.item_copier.interval", "Push interval: %s ticks")
             add("message.lazy.energy_battery.transfer", "Energy transferred: %s FE")
             add("message.lazy.rise.not_found", "No open-sky block found above")
             add("message.lazy.rise.player_only", "This command can only be used by players")
@@ -274,6 +299,7 @@ internal object DataGeneration {
         override fun addTranslations() {
             addBlock({ BufferRegistries.block.get() }, "缓冲器")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "能量源")
+            addBlock({ ItemCopierRegistries.block.get() }, "物品复制器")
             addBlock({ RepairerRegistries.block.get() }, "修复器")
             addItem({ TeleporterRegistries.item.get() }, "传送器")
             addItem({ EnergyRegistries.batteryItem.get() }, "能量电池")
@@ -313,6 +339,13 @@ internal object DataGeneration {
             add("gui.lazy.energy_source.active.description", "每刻向六个相邻面推送能量")
             add("gui.lazy.energy_source.network", "网络推送")
             add("gui.lazy.energy_source.network.description", "向选中的维度网络推送能量")
+            add("gui.lazy.item_copier.template.empty", "未标记物品")
+            add("gui.lazy.item_copier.template.selected", "正在复制：%s")
+            add("gui.lazy.item_copier.template.description", "鼠标携带物品时点击进行标记；空鼠标点击清空")
+            add("gui.lazy.item_copier.interval", "%s 刻")
+            add("gui.lazy.item_copier.interval.description", "点击循环切换推送间隔")
+            add("tooltip.lazy.item_copier.template", "模板：%s")
+            add("tooltip.lazy.item_copier.interval", "推送间隔：%s 刻")
             add("message.lazy.energy_battery.transfer", "已传输能量：%s FE")
             add("message.lazy.rise.not_found", "未找到上方可见天空的位置")
             add("message.lazy.rise.player_only", "该命令只能由玩家执行")

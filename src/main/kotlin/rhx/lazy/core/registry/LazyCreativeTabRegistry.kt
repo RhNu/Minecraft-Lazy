@@ -9,6 +9,7 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import rhx.lazy.MOD_ID
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
+import rhx.lazy.feature.itemcopier.ItemCopierRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import java.util.function.Supplier
@@ -30,6 +31,7 @@ internal object LazyCreativeTabRegistry : RegistryModule {
                         output.accept(TeleporterRegistries.item.get())
                         output.accept(EnergyRegistries.batteryItem.get())
                         output.accept(EnergyRegistries.sourceItem.get())
+                        output.accept(ItemCopierRegistries.item.get())
                         output.accept(RepairerRegistries.item.get())
                     }.build()
             },
