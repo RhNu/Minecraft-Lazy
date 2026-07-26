@@ -42,7 +42,7 @@ internal object VoidWorldBootstrap {
         context.register(
             VoidWorldKeys.voidDimensionType,
             DimensionType(
-                OptionalLong.empty(),
+                OptionalLong.of(6000L),
                 true,
                 false,
                 false,
@@ -55,7 +55,7 @@ internal object VoidWorldBootstrap {
                 384,
                 BlockTags.INFINIBURN_OVERWORLD,
                 BuiltinDimensionTypes.OVERWORLD_EFFECTS,
-                0.5f,
+                0.0f,
                 DimensionType.MonsterSettings(false, false, ConstantInt.of(0), 0),
             ),
         )
