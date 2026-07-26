@@ -27,7 +27,7 @@ internal object BufferRegistries : RegistryModule {
             "buffer",
             Supplier {
                 BlockEntityType.Builder
-                    .of(::BufferBlockEntity, block.get())
+                    .of({ pos, state -> BufferBlockEntity(pos, state) }, block.get())
                     .buildType()
             },
         )

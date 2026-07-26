@@ -10,6 +10,8 @@ LDLib2 是范围 `[2.2.29,2.3.0)`、双端必需的外部模组依赖，不打�
 
 Curios API 9.5.1+1.21.1 是范围 `[9.5.1+1.21.1,10.0.0)`、双端必需的外部模组依赖，用于传送器装备槽位、自定义槽位校验与槽位物品查询。编译使用官方 API classifier，开发运行和发布环境加载完整 Curios 模组；Lazy 不打包 Curios，也不提供无 Curios 运行模式。
 
+Beyond Dimensions 0.7.26 是范围 `[0.7.26,0.8.0)`、双端可选的兼容依赖。编译通过 Modrinth Maven 使用 `compileOnly` 制品，普通开发运行和发布环境不自动携带该模组；`clientBeyondDimensions` 与 `serverBeyondDimensions` 运行配置用于显式验证安装后的物品、流体和 FE 网络交互。兼容入口只在检测到 `beyonddimensions` 后加载独立适配器，其余源码不得直接引用上游类型。
+
 ## 开发运行模组
 
 JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它们不会出现在 Lazy 的必需依赖声明中，也不会通过 Maven publication 传递给使用者。
@@ -40,6 +42,8 @@ GUI、HUD、UI binding/RPC 和方块实体托管优先使用 LDLib2。界面结�
 ## 常用流程
 
 `./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 刷新数据生成输出。`./gradlew runClient` 启动带 JEI 与 Jade 的开发客户端。发布前还要检查 Lazy JAR 不含 `com/lowdragmc/lowdraglib2`，并用 `dependencyInsight` 核对 Kotlin、Yoga 与 Taffy。
+
+Beyond Dimensions 兼容使用 `./gradlew runClientBeyondDimensions` 和 `./gradlew runServerBeyondDimensions` 验证；普通 `runClient`、`runServer` 与单元测试不包含该可选模组，用于持续检查无兼容依赖时的类加载安全性。
 
 ## Kotlin 代码风格
 

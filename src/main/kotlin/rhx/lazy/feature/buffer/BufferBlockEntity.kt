@@ -11,11 +11,16 @@ import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.ManagedBlockEntity
+import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkId
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkStorage
 import kotlin.math.min
 
 internal class BufferBlockEntity(
     pos: BlockPos,
     state: BlockState,
+    private val dimensionNetworkStorage: DimensionNetworkStorage = BeyondDimensionsIntegration,
 ) : ManagedBlockEntity(BufferRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
@@ -37,6 +42,14 @@ internal class BufferBlockEntity(
     @field:LazyManaged
     private var fluidTotal = 0
 
+    @field:Persisted
+    @field:LazyManaged
+    private var networkForwardingEnabled = false
+
+    @field:Persisted
+    @field:LazyManaged
+    private var dimensionNetworkId = INVALID_NETWORK_ID
+
     val itemHandler: IItemHandlerModifiable = BufferItemHandler()
     val fluidHandler: IFluidHandler = BufferFluidHandler()
 
@@ -46,6 +59,12 @@ internal class BufferBlockEntity(
     val totalFluidAmount: Int
         get() = fluidTotal
 
+    val isNetworkForwardingEnabled: Boolean
+        get() = networkForwardingEnabled
+
+    val boundDimensionNetworkId: Int?
+        get() = dimensionNetworkId.takeIf { it >= 0 }
+
     fun hasContents(): Boolean = totalItemCount > 0 || totalFluidAmount > 0
 
     fun clearContents(): Boolean {
@@ -53,6 +72,20 @@ internal class BufferBlockEntity(
         clearWithoutNotification()
         contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD, FLUIDS_FIELD)
         return true
+    }
+
+    fun enableNetworkForwarding(networkId: DimensionNetworkId) {
+        networkForwardingEnabled = true
+        dimensionNetworkId = networkId.value
+        networkStateChanged()
+        flushContentsToNetwork()
+    }
+
+    fun disableNetworkForwarding() {
+        if (!networkForwardingEnabled && dimensionNetworkId == INVALID_NETWORK_ID) return
+        networkForwardingEnabled = false
+        dimensionNetworkId = INVALID_NETWORK_ID
+        networkStateChanged()
     }
 
     fun getItemTemplate(slot: Int): ItemStack {
@@ -78,6 +111,10 @@ internal class BufferBlockEntity(
     ) {
         super.loadAdditional(tag, registries)
         normalizeContents()
+        if (networkForwardingEnabled && dimensionNetworkId < 0) {
+            networkForwardingEnabled = false
+            dimensionNetworkId = INVALID_NETWORK_ID
+        }
     }
 
     private fun contentsChanged(vararg fields: String) {
@@ -86,6 +123,91 @@ internal class BufferBlockEntity(
         fields.forEach(::markDirty)
         markDirty(ITEM_TOTAL_FIELD)
         markDirty(FLUID_TOTAL_FIELD)
+    }
+
+    private fun networkStateChanged() {
+        markDirty(NETWORK_FORWARDING_FIELD)
+        markDirty(DIMENSION_NETWORK_ID_FIELD)
+    }
+
+    private fun networkIdOrNull(): DimensionNetworkId? =
+        if (networkForwardingEnabled && dimensionNetworkId >= 0) {
+            DimensionNetworkId(dimensionNetworkId)
+        } else {
+            null
+        }
+
+    private fun flushContentsToNetwork() {
+        val networkId = networkIdOrNull() ?: return
+        if (level?.isClientSide == true) return
+
+        var itemsChanged = false
+        var fluidsChanged = false
+        var failed = false
+
+        for (slot in itemTemplates.indices) {
+            val template = itemTemplates[slot]
+            val stored = itemCounts[slot]
+            if (template.isEmpty || stored <= 0) continue
+
+            when (
+                val result =
+                    dimensionNetworkStorage.insertItem(
+                        networkId,
+                        template.copyWithCount(stored),
+                        simulate = false,
+                    )
+            ) {
+                is DimensionNetworkResult.Success -> {
+                    val remainder = result.value.count.coerceIn(0, stored)
+                    if (remainder != stored) {
+                        itemCounts[slot] = remainder
+                        if (remainder == 0) itemTemplates[slot] = ItemStack.EMPTY
+                        itemsChanged = true
+                    }
+                }
+
+                else -> {
+                    failed = true
+                    break
+                }
+            }
+        }
+
+        if (!failed) {
+            for (tank in fluids.indices) {
+                val stored = fluids[tank]
+                if (stored.isEmpty || stored.amount <= 0) continue
+
+                when (val result = dimensionNetworkStorage.insertFluid(networkId, stored, simulate = false)) {
+                    is DimensionNetworkResult.Success -> {
+                        val remainder = result.value.amount.coerceIn(0, stored.amount)
+                        if (remainder != stored.amount) {
+                            fluids[tank] =
+                                if (remainder == 0) {
+                                    FluidStack.EMPTY
+                                } else {
+                                    stored.copyWithAmount(remainder)
+                                }
+                            fluidsChanged = true
+                        }
+                    }
+
+                    else -> {
+                        failed = true
+                        break
+                    }
+                }
+            }
+        }
+
+        if (itemsChanged || fluidsChanged) {
+            val fields = mutableListOf<String>()
+            if (itemsChanged) fields += listOf(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
+            if (fluidsChanged) fields += FLUIDS_FIELD
+            contentsChanged(*fields.toTypedArray())
+        }
+        if (failed) disableNetworkForwarding()
     }
 
     private fun clearWithoutNotification() {
@@ -153,8 +275,36 @@ internal class BufferBlockEntity(
             simulate: Boolean,
         ): ItemStack {
             validateItemSlot(slot)
-            if (stack.isEmpty || !isItemValid(slot, stack)) return stack
+            if (stack.isEmpty) return stack
+            if (networkIdOrNull() == null && !isItemValid(slot, stack)) return stack
 
+            val forwardedRemainder = forwardItem(stack, simulate)
+            if (!isItemLocallyValid(slot, forwardedRemainder)) return forwardedRemainder
+            return insertItemLocally(slot, forwardedRemainder, simulate)
+        }
+
+        private fun forwardItem(
+            stack: ItemStack,
+            simulate: Boolean,
+        ): ItemStack {
+            val networkId = networkIdOrNull() ?: return stack
+            if (level?.isClientSide == true) return stack
+
+            return when (val result = dimensionNetworkStorage.insertItem(networkId, stack, simulate)) {
+                is DimensionNetworkResult.Success -> result.value
+                else -> {
+                    if (!simulate) disableNetworkForwarding()
+                    stack
+                }
+            }
+        }
+
+        private fun insertItemLocally(
+            slot: Int,
+            stack: ItemStack,
+            simulate: Boolean,
+        ): ItemStack {
+            if (stack.isEmpty) return ItemStack.EMPTY
             val inserted = min(stack.count, ITEM_SLOT_CAPACITY - itemCounts[slot])
             if (inserted <= 0) return stack
             if (!simulate) {
@@ -197,8 +347,16 @@ internal class BufferBlockEntity(
             stack: ItemStack,
         ): Boolean {
             validateItemSlot(slot)
+            return networkIdOrNull() != null || isItemLocallyValid(slot, stack)
+        }
+
+        private fun isItemLocallyValid(
+            slot: Int,
+            stack: ItemStack,
+        ): Boolean {
             val template = itemTemplates[slot]
-            return !stack.isEmpty && (template.isEmpty || ItemStack.isSameItemSameComponents(template, stack))
+            return !stack.isEmpty &&
+                (template.isEmpty || ItemStack.isSameItemSameComponents(template, stack))
         }
 
         override fun setStackInSlot(
@@ -241,6 +399,32 @@ internal class BufferBlockEntity(
         }
 
         override fun fill(
+            resource: FluidStack,
+            action: IFluidHandler.FluidAction,
+        ): Int {
+            if (resource.isEmpty || resource.amount <= 0) return 0
+            val forwardedRemainder = forwardFluid(resource, action.simulate())
+            val forwarded = resource.amount - forwardedRemainder.amount
+            return forwarded + fillLocally(forwardedRemainder, action)
+        }
+
+        private fun forwardFluid(
+            resource: FluidStack,
+            simulate: Boolean,
+        ): FluidStack {
+            val networkId = networkIdOrNull() ?: return resource
+            if (level?.isClientSide == true) return resource
+
+            return when (val result = dimensionNetworkStorage.insertFluid(networkId, resource, simulate)) {
+                is DimensionNetworkResult.Success -> result.value
+                else -> {
+                    if (!simulate) disableNetworkForwarding()
+                    resource
+                }
+            }
+        }
+
+        private fun fillLocally(
             resource: FluidStack,
             action: IFluidHandler.FluidAction,
         ): Int {
@@ -319,10 +503,13 @@ internal class BufferBlockEntity(
         internal const val MANAGED_DATA_KEY = "managed"
         internal const val ITEM_TOTAL_FIELD = "itemTotal"
         internal const val FLUID_TOTAL_FIELD = "fluidTotal"
+        internal const val NETWORK_FORWARDING_FIELD = "networkForwardingEnabled"
+        internal const val DIMENSION_NETWORK_ID_FIELD = "dimensionNetworkId"
 
         private const val ITEM_TEMPLATES_FIELD = "itemTemplates"
         private const val ITEM_COUNTS_FIELD = "itemCounts"
         private const val FLUIDS_FIELD = "fluids"
+        private const val INVALID_NETWORK_ID = -1
     }
 }
 

@@ -12,6 +12,8 @@ plugins {
 }
 
 val modId = property("mod_id").toString()
+val localRuntime by configurations.creating
+val beyondDimensionsRuntime by configurations.creating
 
 version = property("mod_version").toString()
 group = property("mod_group_id").toString()
@@ -38,8 +40,20 @@ sourceSets.main {
     }
 }
 
+val beyondDimensionsRun by sourceSets.creating {
+    runtimeClasspath += sourceSets.main.get().output
+}
+
+configurations.named(beyondDimensionsRun.implementationConfigurationName) {
+    extendsFrom(configurations.implementation.get())
+}
+configurations.named(beyondDimensionsRun.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.runtimeOnly.get(), localRuntime, beyondDimensionsRuntime)
+}
+
 neoForge {
     version = property("neo_version").toString()
+    addModdingDependenciesTo(beyondDimensionsRun)
 
     parchment {
         minecraftVersion = property("parchment_minecraft_version").toString()
@@ -55,6 +69,19 @@ neoForge {
         create("server") {
             server()
             programArgument("--nogui")
+            systemProperty("neoforge.enabledGameTestNamespaces", modId)
+        }
+
+        create("clientBeyondDimensions") {
+            client()
+            sourceSet = beyondDimensionsRun
+            systemProperty("neoforge.enabledGameTestNamespaces", modId)
+        }
+
+        create("serverBeyondDimensions") {
+            server()
+            programArgument("--nogui")
+            sourceSet = beyondDimensionsRun
             systemProperty("neoforge.enabledGameTestNamespaces", modId)
         }
 
@@ -94,7 +121,6 @@ neoForge {
     }
 }
 
-val localRuntime by configurations.creating
 configurations.runtimeClasspath {
     extendsFrom(localRuntime)
 }
@@ -173,10 +199,16 @@ dependencies {
     )
     compileOnly("maven.modrinth:silent-gear:${property("silent_gear_version")}")
     compileOnly("maven.modrinth:silent-lib:${property("silent_lib_version")}")
+    compileOnly(
+        "maven.modrinth:beyonddimensions:${property("beyond_dimensions_version")}",
+    )
     runtimeOnly(
         "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}",
     )
 
+    beyondDimensionsRuntime(
+        "maven.modrinth:beyonddimensions:${property("beyond_dimensions_version")}",
+    )
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
     localRuntime("maven.modrinth:jade:${property("jade_version")}")
 
@@ -207,6 +239,7 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
             "curios_version_range" to project.property("curios_version_range"),
             "silent_gear_version_range" to project.property("silent_gear_version_range"),
+            "beyond_dimensions_version_range" to project.property("beyond_dimensions_version_range"),
         )
 
     inputs.properties(replacements)

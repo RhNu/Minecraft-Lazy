@@ -42,7 +42,7 @@ internal object EnergyRegistries : RegistryModule {
             "energy_source",
             Supplier {
                 BlockEntityType.Builder
-                    .of(::EnergySourceBlockEntity, sourceBlock.get())
+                    .of({ pos, state -> EnergySourceBlockEntity(pos, state) }, sourceBlock.get())
                     .buildType()
             },
         )

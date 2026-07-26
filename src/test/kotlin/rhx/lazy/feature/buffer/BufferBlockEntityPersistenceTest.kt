@@ -10,6 +10,7 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
+import rhx.lazy.integration.beyonddimensions.FakeDimensionNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -79,12 +80,19 @@ class BufferBlockEntityPersistenceTest {
 
     @Test
     fun `buffer block item carries managed data for placement`() {
-        val source = newBuffer()
+        val source =
+            newBuffer(
+                FakeDimensionNetworkStorage().apply {
+                    itemCapacity = 0
+                    fluidCapacity = 0
+                },
+            )
         source.itemHandler.insertItem(0, ItemStack(Items.EMERALD, 180), false)
         source.fluidHandler.fill(
             FluidStack(Fluids.LAVA, 32_000),
             IFluidHandler.FluidAction.EXECUTE,
         )
+        source.enableNetworkForwarding(FakeDimensionNetworkStorage.TEST_NETWORK_ID)
 
         val dropped = ItemStack(BufferRegistries.item.get())
         source.saveToItem(dropped, registries)
@@ -95,12 +103,17 @@ class BufferBlockEntityPersistenceTest {
 
         assertEquals(180, restored.getItemCount(0))
         assertEquals(32_000, restored.getFluid(0).amount)
+        assertTrue(restored.isNetworkForwardingEnabled)
+        assertEquals(FakeDimensionNetworkStorage.TEST_NETWORK_ID.value, restored.boundDimensionNetworkId)
     }
 
-    private fun newBuffer(): BufferBlockEntity =
+    private fun newBuffer(): BufferBlockEntity = newBuffer(FakeDimensionNetworkStorage(isAvailable = false))
+
+    private fun newBuffer(storage: FakeDimensionNetworkStorage): BufferBlockEntity =
         BufferBlockEntity(
             BlockPos.ZERO,
             BufferRegistries.block.get().defaultBlockState(),
+            storage,
         )
 
     @Suppress("UNCHECKED_CAST")

@@ -52,5 +52,13 @@ ordering="AFTER"
 side="BOTH"
 reason="Restores Silent Gear state after repairs"
 
+[[dependencies.${mod_id}]]
+modId="beyonddimensions"
+type="optional"
+versionRange="${beyond_dimensions_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables direct item, fluid, and energy transfer to dimensional networks"
+
 [modproperties.fzzy_config]
 fzzy_config="${mod_id}"

@@ -26,6 +26,7 @@ rhx.lazy
 │  ├─ teleporter
 │  └─ voidworld
 └─ integration
+   ├─ beyonddimensions
    └─ curios
       └─ client
 ```
@@ -34,6 +35,7 @@ rhx.lazy
 - `core` 保存经过跨领域复用证明的 Minecraft 扩展、公共基类，以及命令、数据生成和注册的全局装配入口。
 - `feature` 使用垂直切片组织业务；方块、物品、方块实体、界面、事件、配置和注册跟随各自领域，不再按 Minecraft 类型横向分包。
 - `integration` 保存第三方模组适配。集成可以依赖 `core` 和 `feature`，业务领域不得反向依赖集成。
+- 可选集成使用只包含 Minecraft/NeoForge 类型的内部门面隔离第三方符号；具体适配器只能在确认对应模组已加载后解析。当前 Beyond Dimensions 门面以网络 ID 为边界，包装物品、流体和 FE 的查询、模拟、插入与提取，不承担网络成员和权限管理。
 - `feature.teleporter` 可以依赖独立的 `feature.voidworld`；其他跨领域依赖应保持显式且数量有限。
 - 当前没有对外公开的扩展契约，因此不创建空的 `api` 包。出现真实外部调用方后再定义稳定 API。
 

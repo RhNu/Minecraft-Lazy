@@ -22,11 +22,15 @@ import dev.vfyjxf.taffy.style.AlignContent
 import dev.vfyjxf.taffy.style.AlignItems
 import dev.vfyjxf.taffy.style.TaffyPosition
 import net.minecraft.network.chat.Component
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import rhx.lazy.core.blockEntityOrNull
+import rhx.lazy.core.displayActionBar
 import rhx.lazy.core.lazyId
+import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
 
 internal object BufferUI {
     private val stylesheet = lazyId("lss/buffer.lss")
@@ -35,6 +39,7 @@ internal object BufferUI {
         lateinit var confirmationLayer: UIElement
         lateinit var clearButton: com.lowdragmc.lowdraglib2.gui.ui.elements.Button
         val model = BufferUiModel(holder)
+        val networkControlsVisible = BeyondDimensionsIntegration.isAvailable
 
         val root =
             element(
@@ -171,6 +176,28 @@ internal object BufferUI {
                         cls = { +"lazy-buffer__actions" }
                     },
                 ) {
+                    label(
+                        {
+                            visible = networkControlsVisible
+                            cls = { +"lazy-buffer__network-status" }
+                        },
+                    ) {
+                        bind(
+                            componentBinding(model::networkForwardingStatus),
+                        )
+                    }
+                    button(
+                        {
+                            visible = networkControlsVisible
+                            text = Component.translatable("gui.lazy.buffer.network_forwarding.toggle")
+                            cls = { +"lazy-buffer__network-toggle" }
+                            onServerClick = {
+                                if (model.isValid()) {
+                                    model.toggleNetworkForwarding()
+                                }
+                            }
+                        },
+                    )
                     clearButton =
                         button(
                             {
@@ -296,6 +323,50 @@ internal object BufferUI {
 
         fun clearContents() {
             blockEntity?.clearContents()
+        }
+
+        fun networkForwardingStatus(): Component =
+            Component.translatable(
+                if (blockEntity?.isNetworkForwardingEnabled == true) {
+                    "gui.lazy.buffer.network_forwarding.enabled"
+                } else {
+                    "gui.lazy.buffer.network_forwarding.disabled"
+                },
+            )
+
+        fun toggleNetworkForwarding() {
+            val entity = blockEntity ?: return
+            val player = holder.player as? ServerPlayer ?: return
+            if (entity.isNetworkForwardingEnabled) {
+                entity.disableNetworkForwarding()
+                player.displayActionBar(
+                    "message.lazy.buffer.network_forwarding",
+                    Component.translatable("gui.lazy.buffer.network_forwarding.disabled"),
+                )
+                return
+            }
+
+            when (val result = BeyondDimensionsIntegration.primaryNetwork(player)) {
+                is DimensionNetworkResult.Success -> {
+                    entity.enableNetworkForwarding(result.value)
+                    if (entity.isNetworkForwardingEnabled) {
+                        player.displayActionBar(
+                            "message.lazy.buffer.network_forwarding",
+                            Component.translatable("gui.lazy.buffer.network_forwarding.enabled"),
+                        )
+                    } else {
+                        player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
+                    }
+                }
+
+                DimensionNetworkResult.NetworkNotFound -> {
+                    player.displayActionBar("message.lazy.beyond_dimensions.no_primary_network")
+                }
+
+                else -> {
+                    player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
+                }
+            }
         }
 
         fun isValid(): Boolean {

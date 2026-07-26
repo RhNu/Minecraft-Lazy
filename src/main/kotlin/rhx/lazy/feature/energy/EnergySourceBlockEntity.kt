@@ -12,29 +12,93 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.energy.IEnergyStorage
 import rhx.lazy.core.ManagedBlockEntity
+import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkId
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkStorage
 import java.util.EnumMap
 
 internal class EnergySourceBlockEntity(
     pos: BlockPos,
     state: BlockState,
+    private val dimensionNetworkStorage: DimensionNetworkStorage = BeyondDimensionsIntegration,
 ) : ManagedBlockEntity(EnergyRegistries.sourceBlockEntity.get(), pos, state) {
     val energyStorage: IEnergyStorage = InfiniteEnergyStorage()
 
     @field:Persisted
     @field:LazyManaged
     private var activePushEnabled = false
+
+    @field:Persisted
+    @field:LazyManaged
+    private var networkPushEnabled = false
+
+    @field:Persisted
+    @field:LazyManaged
+    private var dimensionNetworkId = INVALID_NETWORK_ID
+
     private val neighborEnergyCaches =
         EnumMap<Direction, BlockCapabilityCache<IEnergyStorage, Direction?>>(Direction::class.java)
 
     fun isActivePushEnabled(): Boolean = activePushEnabled
 
-    fun toggleActivePush(): Boolean {
-        activePushEnabled = !activePushEnabled
-        markDirty(ACTIVE_PUSH_FIELD)
-        return activePushEnabled
+    fun isNetworkPushEnabled(): Boolean = networkPushEnabled
+
+    fun outputMode(): EnergyOutputMode =
+        when {
+            activePushEnabled && networkPushEnabled -> EnergyOutputMode.BOTH
+            activePushEnabled -> EnergyOutputMode.ADJACENT
+            networkPushEnabled -> EnergyOutputMode.NETWORK
+            else -> EnergyOutputMode.OFF
+        }
+
+    fun nextModeNeedsNetwork(): Boolean =
+        dimensionNetworkStorage.isAvailable &&
+            outputMode() == EnergyOutputMode.ADJACENT
+
+    fun cycleOutputMode(primaryNetworkId: DimensionNetworkId? = null): EnergyOutputMode? {
+        if (!dimensionNetworkStorage.isAvailable) {
+            activePushEnabled = !activePushEnabled
+            networkPushEnabled = false
+            dimensionNetworkId = INVALID_NETWORK_ID
+            outputStateChanged()
+            return outputMode()
+        }
+
+        when (outputMode()) {
+            EnergyOutputMode.OFF -> {
+                activePushEnabled = true
+                networkPushEnabled = false
+                dimensionNetworkId = INVALID_NETWORK_ID
+            }
+
+            EnergyOutputMode.ADJACENT -> {
+                val networkId = primaryNetworkId ?: return null
+                activePushEnabled = false
+                networkPushEnabled = true
+                dimensionNetworkId = networkId.value
+            }
+
+            EnergyOutputMode.NETWORK -> {
+                activePushEnabled = true
+                networkPushEnabled = true
+            }
+
+            EnergyOutputMode.BOTH -> {
+                activePushEnabled = false
+                networkPushEnabled = false
+                dimensionNetworkId = INVALID_NETWORK_ID
+            }
+        }
+        outputStateChanged()
+        return outputMode()
     }
 
     fun onServerTick() {
+        if (networkPushEnabled) {
+            pushToDimensionNetwork()
+        }
+
         if (!activePushEnabled) return
         val serverLevel = level as? ServerLevel ?: return
 
@@ -52,6 +116,10 @@ internal class EnergySourceBlockEntity(
     ) {
         super.loadAdditional(tag, registries)
         neighborEnergyCaches.clear()
+        if (networkPushEnabled && dimensionNetworkId < 0) {
+            networkPushEnabled = false
+            dimensionNetworkId = INVALID_NETWORK_ID
+        }
     }
 
     override fun setRemoved() {
@@ -74,7 +142,51 @@ internal class EnergySourceBlockEntity(
             )
         }
 
+    private fun pushToDimensionNetwork() {
+        val networkId =
+            if (dimensionNetworkId >= 0) {
+                DimensionNetworkId(dimensionNetworkId)
+            } else {
+                disableNetworkPush()
+                return
+            }
+
+        when (
+            dimensionNetworkStorage.insertEnergy(
+                networkId,
+                ENERGY_TRANSFER_LIMIT.toLong(),
+                simulate = false,
+            )
+        ) {
+            is DimensionNetworkResult.Success -> Unit
+            else -> disableNetworkPush()
+        }
+    }
+
+    private fun disableNetworkPush() {
+        if (!networkPushEnabled && dimensionNetworkId == INVALID_NETWORK_ID) return
+        networkPushEnabled = false
+        dimensionNetworkId = INVALID_NETWORK_ID
+        outputStateChanged()
+    }
+
+    private fun outputStateChanged() {
+        markDirty(ACTIVE_PUSH_FIELD)
+        markDirty(NETWORK_PUSH_FIELD)
+        markDirty(DIMENSION_NETWORK_ID_FIELD)
+    }
+
     private companion object {
         const val ACTIVE_PUSH_FIELD = "activePushEnabled"
+        const val NETWORK_PUSH_FIELD = "networkPushEnabled"
+        const val DIMENSION_NETWORK_ID_FIELD = "dimensionNetworkId"
+        const val INVALID_NETWORK_ID = -1
     }
+}
+
+internal enum class EnergyOutputMode {
+    OFF,
+    ADJACENT,
+    NETWORK,
+    BOTH,
 }

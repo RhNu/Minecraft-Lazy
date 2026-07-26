@@ -2,6 +2,7 @@ package rhx.lazy.feature.energy
 
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.ItemInteractionResult
@@ -21,6 +22,8 @@ import rhx.lazy.core.displayActionBar
 import rhx.lazy.core.serverTicker
 import rhx.lazy.core.sidedItemUseResult
 import rhx.lazy.core.sidedUseResult
+import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegration
+import rhx.lazy.integration.beyonddimensions.DimensionNetworkResult
 
 internal class EnergySourceBlock :
     Block(
@@ -62,16 +65,29 @@ internal class EnergySourceBlock :
         val blockEntity = level.blockEntityOrNull(pos, EnergyRegistries.sourceBlockEntity.get()) ?: return false
         if (level.isClientSide) return true
 
-        val enabled = blockEntity.toggleActivePush()
-        val stateKey =
-            if (enabled) {
-                "message.lazy.energy_source.active_push.enabled"
+        val serverPlayer = player as? ServerPlayer ?: return false
+        val primaryNetworkId =
+            if (blockEntity.nextModeNeedsNetwork()) {
+                when (val result = BeyondDimensionsIntegration.primaryNetwork(serverPlayer)) {
+                    is DimensionNetworkResult.Success -> result.value
+                    DimensionNetworkResult.NetworkNotFound -> {
+                        player.displayActionBar("message.lazy.beyond_dimensions.no_primary_network")
+                        return true
+                    }
+
+                    else -> {
+                        player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
+                        return true
+                    }
+                }
             } else {
-                "message.lazy.energy_source.active_push.disabled"
+                null
             }
+
+        val mode = blockEntity.cycleOutputMode(primaryNetworkId) ?: return true
         player.displayActionBar(
-            "message.lazy.energy_source.active_push",
-            Component.translatable(stateKey),
+            "message.lazy.energy_source.output_mode",
+            Component.translatable(mode.translationKey),
         )
         return true
     }
@@ -82,3 +98,12 @@ internal class EnergySourceBlock :
         blockEntityType: BlockEntityType<T>,
     ): BlockEntityTicker<T>? = level.serverTicker(blockEntityType, EnergyRegistries.sourceBlockEntity.get()) { onServerTick() }
 }
+
+private val EnergyOutputMode.translationKey: String
+    get() =
+        when (this) {
+            EnergyOutputMode.OFF -> "message.lazy.energy_source.output_mode.off"
+            EnergyOutputMode.ADJACENT -> "message.lazy.energy_source.output_mode.adjacent"
+            EnergyOutputMode.NETWORK -> "message.lazy.energy_source.output_mode.network"
+            EnergyOutputMode.BOTH -> "message.lazy.energy_source.output_mode.both"
+        }
