@@ -1,38 +1,48 @@
 package rhx.lazy.feature.rise
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.phys.Vec3
+import rhx.lazy.core.teleport.PlayerLandingResolver
 
 internal object RiseTargetFinder {
     /**
-     * Finds the first support block above [start] with two clear blocks above it and sky visibility.
+     * Finds the first player-sized landing position above [start] with sky visibility.
      * The scan is bounded by the world's build height, so command execution cannot run forever.
      */
     fun find(
         level: ServerLevel,
         start: BlockPos,
-    ): BlockPos? {
+    ): Vec3? {
         val firstY = start.y.coerceAtLeast(level.minBuildHeight)
-        val lastY = level.maxBuildHeight - 3
+        val lastY = level.maxBuildHeight - 1
+        if (firstY > lastY) return null
+
+        return findInColumn(
+            x = start.x,
+            z = start.z,
+            firstY = firstY,
+            lastY = lastY,
+            resolveLanding = { pos -> PlayerLandingResolver.find(level, pos) },
+            canSeeSky = level::canSeeSky,
+        )
+    }
+
+    internal fun findInColumn(
+        x: Int,
+        z: Int,
+        firstY: Int,
+        lastY: Int,
+        resolveLanding: (BlockPos) -> Vec3?,
+        canSeeSky: (BlockPos) -> Boolean,
+    ): Vec3? {
         if (firstY > lastY) return null
 
         for (y in firstY..lastY) {
-            val candidate = BlockPos(start.x, y, start.z)
-            if (isValid(level, candidate)) return candidate
+            val landing = resolveLanding(BlockPos(x, y, z)) ?: continue
+            val skyCheckPos = BlockPos.containing(landing).above()
+            if (canSeeSky(skyCheckPos)) return landing
         }
         return null
-    }
-
-    private fun isValid(
-        level: ServerLevel,
-        support: BlockPos,
-    ): Boolean {
-        if (!level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)) return false
-
-        val feet = support.above()
-        return level.isEmptyBlock(feet) &&
-            level.isEmptyBlock(feet.above()) &&
-            level.canSeeSky(feet)
     }
 }

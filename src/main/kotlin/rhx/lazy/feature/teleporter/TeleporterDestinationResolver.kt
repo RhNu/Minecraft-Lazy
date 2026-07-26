@@ -2,14 +2,11 @@ package rhx.lazy.feature.teleporter
 
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel
-import net.minecraft.tags.BlockTags
 import net.minecraft.world.entity.EntityType
-import net.minecraft.world.entity.vehicle.DismountHelper
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
-import kotlin.math.ceil
-import kotlin.math.floor
+import rhx.lazy.core.teleport.PlayerLandingResolver
 
 /**
  * Finds a player-sized, vanilla-compatible landing position and optionally builds a transactional
@@ -86,23 +83,7 @@ internal class TeleporterDestinationResolver(
     private fun findSafePosition(
         level: ServerLevel,
         pos: BlockPos,
-    ): Vec3? {
-        if (!isCandidateWithinBuildHeight(level, pos)) return null
-        val stateAtPos = level.getBlockState(pos)
-        val stateBelow = level.getBlockState(pos.below())
-        if (isUnsafe(stateAtPos) || isUnsafe(stateBelow) || !stateBelow.fluidState.isEmpty) return null
-
-        val position =
-            DismountHelper.findSafeDismountLocation(
-                EntityType.PLAYER,
-                level,
-                pos,
-                true,
-            ) ?: return null
-
-        if (position.y + EntityType.PLAYER.dimensions.height > level.maxBuildHeight) return null
-        return if (hasAllowedBodySpace(level, position)) position else null
-    }
+    ): Vec3? = PlayerLandingResolver.find(level, pos)
 
     private fun hasClearBodySpace(
         level: ServerLevel,
@@ -113,7 +94,7 @@ internal class TeleporterDestinationResolver(
         val stateAtPos = level.getBlockState(pos)
         val abovePos = pos.above()
         val stateAbove = level.getBlockState(abovePos)
-        if (isUnsafe(stateAtPos) || isUnsafe(stateAbove)) return false
+        if (PlayerLandingResolver.isUnsafe(stateAtPos) || PlayerLandingResolver.isUnsafe(stateAbove)) return false
         if (!stateAtPos.fluidState.isEmpty || !stateAbove.fluidState.isEmpty) return false
         if (!stateAtPos.getCollisionShape(level, pos).isEmpty || !stateAbove.getCollisionShape(level, abovePos).isEmpty) {
             return false
@@ -124,31 +105,6 @@ internal class TeleporterDestinationResolver(
             level.getBlockCollisions(null, bodyBox).none { !it.isEmpty }
     }
 
-    private fun hasAllowedBodySpace(
-        level: ServerLevel,
-        position: Vec3,
-    ): Boolean {
-        val bodyBox = EntityType.PLAYER.dimensions.makeBoundingBox(position)
-        val minX = floor(bodyBox.minX).toInt()
-        val maxX = ceil(bodyBox.maxX).toInt() - 1
-        val minY = floor(bodyBox.minY).toInt()
-        val maxY = ceil(bodyBox.maxY).toInt() - 1
-        val minZ = floor(bodyBox.minZ).toInt()
-        val maxZ = ceil(bodyBox.maxZ).toInt() - 1
-
-        val mutablePos = BlockPos.MutableBlockPos()
-        for (x in minX..maxX) {
-            for (y in minY..maxY) {
-                for (z in minZ..maxZ) {
-                    mutablePos.set(x, y, z)
-                    val state = level.getBlockState(mutablePos)
-                    if (!state.fluidState.isEmpty || isUnsafe(state)) return false
-                }
-            }
-        }
-        return true
-    }
-
     private fun isCandidateWithinBuildHeight(
         level: ServerLevel,
         pos: BlockPos,
@@ -156,12 +112,6 @@ internal class TeleporterDestinationResolver(
         pos.y > level.minBuildHeight &&
             pos.y < level.maxBuildHeight &&
             pos.y + 1 < level.maxBuildHeight
-
-    private fun isUnsafe(state: BlockState): Boolean =
-        state.`is`(BlockTags.PORTALS) ||
-            state.`is`(BlockTags.INVALID_SPAWN_INSIDE) ||
-            state.`is`(Blocks.COBWEB) ||
-            EntityType.PLAYER.isBlockDangerous(state)
 
     private fun createSafetyPlatform(
         level: ServerLevel,
