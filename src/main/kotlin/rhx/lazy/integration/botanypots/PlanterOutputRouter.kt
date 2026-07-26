@@ -289,16 +289,6 @@ internal class PlanterOutputRouter(
             validateOutputSlot(slot)
             val stored = outputs[slot]
             val normalized = normalizeOutput(stack)
-            if (
-                !normalized.isEmpty &&
-                (
-                    stored.isEmpty ||
-                        !ItemStack.isSameItemSameComponents(stored, normalized) ||
-                        normalized.count > stored.count
-                )
-            ) {
-                return
-            }
             if (ItemStack.matches(stored, normalized)) return
             outputs[slot] = normalized
             markOutputsDirty()

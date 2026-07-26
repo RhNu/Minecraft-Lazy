@@ -6,14 +6,34 @@ import net.minecraft.world.item.Items
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PlanterOutputRouterTest {
+    @Test
+    fun `output handler restores a stack after a slot implementation temporarily clears it`() {
+        val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
+        val router = createRouter(outputs = outputs)
+        val original = ItemStack(Items.DIAMOND, 20)
+
+        router.outputHandler.setStackInSlot(0, original)
+        val stored = router.outputHandler.getStackInSlot(0)
+        router.outputHandler.setStackInSlot(0, ItemStack.EMPTY)
+        router.outputHandler.setStackInSlot(0, stored)
+
+        assertTrue(ItemStack.matches(original, outputs[0]))
+    }
+
     @Test
     fun `unchanged pending output does not mark persistence dirty`() {
         val storage = FakeNetworkStorage().apply { itemCapacity = 0 }
         val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
         var dirtyCalls = 0
-        val router = createRouter(storage, pending) { dirtyCalls++ }
+        val router =
+            createRouter(
+                storage = storage,
+                pending = pending,
+                markPendingDirty = { dirtyCalls++ },
+            )
 
         router.forwardPendingToNetwork()
 
@@ -26,7 +46,12 @@ class PlanterOutputRouterTest {
         val storage = FakeNetworkStorage().apply { itemCapacity = 8 }
         val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
         var dirtyCalls = 0
-        val router = createRouter(storage, pending) { dirtyCalls++ }
+        val router =
+            createRouter(
+                storage = storage,
+                pending = pending,
+                markPendingDirty = { dirtyCalls++ },
+            )
 
         router.forwardPendingToNetwork()
 
@@ -36,13 +61,17 @@ class PlanterOutputRouterTest {
     }
 
     private fun createRouter(
-        storage: FakeNetworkStorage,
-        pending: MutableList<ItemStack>,
-        markPendingDirty: () -> Unit,
+        storage: FakeNetworkStorage = FakeNetworkStorage(),
+        pending: MutableList<ItemStack> = mutableListOf(),
+        markPendingDirty: () -> Unit = {},
+        outputs: MutableList<ItemStack> =
+            MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) {
+                ItemStack.EMPTY
+            },
     ): PlanterOutputRouter =
         PlanterOutputRouter(
             blockPos = BlockPos.ZERO,
-            outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY },
+            outputs = outputs,
             pendingDrops = pending,
             networkStorage = storage,
             networkId = { FakeNetworkStorage.TEST_NETWORK_ID },

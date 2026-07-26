@@ -216,6 +216,7 @@ internal class PlanterBlockEntity(
         repeat(rolls) {
             crop.onHarvest(recipeContext, level, outputRouter::enqueue)
         }
+        routeStoredItems(level)
         growthTicks = 0f
         markDirty(GROWTH_TICKS_FIELD)
         level.gameEvent(GameEvent.BLOCK_CHANGE, blockPos, GameEvent.Context.of(blockState))
