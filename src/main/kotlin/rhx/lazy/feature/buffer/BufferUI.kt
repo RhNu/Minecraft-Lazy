@@ -2,6 +2,7 @@ package rhx.lazy.feature.buffer
 
 import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.DataBindingBuilder
+import com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import com.lowdragmc.lowdraglib2.gui.ui.UI
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement
@@ -24,6 +25,7 @@ import dev.vfyjxf.taffy.style.TaffyPosition
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import rhx.lazy.core.blockEntityOrNull
@@ -37,7 +39,8 @@ internal object BufferUI {
 
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         lateinit var confirmationLayer: UIElement
-        lateinit var clearButton: com.lowdragmc.lowdraglib2.gui.ui.elements.Button
+        lateinit var networkButton: UIElement
+        lateinit var clearButton: UIElement
         val model = BufferUiModel(holder)
         val networkControlsVisible = NetworkStorage.isAvailable
 
@@ -88,32 +91,16 @@ internal object BufferUI {
                     },
                 ) {
                     repeat(BufferBlockEntity.ITEM_SLOT_COUNT) { slot ->
-                        column(
+                        itemSlot(
                             {
-                                cls = { +"lazy-buffer__item" }
+                                cls = { +"lazy-buffer__item-slot" }
                             },
                         ) {
-                            itemSlot {
-                                bind(
-                                    itemStackBinding { model.itemTemplate(slot) },
-                                )
-                                withTooltips()
-                                asXeiRecipeIngredient(IngredientIO.NONE)
-                            }
-                            label(
-                                {
-                                    cls = { +"lazy-buffer__amount" }
-                                },
-                            ) {
-                                bind(
-                                    componentBinding {
-                                        Component.translatable(
-                                            "gui.lazy.buffer.item_count",
-                                            model.itemCount(slot),
-                                        )
-                                    },
-                                )
-                            }
+                            bind(
+                                itemStackBinding { model.itemStack(slot) },
+                            )
+                            withTooltips()
+                            asXeiRecipeIngredient(IngredientIO.NONE)
                         }
                     }
                 }
@@ -125,48 +112,23 @@ internal object BufferUI {
                     },
                 )
 
-                column(
+                row(
                     {
                         cls = { +"lazy-buffer__fluids" }
                     },
                 ) {
-                    repeat(2) { rowIndex ->
-                        row(
+                    repeat(BufferBlockEntity.FLUID_TANK_COUNT) { tank ->
+                        fluidSlot(
                             {
-                                cls = { +"lazy-buffer__fluid-row" }
+                                capacity = BufferBlockEntity.FLUID_TANK_CAPACITY
+                                allowClickFilled = false
+                                allowClickDrained = false
+                                bind(model.fluidHandler, tank)
+                                cls = { +"lazy-buffer__fluid" }
                             },
                         ) {
-                            repeat(2) { columnIndex ->
-                                val tank = rowIndex * 2 + columnIndex
-                                column(
-                                    {
-                                        cls = { +"lazy-buffer__fluid" }
-                                    },
-                                ) {
-                                    label(
-                                        {
-                                            cls = { +"lazy-buffer__fluid-name" }
-                                        },
-                                    ) {
-                                        bind(
-                                            componentBinding {
-                                                fluidName(model.fluid(tank))
-                                            },
-                                        )
-                                    }
-                                    fluidSlot(
-                                        {
-                                            capacity = BufferBlockEntity.FLUID_TANK_CAPACITY
-                                            allowClickFilled = false
-                                            allowClickDrained = false
-                                            bind(model.fluidHandler, tank)
-                                        },
-                                    ) {
-                                        withTooltips()
-                                        asXeiRecipeIngredient(IngredientIO.NONE)
-                                    }
-                                }
-                            }
+                            withTooltips()
+                            asXeiRecipeIngredient(IngredientIO.NONE)
                         }
                     }
                 }
@@ -176,37 +138,38 @@ internal object BufferUI {
                         cls = { +"lazy-buffer__actions" }
                     },
                 ) {
-                    label(
-                        {
-                            visible = networkControlsVisible
-                            cls = { +"lazy-buffer__network-status" }
-                        },
-                    ) {
-                        bind(
-                            componentBinding(model::networkForwardingStatus),
-                        )
-                    }
-                    button(
-                        {
-                            visible = networkControlsVisible
-                            text = Component.translatable("gui.lazy.buffer.network_forwarding.toggle")
-                            cls = { +"lazy-buffer__network-toggle" }
-                            onServerClick = {
-                                if (model.isValid()) {
-                                    model.toggleNetworkForwarding()
+                    networkButton =
+                        button(
+                            {
+                                visible = networkControlsVisible
+                                noText()
+                                cls = {
+                                    +"lazy-buffer__icon-button"
+                                    +"lazy-buffer__toggle-button"
                                 }
-                            }
-                        },
-                    )
+                                onServerClick = { event ->
+                                    if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                        model.toggleNetworkForwarding()
+                                    }
+                                }
+                            },
+                        ).element.apply {
+                            addPreIcon(ItemStackTexture(ItemStack(Items.ENDER_CHEST)))
+                        }
                     clearButton =
                         button(
                             {
-                                text = Component.translatable("gui.lazy.buffer.clear")
+                                noText()
                                 active = false
-                                cls = { +"lazy-buffer__clear" }
+                                cls = { +"lazy-buffer__icon-button" }
+                                style = {
+                                    tooltips(Component.translatable("gui.lazy.buffer.clear"))
+                                }
                                 onClick = { confirmationLayer.setVisible(true) }
                             },
-                        ).element
+                        ).element.apply {
+                            addPreIcon(ItemStackTexture(ItemStack(Items.BARRIER)))
+                        }
                 }
 
                 confirmationLayer =
@@ -276,6 +239,12 @@ internal object BufferUI {
                     }.element
             }
 
+        bindToggleButtonState(
+            root,
+            networkButton,
+            model::isNetworkForwardingEnabled,
+        )
+
         val hasContents = BindableValue(false)
         hasContents.setDisplay(false)
         hasContents.registerValueListener(clearButton::setActive)
@@ -313,11 +282,12 @@ internal object BufferUI {
         val fluidHandler: IFluidHandler
             get() = blockEntity?.fluidHandler ?: EmptyFluidHandler
 
-        fun itemTemplate(slot: Int): ItemStack = blockEntity?.getItemTemplate(slot) ?: ItemStack.EMPTY
-
-        fun itemCount(slot: Int): Int = blockEntity?.getItemCount(slot) ?: 0
-
-        fun fluid(tank: Int): FluidStack = blockEntity?.getFluid(tank) ?: FluidStack.EMPTY
+        fun itemStack(slot: Int): ItemStack {
+            val entity = blockEntity ?: return ItemStack.EMPTY
+            val template = entity.getItemTemplate(slot)
+            val count = entity.getItemCount(slot)
+            return if (template.isEmpty || count <= 0) ItemStack.EMPTY else template.copyWithCount(count)
+        }
 
         fun hasContents(): Boolean = blockEntity?.hasContents() == true
 
@@ -325,14 +295,7 @@ internal object BufferUI {
             blockEntity?.clearContents()
         }
 
-        fun networkForwardingStatus(): Component =
-            Component.translatable(
-                if (blockEntity?.isNetworkForwardingEnabled == true) {
-                    "gui.lazy.buffer.network_forwarding.enabled"
-                } else {
-                    "gui.lazy.buffer.network_forwarding.disabled"
-                },
-            )
+        fun isNetworkForwardingEnabled(): Boolean = blockEntity?.isNetworkForwardingEnabled == true
 
         fun toggleNetworkForwarding() {
             val entity = blockEntity ?: return
@@ -391,12 +354,35 @@ internal object BufferUI {
             .initialValue(false)
             .build()
 
-    private fun fluidName(fluid: FluidStack): Component =
-        if (fluid.isEmpty) {
-            Component.translatable("gui.lazy.buffer.empty")
-        } else {
-            fluid.hoverName
+    private fun bindToggleButtonState(
+        root: UIElement,
+        button: UIElement,
+        state: () -> Boolean,
+    ) {
+        val value = BindableValue(false)
+        value.setDisplay(false)
+        value.registerValueListener { enabled ->
+            if (enabled) {
+                button.addClass(ENABLED_BUTTON_CLASS)
+            } else {
+                button.removeClass(ENABLED_BUTTON_CLASS)
+            }
+            button.style { style ->
+                style.tooltips(
+                    Component.translatable("gui.lazy.buffer.network_forwarding.toggle"),
+                    Component.translatable(
+                        if (enabled) {
+                            "gui.lazy.buffer.network_forwarding.enabled"
+                        } else {
+                            "gui.lazy.buffer.network_forwarding.disabled"
+                        },
+                    ),
+                )
+            }
         }
+        value.bind(booleanBinding(state))
+        root.addChild(value)
+    }
 
     private object EmptyFluidHandler : IFluidHandler {
         override fun getTanks(): Int = BufferBlockEntity.FLUID_TANK_COUNT
@@ -425,4 +411,7 @@ internal object BufferUI {
             action: IFluidHandler.FluidAction,
         ): FluidStack = FluidStack.EMPTY
     }
+
+    private const val LEFT_MOUSE_BUTTON = 0
+    private const val ENABLED_BUTTON_CLASS = "lazy-buffer__icon-button--enabled"
 }
