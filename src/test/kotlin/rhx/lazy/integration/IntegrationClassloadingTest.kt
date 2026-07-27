@@ -57,13 +57,14 @@ class IntegrationClassloadingTest {
     }
 
     private companion object {
-        val OPTIONAL_MODS = listOf("beyonddimensions", "botanypots", "silentgear", "curios")
+        val OPTIONAL_MODS = listOf("beyonddimensions", "botanypots", "silentgear", "curios", "jade")
         val OPTIONAL_API_CLASSES =
             listOf(
                 "com.wintercogs.beyonddimensions.api.dimensionnet.DimensionsNet",
                 "net.darkhax.botanypots.common.api.context.BotanyPotContext",
                 "net.silentchaos512.gear.util.GearData",
                 "top.theillusivec4.curios.api.CuriosApi",
+                "snownee.jade.api.IWailaPlugin",
             )
     }
 }

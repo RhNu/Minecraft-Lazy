@@ -46,6 +46,14 @@ side="BOTH"
 reason="Enables the teleporter equipment slot and activation key"
 
 [[dependencies.${mod_id}]]
+modId="jade"
+type="optional"
+versionRange="${jade_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Shows Lazy machine status in the Jade overlay"
+
+[[dependencies.${mod_id}]]
 modId="silentgear"
 type="optional"
 versionRange="${silent_gear_version_range}"

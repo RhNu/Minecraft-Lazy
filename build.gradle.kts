@@ -201,6 +201,7 @@ dependencies {
     compileOnly(
         "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}:api",
     )
+    compileOnly("maven.modrinth:jade:${property("jade_version")}")
     compileOnly("maven.modrinth:silent-gear:${property("silent_gear_version")}")
     compileOnly("maven.modrinth:silent-lib:${property("silent_lib_version")}")
     compileOnly(
@@ -261,6 +262,7 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "ldlib2_version_range" to project.property("ldlib2_version_range"),
             "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
             "curios_version_range" to project.property("curios_version_range"),
+            "jade_version_range" to project.property("jade_version_range"),
             "silent_gear_version_range" to project.property("silent_gear_version_range"),
             "beyond_dimensions_version_range" to project.property("beyond_dimensions_version_range"),
             "botany_pots_version_range" to project.property("botany_pots_version_range"),

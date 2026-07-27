@@ -31,6 +31,10 @@ rhx.lazy
    ├─ beyonddimensions
    ├─ curios
    │  └─ client
+   ├─ jade
+   │  ├─ botanypots
+   │  │  └─ client
+   │  └─ client
    └─ silentgear
 ```
 
@@ -39,6 +43,7 @@ rhx.lazy
 - `feature` 使用垂直切片组织业务；方块、物品、方块实体、界面、事件、配置和注册跟随各自领域，不再按 Minecraft 类型横向分包。
 - `integration` 保存第三方模组适配。集成可以依赖 `core` 和 `feature`，业务领域不得反向依赖集成。
 - 可选集成通过 `IntegrationModule` 统一公共侧与客户端初始化，并由唯一的显式模块列表确定顺序。bootstrap 的字段、签名和初始化器不得引用第三方类型；只有确认对应模组已加载后才能解析 adapter。模组已安装但初始化失败属于启动错误，不静默降级。
+- Jade 集成是上述生命周期的明确例外：`LazyJadePlugin` 通过 Jade 的 `@WailaPlugin` 发现，公共数据提供器与客户端组件提供器分别由 Jade 注册，不进入 `IntegrationManager`。Lazy 自身 bootstrap 不引用 Jade API；种植机的 Jade bridge 只有在 Botany Pots 已加载后才解析。
 - 跨领域网络存储端口位于 `core.storage`，只暴露 Minecraft/NeoForge 类型并最多安装一个提供者。当前 Beyond Dimensions adapter 以网络 ID 为边界，包装物品、流体和 FE 的查询、模拟、插入与提取；预期的网络缺失与意外 API 失败使用不同结果表示。
 - Repairer 的修复后处理接口由领域自身持有，第三方适配器只注册回调。回调可并存且不得重复注册；单个回调失败不回滚基础修复。
 - `feature.teleporter` 可以依赖独立的 `feature.voidworld`；其他跨领域依赖应保持显式且数量有限。

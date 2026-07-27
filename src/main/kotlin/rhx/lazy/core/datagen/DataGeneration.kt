@@ -263,6 +263,28 @@ internal object DataGeneration {
             add("gui.lazy.item_copier.interval.description", "Click to cycle the push interval")
             add("tooltip.lazy.item_copier.template", "Template: %s")
             add("tooltip.lazy.item_copier.interval", "Push interval: %s ticks")
+            add("config.jade.plugin_lazy.buffer", "Buffer status")
+            add("config.jade.plugin_lazy.energy_source", "Energy Source status")
+            add("config.jade.plugin_lazy.item_copier", "Item Copier status")
+            add("config.jade.plugin_lazy.repairer", "Repairer status")
+            add("config.jade.plugin_lazy.planter", "Planter status")
+            add("jade.lazy.enabled", "Enabled")
+            add("jade.lazy.disabled", "Disabled")
+            add(
+                "jade.lazy.buffer.contents",
+                "Items: %s / %s · Fluids: %s / %s mB",
+            )
+            add("jade.lazy.buffer.network_forwarding", "Dimension network forwarding: %s")
+            add("jade.lazy.energy_source.output_mode", "Output mode: %s")
+            add("jade.lazy.item_copier.template", "Template: %s")
+            add("jade.lazy.repairer.item", "Item: %s")
+            add("jade.lazy.repairer.durability", "Durability: %s / %s")
+            add("jade.lazy.planter.growth", "Growth: %s%%")
+            add("jade.lazy.planter.pending", "Growth paused: waiting products")
+            add(
+                "jade.lazy.planter.outputs",
+                "Outputs: down %s · network %s",
+            )
             add("message.lazy.energy_battery.transfer", "Energy transferred: %s FE")
             add("message.lazy.rise.not_found", "No open-sky block found above")
             add("message.lazy.rise.player_only", "This command can only be used by players")
@@ -372,6 +394,28 @@ internal object DataGeneration {
             add("gui.lazy.item_copier.interval.description", "点击循环切换推送间隔")
             add("tooltip.lazy.item_copier.template", "模板：%s")
             add("tooltip.lazy.item_copier.interval", "推送间隔：%s 刻")
+            add("config.jade.plugin_lazy.buffer", "缓冲器状态")
+            add("config.jade.plugin_lazy.energy_source", "能量源状态")
+            add("config.jade.plugin_lazy.item_copier", "物品复制器状态")
+            add("config.jade.plugin_lazy.repairer", "修复器状态")
+            add("config.jade.plugin_lazy.planter", "种植机状态")
+            add("jade.lazy.enabled", "开启")
+            add("jade.lazy.disabled", "关闭")
+            add(
+                "jade.lazy.buffer.contents",
+                "物品：%s / %s · 流体：%s / %s mB",
+            )
+            add("jade.lazy.buffer.network_forwarding", "维度网络直送：%s")
+            add("jade.lazy.energy_source.output_mode", "输出模式：%s")
+            add("jade.lazy.item_copier.template", "模板：%s")
+            add("jade.lazy.repairer.item", "物品：%s")
+            add("jade.lazy.repairer.durability", "耐久：%s / %s")
+            add("jade.lazy.planter.growth", "生长进度：%s%%")
+            add("jade.lazy.planter.pending", "生长暂停：等待产物分发")
+            add(
+                "jade.lazy.planter.outputs",
+                "输出：向下 %s · 网络 %s",
+            )
             add("message.lazy.energy_battery.transfer", "已传输能量：%s FE")
             add("message.lazy.rise.not_found", "未找到上方可见天空的位置")
             add("message.lazy.rise.player_only", "该命令只能由玩家执行")
