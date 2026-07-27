@@ -58,6 +58,7 @@ internal class PlanterBlockEntityRenderer(
         const val BLOCK_CENTER = 0.5
         const val TOP_SURFACE = 1.002
         const val BASE_NORTH_YAW = 180f
+
         // FIXED turns generated item fronts toward -Z; +90 degrees leaves that front facing upward.
         const val LAY_FLAT_PITCH = 90f
         const val ITEM_SCALE = 0.625f
