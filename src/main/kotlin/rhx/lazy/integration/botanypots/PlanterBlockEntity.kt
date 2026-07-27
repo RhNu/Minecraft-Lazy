@@ -12,12 +12,15 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.Connection
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.util.Mth
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.gameevent.GameEvent
 import net.minecraft.world.phys.Vec2
@@ -61,6 +64,8 @@ internal class PlanterBlockEntity(
     @field:LazyManaged
     private var dimensionNetworkId = INVALID_NETWORK_ID
 
+    private var renderSeed = ItemStack.EMPTY
+
     private val recipeContext = PlanterBotanyContext(this)
     private val recipeResolver = PlanterRecipeResolver(recipeContext)
     private val outputRouter =
@@ -93,6 +98,9 @@ internal class PlanterBlockEntity(
 
     val hasPendingDrops: Boolean
         get() = outputRouter.hasPendingDrops
+
+    val seedForRendering: ItemStack
+        get() = renderSeed
 
     fun serverTick() {
         val level = level as? ServerLevel ?: return
@@ -176,6 +184,7 @@ internal class PlanterBlockEntity(
         recipeResolver.invalidate()
         markDirty(INPUTS_FIELD)
         markDirty(GROWTH_TICKS_FIELD)
+        syncRenderSeed()
         return drops
     }
 
@@ -204,6 +213,31 @@ internal class PlanterBlockEntity(
             dimensionNetworkId = INVALID_NETWORK_ID
         }
         recipeResolver.invalidate()
+    }
+
+    override fun getUpdatePacket(): ClientboundBlockEntityDataPacket = ClientboundBlockEntityDataPacket.create(this)
+
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag =
+        CompoundTag().apply {
+            val seed = inputs[SEED_SLOT]
+            if (!seed.isEmpty) {
+                put(RENDER_SEED_TAG, seed.save(registries))
+            }
+        }
+
+    override fun handleUpdateTag(
+        tag: CompoundTag,
+        lookupProvider: HolderLookup.Provider,
+    ) {
+        renderSeed = normalizeSingle(ItemStack.parseOptional(lookupProvider, tag.getCompound(RENDER_SEED_TAG)))
+    }
+
+    override fun onDataPacket(
+        connection: Connection,
+        packet: ClientboundBlockEntityDataPacket,
+        lookupProvider: HolderLookup.Provider,
+    ) {
+        handleUpdateTag(packet.tag, lookupProvider)
     }
 
     private fun harvest(
@@ -297,6 +331,16 @@ internal class PlanterBlockEntity(
         recipeResolver.invalidate()
         markDirty(INPUTS_FIELD)
         markDirty(GROWTH_TICKS_FIELD)
+        if (slot == SEED_SLOT) {
+            syncRenderSeed()
+        }
+    }
+
+    private fun syncRenderSeed() {
+        val level = level ?: return
+        if (!level.isClientSide) {
+            level.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
+        }
     }
 
     private fun isValidInput(
@@ -378,6 +422,7 @@ internal class PlanterBlockEntity(
         private const val DOWNWARD_OUTPUT_FIELD = "downwardOutputEnabled"
         private const val NETWORK_FORWARDING_FIELD = "networkForwardingEnabled"
         private const val DIMENSION_NETWORK_ID_FIELD = "dimensionNetworkId"
+        private const val RENDER_SEED_TAG = "render_seed"
         private const val INVALID_NETWORK_ID = -1
         private const val FUNCTION_PERMISSION_LEVEL = 2
 

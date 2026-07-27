@@ -3,11 +3,14 @@ package rhx.lazy.feature.machine
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.awt.image.BufferedImage
+import java.nio.file.Files
+import java.nio.file.Path
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class MachineCasingResourceTest {
     @Test
@@ -74,9 +77,9 @@ class MachineCasingResourceTest {
     fun `machines use casing ends and distinct side textures`() {
         val casing = readTexture("machine_casing")
         val casingPixels = casing.pixels()
-        val machines = listOf("buffer", "energy_source", "item_copier", "repairer", "planter")
+        val columnMachines = listOf("buffer", "energy_source", "item_copier", "repairer")
 
-        machines.forEach { machine ->
+        columnMachines.forEach { machine ->
             val model = readJson("/assets/lazy/models/block/$machine.json")
             assertEquals("minecraft:block/cube_column", model["parent"].asString)
             assertEquals("lazy:block/$machine", model["textures"].asJsonObject["side"].asString)
@@ -86,6 +89,58 @@ class MachineCasingResourceTest {
             assertEquals(16, texture.width)
             assertEquals(16, texture.height)
             assertFalse(texture.pixels().contentEquals(casingPixels), "$machine must have a visible overlay")
+        }
+
+        val planterModel = readJson("/assets/lazy/models/block/planter.json")
+        assertEquals("minecraft:block/cube_bottom_top", planterModel["parent"].asString)
+        assertEquals("lazy:block/planter", planterModel["textures"].asJsonObject["side"].asString)
+        assertEquals("lazy:block/machine_casing", planterModel["textures"].asJsonObject["bottom"].asString)
+        assertEquals("lazy:block/planter_top", planterModel["textures"].asJsonObject["top"].asString)
+
+        val planterTexture = readTexture("planter")
+        assertEquals(16, planterTexture.width)
+        assertEquals(16, planterTexture.height)
+        assertFalse(planterTexture.pixels().contentEquals(casingPixels), "planter must have a visible overlay")
+    }
+
+    @Test
+    fun `machine textures keep opposite casing rails equally bright`() {
+        val machineTextures =
+            listOf(
+                "machine_casing",
+                "buffer",
+                "energy_source",
+                "item_copier",
+                "repairer",
+                "planter",
+                "planter_top",
+            )
+
+        machineTextures.forEach { name ->
+            val texture = readTexture(name)
+            assertEquals(texture.getRGB(2, 0), texture.getRGB(2, 15), "$name top and bottom outer rails")
+            assertEquals(texture.getRGB(0, 2), texture.getRGB(15, 2), "$name left and right outer rails")
+            assertEquals(texture.getRGB(2, 1), texture.getRGB(2, 14), "$name top and bottom frame rails")
+            assertEquals(texture.getRGB(1, 2), texture.getRGB(14, 2), "$name left and right frame rails")
+        }
+    }
+
+    @Test
+    fun `every machine texture has an svg source`() {
+        val artRoot = Path.of(requireNotNull(System.getProperty("lazy.projectDir")), "art", "block")
+        val sources =
+            listOf(
+                "machine_casing_base.svg",
+                "buffer_overlay.svg",
+                "energy_source_overlay.svg",
+                "item_copier_overlay.svg",
+                "repairer_overlay.svg",
+                "planter_overlay.svg",
+                "planter_top_overlay.svg",
+            )
+
+        sources.forEach { source ->
+            assertTrue(Files.isRegularFile(artRoot.resolve(source)), "Missing SVG source art/block/$source")
         }
     }
 

@@ -87,12 +87,13 @@ internal object PlanterDataGeneration {
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
             val block = PlanterRegistries.block.get()
-            simpleBlock(
+            horizontalBlock(
                 block,
-                models().cubeColumn(
+                models().cubeBottomTop(
                     BuiltInRegistries.BLOCK.getKey(block).path,
                     blockTexture(block),
                     modLoc("block/machine_casing"),
+                    modLoc("block/planter_top"),
                 ),
             )
         }

@@ -245,6 +245,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    systemProperty("lazy.projectDir", rootProject.projectDir.absolutePath)
 }
 
 val generateModMetadata by tasks.registering(ProcessResources::class) {
