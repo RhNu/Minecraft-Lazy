@@ -3,6 +3,7 @@
   "block.lazy.buffer": "缓冲器",
   "block.lazy.energy_source": "能量源",
   "block.lazy.item_copier": "物品复制器",
+  "block.lazy.machine_casing": "机器外壳",
   "block.lazy.planter": "种植机",
   "block.lazy.repairer": "修复器",
   "curios.identifier.teleporter": "传送器",

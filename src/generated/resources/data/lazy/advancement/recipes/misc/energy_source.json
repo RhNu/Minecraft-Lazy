@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_energy_battery": {
+    "has_machine_casing": {
       "conditions": {
         "items": [
           {
-            "items": "lazy:energy_battery"
+            "items": "lazy:machine_casing"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_energy_battery"
+      "has_machine_casing"
     ]
   ],
   "rewards": {

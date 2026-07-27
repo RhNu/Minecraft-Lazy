@@ -1,6 +1,7 @@
 package rhx.lazy.integration.botanypots
 
 import net.minecraft.core.HolderLookup
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.data.CachedOutput
 import net.minecraft.data.DataProvider
 import net.minecraft.data.PackOutput
@@ -19,12 +20,12 @@ import net.minecraft.world.level.storage.loot.predicates.ExplosionCondition
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
-import net.neoforged.neoforge.common.Tags
 import net.neoforged.neoforge.common.conditions.ModLoadedCondition
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.JsonCodecProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
+import rhx.lazy.feature.machine.MachineCasingRegistries
 import java.util.concurrent.CompletableFuture
 
 internal object PlanterDataGeneration {
@@ -68,15 +69,14 @@ internal object PlanterDataGeneration {
         override fun buildRecipes(output: RecipeOutput) {
             ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, PlanterRegistries.item.get())
-                .pattern("IPI")
-                .pattern("HCH")
-                .pattern("IRI")
-                .define('I', Tags.Items.INGOTS_IRON)
+                .pattern(" P ")
+                .pattern("HMH")
+                .pattern(" C ")
                 .define('P', Items.PISTON)
                 .define('H', Items.HOPPER)
                 .define('C', Items.CHEST)
-                .define('R', Tags.Items.DUSTS_REDSTONE)
-                .unlockedBy("has_iron_ingot", has(Tags.Items.INGOTS_IRON))
+                .define('M', MachineCasingRegistries.item.get())
+                .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
                 .save(output.withConditions(ModLoadedCondition(BotanyPotsIntegrationModule.modId)))
         }
     }
@@ -86,7 +86,15 @@ internal object PlanterDataGeneration {
         helper: ExistingFileHelper,
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
-            simpleBlock(PlanterRegistries.block.get())
+            val block = PlanterRegistries.block.get()
+            simpleBlock(
+                block,
+                models().cubeColumn(
+                    BuiltInRegistries.BLOCK.getKey(block).path,
+                    blockTexture(block),
+                    modLoc("block/machine_casing"),
+                ),
+            )
         }
     }
 

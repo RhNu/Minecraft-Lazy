@@ -2,6 +2,7 @@ package rhx.lazy.core.datagen
 
 import net.minecraft.core.HolderLookup
 import net.minecraft.core.RegistrySetBuilder
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
 import net.minecraft.data.PackOutput
 import net.minecraft.data.loot.LootTableProvider
@@ -27,6 +28,7 @@ import rhx.lazy.MOD_ID
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.itemcopier.ItemCopierRegistries
+import rhx.lazy.feature.machine.MachineCasingRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import rhx.lazy.feature.voidworld.VoidWorldBootstrap
@@ -68,13 +70,22 @@ internal object DataGeneration {
     ) : RecipeProvider(output, lookup) {
         override fun buildRecipes(output: RecipeOutput) {
             ShapedRecipeBuilder
+                .shaped(RecipeCategory.BUILDING_BLOCKS, MachineCasingRegistries.item.get())
+                .pattern("III")
+                .pattern("IRI")
+                .pattern("III")
+                .define('I', Tags.Items.INGOTS_IRON)
+                .define('R', Tags.Items.DUSTS_REDSTONE)
+                .unlockedBy("has_redstone_dust", has(Tags.Items.DUSTS_REDSTONE))
+                .save(output)
+            ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, BufferRegistries.item.get())
-                .pattern("I I")
                 .pattern(" C ")
-                .pattern("I I")
+                .pattern("IMI")
                 .define('I', Tags.Items.INGOTS_IRON)
                 .define('C', Items.CHEST)
-                .unlockedBy("has_iron_ingot", has(Tags.Items.INGOTS_IRON))
+                .define('M', MachineCasingRegistries.item.get())
+                .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
                 .save(output)
             ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, TeleporterRegistries.item.get())
@@ -97,32 +108,30 @@ internal object DataGeneration {
                 .save(output)
             ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, EnergyRegistries.sourceItem.get())
-                .pattern("III")
-                .pattern("GBG")
-                .pattern("III")
-                .define('I', Tags.Items.STORAGE_BLOCKS_IRON)
+                .pattern(" B ")
+                .pattern("GMG")
                 .define('G', Tags.Items.DUSTS_GLOWSTONE)
                 .define('B', EnergyRegistries.batteryItem.get())
-                .unlockedBy("has_energy_battery", has(EnergyRegistries.batteryItem.get()))
+                .define('M', MachineCasingRegistries.item.get())
+                .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
                 .save(output)
             ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, RepairerRegistries.item.get())
-                .pattern("III")
                 .pattern(" A ")
-                .pattern("CCC")
-                .define('I', Tags.Items.INGOTS_COPPER)
+                .pattern("CMC")
                 .define('A', ItemTags.ANVIL)
-                .define('C', Tags.Items.STORAGE_BLOCKS_COPPER)
-                .unlockedBy("has_copper_ingot", has(Tags.Items.INGOTS_COPPER))
+                .define('C', Tags.Items.INGOTS_COPPER)
+                .define('M', MachineCasingRegistries.item.get())
+                .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
                 .save(output)
             ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, ItemCopierRegistries.item.get())
-                .pattern("BBB")
-                .pattern("BCB")
-                .pattern("BBB")
+                .pattern(" C ")
+                .pattern("BMB")
                 .define('B', Tags.Items.STORAGE_BLOCKS_IRON)
                 .define('C', Items.CHEST)
-                .unlockedBy("has_iron_block", has(Tags.Items.STORAGE_BLOCKS_IRON))
+                .define('M', MachineCasingRegistries.item.get())
+                .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
                 .save(output)
         }
     }
@@ -132,6 +141,7 @@ internal object DataGeneration {
         helper: net.neoforged.neoforge.common.data.ExistingFileHelper,
     ) : ItemModelProvider(output, MOD_ID, helper) {
         override fun registerModels() {
+            withExistingParent("machine_casing", modLoc("block/machine_casing"))
             withExistingParent("buffer", modLoc("block/buffer"))
             basicItem(TeleporterRegistries.item.get())
             basicItem(EnergyRegistries.batteryItem.get())
@@ -146,10 +156,22 @@ internal object DataGeneration {
         helper: net.neoforged.neoforge.common.data.ExistingFileHelper,
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
-            simpleBlock(BufferRegistries.block.get())
-            simpleBlock(EnergyRegistries.sourceBlock.get())
-            simpleBlock(ItemCopierRegistries.block.get())
-            simpleBlock(RepairerRegistries.block.get())
+            simpleBlock(MachineCasingRegistries.block.get())
+            machineBlock(BufferRegistries.block.get())
+            machineBlock(EnergyRegistries.sourceBlock.get())
+            machineBlock(ItemCopierRegistries.block.get())
+            machineBlock(RepairerRegistries.block.get())
+        }
+
+        private fun machineBlock(block: Block) {
+            simpleBlock(
+                block,
+                models().cubeColumn(
+                    BuiltInRegistries.BLOCK.getKey(block).path,
+                    blockTexture(block),
+                    modLoc("block/machine_casing"),
+                ),
+            )
         }
     }
 
@@ -166,6 +188,7 @@ internal object DataGeneration {
             registries: HolderLookup.Provider,
         ) : VanillaBlockLoot(registries) {
             override fun generate() {
+                dropSelf(MachineCasingRegistries.block.get())
                 add(BufferRegistries.block.get(), noDrop())
                 dropSelf(EnergyRegistries.sourceBlock.get())
                 add(ItemCopierRegistries.block.get(), noDrop())
@@ -174,6 +197,7 @@ internal object DataGeneration {
 
             override fun getKnownBlocks(): MutableIterable<Block> =
                 mutableListOf(
+                    MachineCasingRegistries.block.get(),
                     BufferRegistries.block.get(),
                     EnergyRegistries.sourceBlock.get(),
                     ItemCopierRegistries.block.get(),
@@ -186,6 +210,7 @@ internal object DataGeneration {
         output: PackOutput,
     ) : LanguageProvider(output, MOD_ID, "en_us") {
         override fun addTranslations() {
+            addBlock({ MachineCasingRegistries.block.get() }, "Machine Casing")
             addBlock({ BufferRegistries.block.get() }, "Buffer")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "Energy Source")
             addBlock({ ItemCopierRegistries.block.get() }, "Item Copier")
@@ -297,6 +322,7 @@ internal object DataGeneration {
         output: PackOutput,
     ) : LanguageProvider(output, MOD_ID, "zh_cn") {
         override fun addTranslations() {
+            addBlock({ MachineCasingRegistries.block.get() }, "机器外壳")
             addBlock({ BufferRegistries.block.get() }, "缓冲器")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "能量源")
             addBlock({ ItemCopierRegistries.block.get() }, "物品复制器")

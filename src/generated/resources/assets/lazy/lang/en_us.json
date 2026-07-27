@@ -3,6 +3,7 @@
   "block.lazy.buffer": "Buffer",
   "block.lazy.energy_source": "Energy Source",
   "block.lazy.item_copier": "Item Copier",
+  "block.lazy.machine_casing": "Machine Casing",
   "block.lazy.planter": "Planter",
   "block.lazy.repairer": "Repairer",
   "curios.identifier.teleporter": "Teleporter",

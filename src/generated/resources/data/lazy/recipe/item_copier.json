@@ -7,12 +7,14 @@
     },
     "C": {
       "item": "minecraft:chest"
+    },
+    "M": {
+      "item": "lazy:machine_casing"
     }
   },
   "pattern": [
-    "BBB",
-    "BCB",
-    "BBB"
+    " C ",
+    "BMB"
   ],
   "result": {
     "count": 1,

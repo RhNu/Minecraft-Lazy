@@ -10,7 +10,7 @@ class PlanterResourceTest {
     fun `recipe has the fixed pattern and Botany Pots condition`() {
         val recipe = readJson("/data/lazy/recipe/planter.json")
         assertEquals(
-            listOf("IPI", "HCH", "IRI"),
+            listOf(" P ", "HMH", " C "),
             recipe["pattern"].asJsonArray.map { it.asString },
         )
         assertEquals("lazy:planter", recipe["result"].asJsonObject["id"].asString)
@@ -31,8 +31,9 @@ class PlanterResourceTest {
     @Test
     fun `static model and translations are generated`() {
         val model = readJson("/assets/lazy/models/block/planter.json")
-        assertEquals("minecraft:block/cube_all", model["parent"].asString)
-        assertEquals("lazy:block/planter", model["textures"].asJsonObject["all"].asString)
+        assertEquals("minecraft:block/cube_column", model["parent"].asString)
+        assertEquals("lazy:block/planter", model["textures"].asJsonObject["side"].asString)
+        assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["end"].asString)
 
         val english = readJson("/assets/lazy/lang/en_us.json")
         val chinese = readJson("/assets/lazy/lang/zh_cn.json")

@@ -3,40 +3,40 @@
      height="16"
      viewBox="0 0 16 16"
      shape-rendering="crispEdges">
-  <!-- Draft source: neutral machine casing, authored on the 16x16 pixel grid. -->
-  <rect width="16" height="16" fill="#3d464b"/>
+  <!-- Neutral machine casing, authored on the 16x16 pixel grid. -->
+  <rect width="16" height="16" fill="#41494d"/>
 
-  <!-- Outer frame and directional bevel. -->
+  <!-- Outer frame with a restrained directional bevel for use on cube faces. -->
   <rect x="1" y="1" width="14" height="14" fill="#586268"/>
-  <rect x="1" y="1" width="14" height="1" fill="#737e82"/>
-  <rect x="1" y="2" width="1" height="13" fill="#687379"/>
-  <rect x="2" y="14" width="13" height="1" fill="#3b4448"/>
-  <rect x="14" y="2" width="1" height="12" fill="#353e42"/>
-  <rect x="2" y="0" width="12" height="1" fill="#626d72"/>
-  <rect x="0" y="2" width="1" height="12" fill="#5e686d"/>
-  <rect x="2" y="15" width="12" height="1" fill="#30383c"/>
-  <rect x="15" y="2" width="1" height="12" fill="#30383c"/>
+  <rect x="1" y="1" width="14" height="1" fill="#6b767a"/>
+  <rect x="1" y="2" width="1" height="13" fill="#626d71"/>
+  <rect x="2" y="14" width="13" height="1" fill="#444d51"/>
+  <rect x="14" y="2" width="1" height="12" fill="#40494d"/>
+  <rect x="2" y="0" width="12" height="1" fill="#5f696d"/>
+  <rect x="0" y="2" width="1" height="12" fill="#596367"/>
+  <rect x="2" y="15" width="12" height="1" fill="#3c4549"/>
+  <rect x="15" y="2" width="1" height="12" fill="#3b4448"/>
 
   <!-- Enlarged recessed center plate, leaving only a narrow outer lip. -->
-  <rect x="2" y="2" width="12" height="12" fill="#495359"/>
-  <rect x="2" y="2" width="12" height="1" fill="#697479"/>
-  <rect x="2" y="3" width="1" height="11" fill="#626d72"/>
-  <rect x="3" y="13" width="11" height="1" fill="#424c51"/>
-  <rect x="13" y="3" width="1" height="10" fill="#3e484d"/>
+  <rect x="2" y="2" width="12" height="12" fill="#4c565b"/>
+  <rect x="2" y="2" width="12" height="1" fill="#626d71"/>
+  <rect x="2" y="3" width="1" height="11" fill="#5d686c"/>
+  <rect x="3" y="13" width="11" height="1" fill="#475055"/>
+  <rect x="13" y="3" width="1" height="10" fill="#444e52"/>
   <rect x="3" y="3" width="10" height="10" fill="#566166"/>
 
   <!-- Sparse brushed-metal marks; the center remains quiet for overlays. -->
-  <rect x="4" y="4" width="3" height="1" fill="#5d686d"/>
-  <rect x="9" y="4" width="2" height="1" fill="#485257"/>
-  <rect x="3" y="6" width="2" height="1" fill="#465055"/>
+  <rect x="4" y="4" width="3" height="1" fill="#5b666a"/>
+  <rect x="9" y="4" width="2" height="1" fill="#4d575c"/>
+  <rect x="3" y="6" width="2" height="1" fill="#4b555a"/>
   <rect x="10" y="6" width="3" height="1" fill="#596469"/>
   <rect x="3" y="10" width="3" height="1" fill="#5a656a"/>
-  <rect x="10" y="11" width="3" height="1" fill="#444e53"/>
-  <rect x="6" y="12" width="2" height="1" fill="#626d71"/>
+  <rect x="10" y="11" width="3" height="1" fill="#4a5459"/>
+  <rect x="6" y="12" width="2" height="1" fill="#5e696d"/>
 
-  <!-- Single-pixel fasteners leave most of the frame reusable. -->
-  <rect x="2" y="2" width="1" height="1" fill="#a5afb2"/>
-  <rect x="13" y="2" width="1" height="1" fill="#909a9e"/>
-  <rect x="2" y="13" width="1" height="1" fill="#8b9599"/>
-  <rect x="13" y="13" width="1" height="1" fill="#6f797d"/>
+  <!-- Fasteners retain direction without becoming bright or dark corner hotspots. -->
+  <rect x="2" y="2" width="1" height="1" fill="#929c9f"/>
+  <rect x="13" y="2" width="1" height="1" fill="#858f93"/>
+  <rect x="2" y="13" width="1" height="1" fill="#7f898d"/>
+  <rect x="13" y="13" width="1" height="1" fill="#747e82"/>
 </svg>

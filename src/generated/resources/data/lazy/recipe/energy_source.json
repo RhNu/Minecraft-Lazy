@@ -8,14 +8,13 @@
     "G": {
       "tag": "c:dusts/glowstone"
     },
-    "I": {
-      "tag": "c:storage_blocks/iron"
+    "M": {
+      "item": "lazy:machine_casing"
     }
   },
   "pattern": [
-    "III",
-    "GBG",
-    "III"
+    " B ",
+    "GMG"
   ],
   "result": {
     "count": 1,

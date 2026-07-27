@@ -10,6 +10,7 @@ import rhx.lazy.MOD_ID
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.itemcopier.ItemCopierRegistries
+import rhx.lazy.feature.machine.MachineCasingRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import java.util.function.Supplier
@@ -27,6 +28,7 @@ internal object LazyCreativeTabRegistry : RegistryModule {
                     .title(Component.translatable("tab.lazy"))
                     .icon { ItemStack(BufferRegistries.item.get()) }
                     .displayItems { _, output ->
+                        output.accept(MachineCasingRegistries.item.get())
                         output.accept(BufferRegistries.item.get())
                         output.accept(TeleporterRegistries.item.get())
                         output.accept(EnergyRegistries.batteryItem.get())

@@ -1,6 +1,7 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/cube_column",
   "textures": {
-    "all": "lazy:block/item_copier"
+    "end": "lazy:block/machine_casing",
+    "side": "lazy:block/item_copier"
   }
 }

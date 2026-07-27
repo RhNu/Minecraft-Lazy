@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_iron_block": {
+    "has_machine_casing": {
       "conditions": {
         "items": [
           {
-            "items": "#c:storage_blocks/iron"
+            "items": "lazy:machine_casing"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_iron_block"
+      "has_machine_casing"
     ]
   ],
   "rewards": {

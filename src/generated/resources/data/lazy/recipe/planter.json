@@ -14,20 +14,17 @@
     "H": {
       "item": "minecraft:hopper"
     },
-    "I": {
-      "tag": "c:ingots/iron"
+    "M": {
+      "item": "lazy:machine_casing"
     },
     "P": {
       "item": "minecraft:piston"
-    },
-    "R": {
-      "tag": "c:dusts/redstone"
     }
   },
   "pattern": [
-    "IPI",
-    "HCH",
-    "IRI"
+    " P ",
+    "HMH",
+    " C "
   ],
   "result": {
     "count": 1,

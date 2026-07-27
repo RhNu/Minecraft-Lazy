@@ -6,16 +6,15 @@
       "tag": "minecraft:anvil"
     },
     "C": {
-      "tag": "c:storage_blocks/copper"
-    },
-    "I": {
       "tag": "c:ingots/copper"
+    },
+    "M": {
+      "item": "lazy:machine_casing"
     }
   },
   "pattern": [
-    "III",
     " A ",
-    "CCC"
+    "CMC"
   ],
   "result": {
     "count": 1,
