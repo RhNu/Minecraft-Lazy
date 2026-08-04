@@ -214,8 +214,8 @@ internal class EssenceConverterBlockEntity(
         if (offered <= 0) return
         val stack = tier.createStack(offered)
         if (stack.isEmpty) return
-        if (!EssenceOutputPusher.pushWholeStack(target, stack)) return
-        applyLedger(currentLedger().removeOutput(offered.toLong()))
+        val inserted = EssenceOutputPusher.pushMaximum(target, stack)
+        if (inserted > 0) applyLedger(currentLedger().removeOutput(inserted.toLong()))
     }
 
     private fun pushToNetwork() {
@@ -418,13 +418,12 @@ internal class EssenceConverterBlockEntity(
 }
 
 internal object EssenceOutputPusher {
-    fun pushWholeStack(
+    fun pushMaximum(
         target: IItemHandler,
         stack: ItemStack,
-    ): Boolean {
-        if (stack.isEmpty) return false
-        if (!ItemHandlerHelper.insertItemStacked(target, stack, true).isEmpty) return false
-        ItemHandlerHelper.insertItemStacked(target, stack, false)
-        return true
+    ): Int {
+        if (stack.isEmpty) return 0
+        val remainder = ItemHandlerHelper.insertItemStacked(target, stack, false)
+        return stack.count - remainder.count.coerceIn(0, stack.count)
     }
 }
