@@ -1,7 +1,8 @@
 {
-  "parent": "minecraft:block/cube_column",
+  "parent": "minecraft:block/cube_bottom_top",
   "textures": {
-    "end": "lazy:block/machine_casing",
-    "side": "lazy:block/repairer"
+    "bottom": "lazy:block/machine_casing",
+    "side": "lazy:block/repairer",
+    "top": "lazy:block/machine_casing"
   }
 }

@@ -166,9 +166,10 @@ internal object DataGeneration {
         private fun machineBlock(block: Block) {
             simpleBlock(
                 block,
-                models().cubeColumn(
+                models().cubeBottomTop(
                     BuiltInRegistries.BLOCK.getKey(block).path,
                     blockTexture(block),
+                    modLoc("block/machine_casing"),
                     modLoc("block/machine_casing"),
                 ),
             )

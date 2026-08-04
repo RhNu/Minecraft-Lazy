@@ -112,7 +112,15 @@ internal object EssenceConverterDataGeneration {
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
             val block = EssenceConverterRegistries.block.get()
-            simpleBlock(block, models().cubeAll("essence_converter", modLoc("block/essence_converter")))
+            simpleBlock(
+                block,
+                models().cubeBottomTop(
+                    "essence_converter",
+                    modLoc("block/essence_converter"),
+                    modLoc("block/machine_casing"),
+                    modLoc("block/machine_casing"),
+                ),
+            )
         }
     }
 

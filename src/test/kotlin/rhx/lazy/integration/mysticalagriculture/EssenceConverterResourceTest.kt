@@ -33,10 +33,18 @@ class EssenceConverterResourceTest {
         assertFalse(loot.has("pools"))
 
         val model = readJson("/assets/lazy/models/block/essence_converter.json")
-        assertEquals("minecraft:block/cube_all", model["parent"].asString)
+        assertEquals("minecraft:block/cube_bottom_top", model["parent"].asString)
         assertEquals(
             "lazy:block/essence_converter",
-            model["textures"].asJsonObject["all"].asString,
+            model["textures"].asJsonObject["side"].asString,
+        )
+        assertEquals(
+            "lazy:block/machine_casing",
+            model["textures"].asJsonObject["bottom"].asString,
+        )
+        assertEquals(
+            "lazy:block/machine_casing",
+            model["textures"].asJsonObject["top"].asString,
         )
         val itemModel = readJson("/assets/lazy/models/item/essence_converter.json")
         assertEquals("lazy:block/essence_converter", itemModel["parent"].asString)

@@ -74,16 +74,17 @@ class MachineCasingResourceTest {
     }
 
     @Test
-    fun `machines use casing ends and distinct side textures`() {
+    fun `machines use casing tops and bottoms and distinct side textures`() {
         val casing = readTexture("machine_casing")
         val casingPixels = casing.pixels()
         val columnMachines = listOf("buffer", "energy_source", "item_copier", "repairer")
 
         columnMachines.forEach { machine ->
             val model = readJson("/assets/lazy/models/block/$machine.json")
-            assertEquals("minecraft:block/cube_column", model["parent"].asString)
+            assertEquals("minecraft:block/cube_bottom_top", model["parent"].asString)
             assertEquals("lazy:block/$machine", model["textures"].asJsonObject["side"].asString)
-            assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["end"].asString)
+            assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["bottom"].asString)
+            assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["top"].asString)
 
             val texture = readTexture(machine)
             assertEquals(16, texture.width)
@@ -101,6 +102,21 @@ class MachineCasingResourceTest {
         assertEquals(16, planterTexture.width)
         assertEquals(16, planterTexture.height)
         assertFalse(planterTexture.pixels().contentEquals(casingPixels), "planter must have a visible overlay")
+
+        val essenceConverterModel = readJson("/assets/lazy/models/block/essence_converter.json")
+        assertEquals("minecraft:block/cube_bottom_top", essenceConverterModel["parent"].asString)
+        assertEquals(
+            "lazy:block/essence_converter",
+            essenceConverterModel["textures"].asJsonObject["side"].asString,
+        )
+        assertEquals(
+            "lazy:block/machine_casing",
+            essenceConverterModel["textures"].asJsonObject["bottom"].asString,
+        )
+        assertEquals(
+            "lazy:block/machine_casing",
+            essenceConverterModel["textures"].asJsonObject["top"].asString,
+        )
     }
 
     @Test
