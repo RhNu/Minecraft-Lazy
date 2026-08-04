@@ -11,7 +11,7 @@ internal object EssenceConverterCapabilities {
             EssenceConverterRegistries.blockEntity.get(),
         ) { blockEntity, direction ->
             when (direction) {
-                Direction.DOWN -> blockEntity.outputHandler
+                Direction.DOWN -> blockEntity.combinedHandler
                 null -> blockEntity.combinedHandler
                 else -> blockEntity.inputHandler
             }

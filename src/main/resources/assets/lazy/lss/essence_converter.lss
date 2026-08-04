@@ -17,6 +17,7 @@
   height: 16;
   background: built-in(ui-mc:RECT_5);
   horizontal-align: center;
+  vertical-align: center;
   text-color: #404040;
   text-shadow: false;
 }
