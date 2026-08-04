@@ -85,5 +85,21 @@ ordering="AFTER"
 side="BOTH"
 reason="Enables tiered Botany Pot multipliers in the Planter"
 
+[[dependencies.${mod_id}]]
+modId="mysticalagriculture"
+type="optional"
+versionRange="${mystical_agriculture_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables the Essence Converter integration machine"
+
+[[dependencies.${mod_id}]]
+modId="mysticalagradditions"
+type="optional"
+versionRange="${mystical_agradditions_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Adds Insanium support to the Essence Converter"
+
 [modproperties.fzzy_config]
 fzzy_config="${mod_id}"

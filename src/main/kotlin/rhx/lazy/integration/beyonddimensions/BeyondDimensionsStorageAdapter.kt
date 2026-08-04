@@ -39,6 +39,17 @@ internal object BeyondDimensionsStorageAdapter : NetworkStoragePort {
         return NetworkStorageResult.Success(stack.copyWithAmount(remainder))
     }
 
+    override fun insertItemAmount(
+        networkId: NetworkStorageId,
+        template: ItemStack,
+        amount: Long,
+        simulate: Boolean,
+    ): NetworkStorageResult<Long> {
+        if (template.isEmpty || amount <= 0L) return NetworkStorageResult.Success(0L)
+        val storage = storage(networkId) ?: return NetworkStorageResult.NetworkNotFound
+        return NetworkStorageResult.Success(storage.insert(ItemStackKey(template), amount, simulate).amount())
+    }
+
     override fun extractItem(
         networkId: NetworkStorageId,
         template: ItemStack,

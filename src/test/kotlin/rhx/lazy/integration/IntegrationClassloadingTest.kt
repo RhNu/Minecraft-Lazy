@@ -10,6 +10,7 @@ import rhx.lazy.feature.repairer.ItemRepairHooks
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
 import rhx.lazy.integration.botanypots.BotanyPotsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
+import rhx.lazy.integration.mysticalagriculture.MysticalAgricultureIntegrationModule
 import rhx.lazy.integration.silentgear.SilentGearIntegrationModule
 import kotlin.test.Test
 import kotlin.test.assertFalse
@@ -29,6 +30,7 @@ class IntegrationClassloadingTest {
                     BotanyPotsIntegrationModule,
                     SilentGearIntegrationModule,
                     CuriosIntegrationModule,
+                    MysticalAgricultureIntegrationModule,
                 ),
             ) { false }
         val bus = BusBuilder.builder().build()
@@ -57,7 +59,16 @@ class IntegrationClassloadingTest {
     }
 
     private companion object {
-        val OPTIONAL_MODS = listOf("beyonddimensions", "botanypots", "silentgear", "curios", "jade")
+        val OPTIONAL_MODS =
+            listOf(
+                "beyonddimensions",
+                "botanypots",
+                "silentgear",
+                "curios",
+                "jade",
+                "mysticalagriculture",
+                "mysticalagradditions",
+            )
         val OPTIONAL_API_CLASSES =
             listOf(
                 "com.wintercogs.beyonddimensions.api.dimensionnet.DimensionsNet",
@@ -65,6 +76,8 @@ class IntegrationClassloadingTest {
                 "net.silentchaos512.gear.util.GearData",
                 "top.theillusivec4.curios.api.CuriosApi",
                 "snownee.jade.api.IWailaPlugin",
+                "com.blakebr0.mysticalagriculture.MysticalAgriculture",
+                "com.blakebr0.mysticalagradditions.MysticalAgradditions",
             )
     }
 }

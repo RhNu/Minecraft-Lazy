@@ -7,6 +7,7 @@ import rhx.lazy.core.storage.NetworkStoragePort
 import rhx.lazy.core.storage.NetworkStorageResult
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -42,5 +43,65 @@ class GuardedNetworkStoragePortTest {
 
         assertSame(NetworkStorageResult.Failed, guarded.energyAmount(FakeNetworkStorage.TEST_NETWORK_ID))
         assertTrue(guarded.isAvailable)
+    }
+
+    @Test
+    fun `failed mutations report an unknown outcome unless simulated`() {
+        val delegate =
+            object : NetworkStoragePort by FakeNetworkStorage() {
+                override fun insertItemAmount(
+                    networkId: NetworkStorageId,
+                    template: ItemStack,
+                    amount: Long,
+                    simulate: Boolean,
+                ): NetworkStorageResult<Long> = throw IllegalStateException("failure after possible commit")
+            }
+        val guarded = GuardedNetworkStoragePort("test", delegate)
+
+        assertSame(
+            NetworkStorageResult.OutcomeUnknown,
+            guarded.insertItemAmount(
+                FakeNetworkStorage.TEST_NETWORK_ID,
+                ItemStack(Items.STONE),
+                64,
+                simulate = false,
+            ),
+        )
+        assertSame(
+            NetworkStorageResult.Failed,
+            guarded.insertItemAmount(
+                FakeNetworkStorage.TEST_NETWORK_ID,
+                ItemStack(Items.STONE),
+                64,
+                simulate = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `bulk item insertion preserves long quantities and simulation`() {
+        val storage = FakeNetworkStorage().apply { itemCapacity = Int.MAX_VALUE.toLong() + 10L }
+        val amount = Int.MAX_VALUE.toLong() + 20L
+
+        assertEquals(
+            NetworkStorageResult.Success(10L),
+            storage.insertItemAmount(
+                FakeNetworkStorage.TEST_NETWORK_ID,
+                ItemStack(Items.STONE),
+                amount,
+                simulate = true,
+            ),
+        )
+        assertEquals(0L, storage.storedItemAmount)
+        assertEquals(
+            NetworkStorageResult.Success(10L),
+            storage.insertItemAmount(
+                FakeNetworkStorage.TEST_NETWORK_ID,
+                ItemStack(Items.STONE),
+                amount,
+                simulate = false,
+            ),
+        )
+        assertEquals(Int.MAX_VALUE.toLong() + 10L, storage.storedItemAmount)
     }
 }

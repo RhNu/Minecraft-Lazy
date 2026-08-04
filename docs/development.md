@@ -12,6 +12,8 @@ Curios API 9.5.1+1.21.1 是范围 `[9.5.1+1.21.1,10.0.0)`、双端可选的兼�
 
 Silent Gear 4.2.1.1 与 Beyond Dimensions 0.7.26 都是双端可选兼容依赖，版本范围分别为 `[4.2.1.1,4.3.0)` 与 `[0.7.26,0.8.0)`。三项集成统一使用 `compileOnly` 编译，只有 integrations 开发运行类路径加载完整模组及 SilentLib；Lazy 不打包或传递这些模组。兼容 bootstrap 只在检测到对应 mod id 后解析 adapter，第三方类型不得离开各自 integration 包。
 
+Mystical Agriculture 8.0.27 与 Mystical Agradditions 8.0.14 是双端可选内容依赖，integrations 运行环境同时固定 Cucumber 8.0.16。Lazy 不直接链接它们的 Java API；精华、灌注水晶和配方材料均按资源 ID 解析。仅安装 Agriculture 时提供五档转换，Agradditions 存在时启用 Insanium。
+
 ## 开发运行模组
 
 JEI 19.39.0.369 与 Jade 15.10.5 通过 `localRuntime` 加入开发环境。它们不会出现在 Lazy 的必需依赖声明中，也不会通过 Maven publication 传递给使用者。
@@ -41,9 +43,9 @@ GUI、HUD、UI binding/RPC 和方块实体托管优先使用 LDLib2。界面结�
 
 ## 常用流程
 
-`./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 使用 integrations 类路径刷新基础与 Curios 数据生成输出。`./gradlew runClient` 启动只带 JEI 与 Jade、但不带可选集成模组的开发客户端。发布前还要检查 Lazy JAR 不含 `com/lowdragmc/lowdraglib2`，并用 `dependencyInsight` 核对 Kotlin、Yoga 与 Taffy。
+`./gradlew clean build` 验证 Kotlin 编译、元数据生成、资源处理和 JAR 打包。`./gradlew runData` 使用 integrations 类路径刷新基础、Curios 与可选机器的数据生成输出。`./gradlew runClient` 启动只带 JEI 与 Jade、但不带可选集成模组的开发客户端。发布前还要检查 Lazy JAR 不含 `com/lowdragmc/lowdraglib2`，并用 `dependencyInsight` 核对 Kotlin、Yoga 与 Taffy。
 
-完整兼容组合使用 `./gradlew runClientIntegrations` 和 `./gradlew runServerIntegrations` 验证 Curios、Silent Gear 与 Beyond Dimensions；普通 `runClient`、`runServer` 与单元测试不包含任何可选集成模组，用于持续检查类加载安全性。
+完整兼容组合使用 `./gradlew runClientIntegrations` 和 `./gradlew runServerIntegrations` 验证 Curios、Silent Gear、Beyond Dimensions、Mystical Agriculture 与 Mystical Agradditions；普通 `runClient`、`runServer` 与单元测试不包含任何可选集成模组，用于持续检查类加载安全性。
 
 ## Kotlin 代码风格
 

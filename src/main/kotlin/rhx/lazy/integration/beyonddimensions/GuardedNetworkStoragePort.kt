@@ -29,14 +29,21 @@ internal class GuardedNetworkStoragePort(
         networkId: NetworkStorageId,
         stack: ItemStack,
         simulate: Boolean,
-    ): NetworkStorageResult<ItemStack> = guarded { insertItem(networkId, stack, simulate) }
+    ): NetworkStorageResult<ItemStack> = guardedMutation(simulate) { insertItem(networkId, stack, simulate) }
+
+    override fun insertItemAmount(
+        networkId: NetworkStorageId,
+        template: ItemStack,
+        amount: Long,
+        simulate: Boolean,
+    ): NetworkStorageResult<Long> = guardedMutation(simulate) { insertItemAmount(networkId, template, amount, simulate) }
 
     override fun extractItem(
         networkId: NetworkStorageId,
         template: ItemStack,
         amount: Int,
         simulate: Boolean,
-    ): NetworkStorageResult<ItemStack> = guarded { extractItem(networkId, template, amount, simulate) }
+    ): NetworkStorageResult<ItemStack> = guardedMutation(simulate) { extractItem(networkId, template, amount, simulate) }
 
     override fun fluidAmount(
         networkId: NetworkStorageId,
@@ -47,14 +54,14 @@ internal class GuardedNetworkStoragePort(
         networkId: NetworkStorageId,
         stack: FluidStack,
         simulate: Boolean,
-    ): NetworkStorageResult<FluidStack> = guarded { insertFluid(networkId, stack, simulate) }
+    ): NetworkStorageResult<FluidStack> = guardedMutation(simulate) { insertFluid(networkId, stack, simulate) }
 
     override fun extractFluid(
         networkId: NetworkStorageId,
         template: FluidStack,
         amount: Int,
         simulate: Boolean,
-    ): NetworkStorageResult<FluidStack> = guarded { extractFluid(networkId, template, amount, simulate) }
+    ): NetworkStorageResult<FluidStack> = guardedMutation(simulate) { extractFluid(networkId, template, amount, simulate) }
 
     override fun energyAmount(networkId: NetworkStorageId): NetworkStorageResult<Long> = guarded { energyAmount(networkId) }
 
@@ -62,22 +69,39 @@ internal class GuardedNetworkStoragePort(
         networkId: NetworkStorageId,
         amount: Long,
         simulate: Boolean,
-    ): NetworkStorageResult<Long> = guarded { insertEnergy(networkId, amount, simulate) }
+    ): NetworkStorageResult<Long> = guardedMutation(simulate) { insertEnergy(networkId, amount, simulate) }
 
     override fun extractEnergy(
         networkId: NetworkStorageId,
         amount: Long,
         simulate: Boolean,
-    ): NetworkStorageResult<Long> = guarded { extractEnergy(networkId, amount, simulate) }
+    ): NetworkStorageResult<Long> = guardedMutation(simulate) { extractEnergy(networkId, amount, simulate) }
 
-    private inline fun <T> guarded(operation: NetworkStoragePort.() -> NetworkStorageResult<T>): NetworkStorageResult<T> =
+    private inline fun <T> guardedMutation(
+        simulate: Boolean,
+        operation: NetworkStoragePort.() -> NetworkStorageResult<T>,
+    ): NetworkStorageResult<T> =
+        guarded(
+            failureResult =
+                if (simulate) {
+                    NetworkStorageResult.Failed
+                } else {
+                    NetworkStorageResult.OutcomeUnknown
+                },
+            operation = operation,
+        )
+
+    private inline fun <T> guarded(
+        failureResult: NetworkStorageResult<Nothing> = NetworkStorageResult.Failed,
+        operation: NetworkStoragePort.() -> NetworkStorageResult<T>,
+    ): NetworkStorageResult<T> =
         try {
             delegate.operation()
         } catch (error: LinkageError) {
             logger.error("Network storage integration linkage failed", error)
-            NetworkStorageResult.Failed
+            failureResult
         } catch (exception: RuntimeException) {
             logger.error("Network storage integration operation failed", exception)
-            NetworkStorageResult.Failed
+            failureResult
         }
 }

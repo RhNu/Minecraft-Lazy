@@ -35,6 +35,7 @@ rhx.lazy
    │  ├─ botanypots
    │  │  └─ client
    │  └─ client
+   ├─ mysticalagriculture
    └─ silentgear
 ```
 
@@ -43,8 +44,9 @@ rhx.lazy
 - `feature` 使用垂直切片组织业务；方块、物品、方块实体、界面、事件、配置和注册跟随各自领域，不再按 Minecraft 类型横向分包。
 - `integration` 保存第三方模组适配。集成可以依赖 `core` 和 `feature`，业务领域不得反向依赖集成。
 - 可选集成通过 `IntegrationModule` 统一公共侧与客户端初始化，并由唯一的显式模块列表确定顺序。bootstrap 的字段、签名和初始化器不得引用第三方类型；只有确认对应模组已加载后才能解析 adapter。模组已安装但初始化失败属于启动错误，不静默降级。
-- Jade 集成是上述生命周期的明确例外：`LazyJadePlugin` 通过 Jade 的 `@WailaPlugin` 发现，公共数据提供器与客户端组件提供器分别由 Jade 注册，不进入 `IntegrationManager`。Lazy 自身 bootstrap 不引用 Jade API；种植机的 Jade bridge 只有在 Botany Pots 已加载后才解析。
-- 跨领域网络存储端口位于 `core.storage`，只暴露 Minecraft/NeoForge 类型并最多安装一个提供者。当前 Beyond Dimensions adapter 以网络 ID 为边界，包装物品、流体和 FE 的查询、模拟、插入与提取；预期的网络缺失与意外 API 失败使用不同结果表示。
+- Jade 集成是上述生命周期的明确例外：`LazyJadePlugin` 通过 Jade 的 `@WailaPlugin` 发现，公共数据提供器与客户端组件提供器分别由 Jade 注册，不进入 `IntegrationManager`。Lazy 自身 bootstrap 不引用 Jade API；种植机和精华转换器的 Jade bridge 只有在对应内容模组已加载后才解析。
+- 跨领域网络存储端口位于 `core.storage`，只暴露 Minecraft/NeoForge 类型并最多安装一个提供者。当前 Beyond Dimensions adapter 以网络 ID 为边界，包装物品、流体和 FE 的查询、模拟、插入与提取；物品端口另有 `Long` 数量的批量插入，避免超大存量被拆成循环。预期的网络缺失与意外 API 失败使用不同结果表示。
+- `integration.mysticalagriculture` 自成可选垂直切片：只有 Mystical Agriculture 存在时才挂载其 `DeferredRegister`、配置、能力、数据生成和创造标签入口。代码只通过资源 ID 延迟解析精华，不链接两项上游模组的 Java 类型；Agradditions 仅决定 Insanium 是否可用。
 - Repairer 的修复后处理接口由领域自身持有，第三方适配器只注册回调。回调可并存且不得重复注册；单个回调失败不回滚基础修复。
 - `feature.teleporter` 可以依赖独立的 `feature.voidworld`；其他跨领域依赖应保持显式且数量有限。
 - 当前没有对外公开的扩展契约，因此不创建空的 `api` 包。出现真实外部调用方后再定义稳定 API。
@@ -70,6 +72,8 @@ LDLib2 UI 树必须能在逻辑服务端与客户端以相同结构构造。与�
 ## 数据与能力边界
 
 方块实体持久化优先通过 LDLib2 `FieldManagedStorage`、`@Persisted` 与 `@LazyManaged` 实现。只需要存盘的方块实体不引入完整的描述同步接口；客户端展示的数据由打开的 UI 定向同步。托管集合加载后仍须执行长度、空值和容量归一化，业务变更后显式 `markDirty`。
+
+精华转换器不保存逐件物品列表，而保存目标档、完整目标数量与不足一个目标的精华量余数。所有换算均以固定档位精华量做 O(1) 整数运算；读取存档和每个服务端 tick 都执行容量归一化，并在 Insanium 不可用时降级为 Supremium。网络写入抛出异常且无法确认是否已提交时，转换器会持久暂停网络输出，直到玩家重新选择输出方式，避免自动重试造成重复写入。
 
 Mojang Codec 继续用于数据驱动对象和跨版本结构化数据，NeoForge capability 继续作为物品、流体和能量互操作契约，Fzzy Config 继续管理服务器权威配置。这些原生契约不由 LDLib2 的 UI 或托管字段替代。
 

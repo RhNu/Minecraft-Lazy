@@ -236,6 +236,13 @@ dependencies {
     integrationsRuntime(
         "maven.modrinth:botany-pots-tiers:${property("botany_pots_tiers_version")}",
     )
+    integrationsRuntime("maven.modrinth:cucumber:${property("cucumber_version")}")
+    integrationsRuntime(
+        "maven.modrinth:mystical-agriculture:${property("mystical_agriculture_version")}",
+    )
+    integrationsRuntime(
+        "maven.modrinth:mystical-agradditions:${property("mystical_agradditions_version")}",
+    )
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
     localRuntime("maven.modrinth:jade:${property("jade_version")}")
 
@@ -268,6 +275,8 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "beyond_dimensions_version_range" to project.property("beyond_dimensions_version_range"),
             "botany_pots_version_range" to project.property("botany_pots_version_range"),
             "botany_pots_tiers_version_range" to project.property("botany_pots_tiers_version_range"),
+            "mystical_agriculture_version_range" to project.property("mystical_agriculture_version_range"),
+            "mystical_agradditions_version_range" to project.property("mystical_agradditions_version_range"),
         )
 
     inputs.properties(replacements)

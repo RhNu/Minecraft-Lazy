@@ -5,6 +5,7 @@ import net.neoforged.fml.ModList
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
 import rhx.lazy.integration.botanypots.BotanyPotsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
+import rhx.lazy.integration.mysticalagriculture.MysticalAgricultureIntegrationModule
 import rhx.lazy.integration.silentgear.SilentGearIntegrationModule
 
 internal object LazyIntegrations {
@@ -16,6 +17,7 @@ internal object LazyIntegrations {
                     BotanyPotsIntegrationModule,
                     SilentGearIntegrationModule,
                     CuriosIntegrationModule,
+                    MysticalAgricultureIntegrationModule,
                 ),
             isModLoaded = { modId -> ModList.get().isLoaded(modId) },
         )

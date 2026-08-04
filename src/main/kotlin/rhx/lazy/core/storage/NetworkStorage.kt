@@ -23,6 +23,9 @@ internal sealed interface NetworkStorageResult<out T> {
     data object NetworkNotFound : NetworkStorageResult<Nothing>
 
     data object Failed : NetworkStorageResult<Nothing>
+
+    /** A mutating operation failed after its commit status became unknowable. */
+    data object OutcomeUnknown : NetworkStorageResult<Nothing>
 }
 
 internal interface NetworkStoragePort {
@@ -40,6 +43,18 @@ internal interface NetworkStoragePort {
         stack: ItemStack,
         simulate: Boolean,
     ): NetworkStorageResult<ItemStack>
+
+    /**
+     * Inserts an amount that may be larger than an [ItemStack] can represent.
+     *
+     * The successful result is the amount that could not be inserted.
+     */
+    fun insertItemAmount(
+        networkId: NetworkStorageId,
+        template: ItemStack,
+        amount: Long,
+        simulate: Boolean,
+    ): NetworkStorageResult<Long>
 
     fun extractItem(
         networkId: NetworkStorageId,
@@ -106,6 +121,13 @@ internal open class NetworkStorageService : NetworkStoragePort {
         simulate: Boolean,
     ): NetworkStorageResult<ItemStack> = delegate.insertItem(networkId, stack, simulate)
 
+    override fun insertItemAmount(
+        networkId: NetworkStorageId,
+        template: ItemStack,
+        amount: Long,
+        simulate: Boolean,
+    ): NetworkStorageResult<Long> = delegate.insertItemAmount(networkId, template, amount, simulate)
+
     override fun extractItem(
         networkId: NetworkStorageId,
         template: ItemStack,
@@ -163,6 +185,13 @@ private object UnavailableNetworkStorage : NetworkStoragePort {
         stack: ItemStack,
         simulate: Boolean,
     ) = unavailable<ItemStack>()
+
+    override fun insertItemAmount(
+        networkId: NetworkStorageId,
+        template: ItemStack,
+        amount: Long,
+        simulate: Boolean,
+    ) = unavailable<Long>()
 
     override fun extractItem(
         networkId: NetworkStorageId,

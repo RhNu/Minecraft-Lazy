@@ -48,6 +48,19 @@ internal class FakeNetworkStorage(
             stack.copyWithAmount(stack.count.toLong() - accepted)
         }
 
+    override fun insertItemAmount(
+        networkId: NetworkStorageId,
+        template: ItemStack,
+        amount: Long,
+        simulate: Boolean,
+    ): NetworkStorageResult<Long> =
+        withNetwork {
+            if (template.isEmpty || amount <= 0L) return@withNetwork 0L
+            val accepted = min(amount, (itemCapacity - storedItemAmount).coerceAtLeast(0L))
+            if (!simulate) storedItemAmount += accepted
+            amount - accepted
+        }
+
     override fun extractItem(
         networkId: NetworkStorageId,
         template: ItemStack,

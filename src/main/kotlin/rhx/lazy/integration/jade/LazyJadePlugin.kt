@@ -15,6 +15,8 @@ import rhx.lazy.integration.jade.client.BufferJadeComponentProvider
 import rhx.lazy.integration.jade.client.EnergySourceJadeComponentProvider
 import rhx.lazy.integration.jade.client.ItemCopierJadeComponentProvider
 import rhx.lazy.integration.jade.client.RepairerJadeComponentProvider
+import rhx.lazy.integration.jade.mysticalagriculture.JadeEssenceConverterIntegration
+import rhx.lazy.integration.jade.mysticalagriculture.client.JadeEssenceConverterClientIntegration
 import snownee.jade.api.IWailaClientRegistration
 import snownee.jade.api.IWailaCommonRegistration
 import snownee.jade.api.IWailaPlugin
@@ -32,6 +34,9 @@ class LazyJadePlugin : IWailaPlugin {
         if (ModList.get().isLoaded(BOTANY_POTS_MOD_ID)) {
             JadePlanterIntegration.register(registration)
         }
+        if (ModList.get().isLoaded(MYSTICAL_AGRICULTURE_MOD_ID)) {
+            JadeEssenceConverterIntegration.register(registration)
+        }
     }
 
     override fun registerClient(registration: IWailaClientRegistration) {
@@ -43,9 +48,13 @@ class LazyJadePlugin : IWailaPlugin {
         if (ModList.get().isLoaded(BOTANY_POTS_MOD_ID)) {
             JadePlanterClientIntegration.register(registration)
         }
+        if (ModList.get().isLoaded(MYSTICAL_AGRICULTURE_MOD_ID)) {
+            JadeEssenceConverterClientIntegration.register(registration)
+        }
     }
 
     private companion object {
         const val BOTANY_POTS_MOD_ID = "botanypots"
+        const val MYSTICAL_AGRICULTURE_MOD_ID = "mysticalagriculture"
     }
 }
