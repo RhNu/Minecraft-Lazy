@@ -10,6 +10,9 @@
 - `safeSearchRadius`：安全落点的水平搜索半径，默认 `8`，范围 `0..16`。
 - `createVoidSafetyPlatform`：找不到支撑方块时是否允许在虚空端补平台，默认开启。
 
+传送器首版内置维度黑名单 `compactmachines:compact_world`。玩家处于该维度时，手持传送器
+和 Curios 槽位中的传送器均不可激活，并会收到本地化提示。
+
 配置由服务器同步，默认要求权限等级 2 才能在 Fzzy Config 界面中修改。世界生成参数不从
 该文件读取。
 

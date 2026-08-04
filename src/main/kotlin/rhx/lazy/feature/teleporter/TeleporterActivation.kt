@@ -13,12 +13,19 @@ import rhx.lazy.core.displayActionBar
 internal object TeleporterActivation {
     fun isOnCooldown(player: ServerPlayer): Boolean = player.cooldowns.isOnCooldown(TeleporterRegistries.item.get())
 
+    fun isDimensionBlacklisted(player: ServerPlayer): Boolean = TeleporterDimensionBlacklist.contains(player.level().dimension())
+
     fun activate(
         player: ServerPlayer,
         stack: ItemStack,
     ) {
         val teleporter = TeleporterRegistries.item.get()
         if (stack.item !== teleporter) return
+
+        if (isDimensionBlacklisted(player)) {
+            player.displayActionBar(DIMENSION_BLACKLISTED)
+            return
+        }
 
         if (player.cooldowns.isOnCooldown(teleporter)) {
             player.displayActionBar("message.lazy.teleporter.cooldown")
@@ -52,4 +59,5 @@ internal object TeleporterActivation {
 
     private const val TICKS_PER_SECOND = 20
     private const val FAILURE_COOLDOWN_TICKS = 10
+    const val DIMENSION_BLACKLISTED = "message.lazy.teleporter.dimension_blacklisted"
 }

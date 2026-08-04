@@ -130,6 +130,7 @@
   "message.lazy.rise.success": "Teleported to the surface",
   "message.lazy.teleporter.charge_not_full": "Charge not full",
   "message.lazy.teleporter.cooldown": "Teleporter is cooling down",
+  "message.lazy.teleporter.dimension_blacklisted": "The teleporter cannot be used in this dimension",
   "message.lazy.teleporter.dimension_missing": "Teleport failed: target dimension is unavailable",
   "message.lazy.teleporter.no_safe_destination": "Teleport failed: no safe destination found",
   "message.lazy.teleporter.no_safe_return": "Teleport failed: the current return point is unsafe",

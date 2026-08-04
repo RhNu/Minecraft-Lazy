@@ -130,6 +130,7 @@
   "message.lazy.rise.success": "已传送到地表",
   "message.lazy.teleporter.charge_not_full": "蓄力不足",
   "message.lazy.teleporter.cooldown": "传送器冷却中",
+  "message.lazy.teleporter.dimension_blacklisted": "当前维度禁止使用传送器",
   "message.lazy.teleporter.dimension_missing": "传送失败：目标维度不可用",
   "message.lazy.teleporter.no_safe_destination": "传送失败：未找到安全落点",
   "message.lazy.teleporter.no_safe_return": "传送失败：当前位置不能作为安全返回点",

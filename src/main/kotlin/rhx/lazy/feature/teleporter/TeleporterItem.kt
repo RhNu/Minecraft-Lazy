@@ -28,6 +28,11 @@ internal class TeleporterItem(
         }
 
         val serverPlayer = player as? ServerPlayer ?: return InteractionResultHolder.fail(stack)
+        if (TeleporterActivation.isDimensionBlacklisted(serverPlayer)) {
+            serverPlayer.displayActionBar(TeleporterActivation.DIMENSION_BLACKLISTED)
+            return InteractionResultHolder.fail(stack)
+        }
+
         if (TeleporterActivation.isOnCooldown(serverPlayer)) {
             serverPlayer.displayActionBar("message.lazy.teleporter.cooldown")
             return InteractionResultHolder.fail(stack)
