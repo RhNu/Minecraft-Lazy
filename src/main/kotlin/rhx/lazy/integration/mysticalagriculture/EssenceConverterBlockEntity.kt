@@ -214,9 +214,8 @@ internal class EssenceConverterBlockEntity(
         if (offered <= 0) return
         val stack = tier.createStack(offered)
         if (stack.isEmpty) return
-        val remainder = ItemHandlerHelper.insertItemStacked(target, stack, false)
-        val inserted = offered - remainder.count.coerceIn(0, offered)
-        if (inserted > 0) applyLedger(currentLedger().removeOutput(inserted.toLong()))
+        if (!EssenceOutputPusher.pushWholeStack(target, stack)) return
+        applyLedger(currentLedger().removeOutput(offered.toLong()))
     }
 
     private fun pushToNetwork() {
@@ -415,5 +414,17 @@ internal class EssenceConverterBlockEntity(
         private fun validateSlot(slot: Int) {
             if (slot != 0) throw IndexOutOfBoundsException("Essence Converter slot $slot is out of range")
         }
+    }
+}
+
+internal object EssenceOutputPusher {
+    fun pushWholeStack(
+        target: IItemHandler,
+        stack: ItemStack,
+    ): Boolean {
+        if (stack.isEmpty) return false
+        if (!ItemHandlerHelper.insertItemStacked(target, stack, true).isEmpty) return false
+        ItemHandlerHelper.insertItemStacked(target, stack, false)
+        return true
     }
 }
