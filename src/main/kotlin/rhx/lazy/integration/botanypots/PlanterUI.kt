@@ -23,24 +23,19 @@ import com.lowdragmc.lowdraglib2.integration.xei.IngredientIO
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
-import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.blockEntityOrNull
-import rhx.lazy.core.displayActionBar
+import rhx.lazy.core.io.IoPanelModel
+import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
-import rhx.lazy.core.storage.NetworkStorage
-import rhx.lazy.core.storage.NetworkStorageResult
 
 internal object PlanterUI {
     private val stylesheet = lazyId("lss/planter.lss")
 
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         val model = PlanterUiModel(holder)
-        val networkControlsVisible = NetworkStorage.isAvailable
-        lateinit var networkButton: UIElement
-        lateinit var downwardButton: UIElement
         lateinit var pendingWarning: UIElement
 
         val root =
@@ -98,42 +93,7 @@ internal object PlanterUI {
                                 cls = { +"lazy-planter__actions" }
                             },
                         ) {
-                            networkButton =
-                                button(
-                                    {
-                                        visible = networkControlsVisible
-                                        noText()
-                                        cls = {
-                                            +"lazy-planter__icon-button"
-                                            +"lazy-planter__toggle-button"
-                                        }
-                                        onServerClick = { event ->
-                                            if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                                model.toggleNetworkForwarding()
-                                            }
-                                        }
-                                    },
-                                ).element.apply {
-                                    addPreIcon(ItemStackTexture(ItemStack(Items.ENDER_CHEST)))
-                                }
-
-                            downwardButton =
-                                button(
-                                    {
-                                        noText()
-                                        cls = {
-                                            +"lazy-planter__icon-button"
-                                            +"lazy-planter__toggle-button"
-                                        }
-                                        onServerClick = { event ->
-                                            if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                                model.toggleDownwardOutput()
-                                            }
-                                        }
-                                    },
-                                ).element.apply {
-                                    addPreIcon(ItemStackTexture(ItemStack(Items.HOPPER)))
-                                }
+                            IoPanelUI.addIoControl(this, model)
 
                             element(
                                 {
@@ -197,19 +157,6 @@ internal object PlanterUI {
                 )
             }
 
-        bindToggleButtonState(
-            root,
-            networkButton,
-            model::isNetworkForwardingEnabled,
-            "gui.lazy.planter.network",
-        )
-        bindToggleButtonState(
-            root,
-            downwardButton,
-            model::isDownwardOutputEnabled,
-            "gui.lazy.planter.downward",
-        )
-
         val hasPending = BindableValue(false)
         hasPending.setDisplay(false)
         hasPending.registerValueListener(pendingWarning::setVisible)
@@ -238,6 +185,7 @@ internal object PlanterUI {
                 root,
                 StylesheetManager.MC,
                 stylesheet,
+                IoPanelUI.stylesheet,
             ),
             holder.player,
         )
@@ -261,37 +209,6 @@ internal object PlanterUI {
             acceptQuickMove()
             asXeiRecipeIngredient(IngredientIO.INPUT)
         }
-    }
-
-    private fun bindToggleButtonState(
-        root: UIElement,
-        button: UIElement,
-        state: () -> Boolean,
-        labelKey: String,
-    ) {
-        val value = BindableValue(false)
-        value.setDisplay(false)
-        value.registerValueListener { enabled ->
-            if (enabled) {
-                button.addClass(ENABLED_BUTTON_CLASS)
-            } else {
-                button.removeClass(ENABLED_BUTTON_CLASS)
-            }
-            button.style { style ->
-                style.tooltips(
-                    Component.translatable(labelKey),
-                    Component.translatable(
-                        if (enabled) {
-                            "gui.lazy.planter.enabled"
-                        } else {
-                            "gui.lazy.planter.disabled"
-                        },
-                    ),
-                )
-            }
-        }
-        value.bind(booleanBinding(state))
-        root.addChild(value)
     }
 
     private fun pendingTooltips(
@@ -331,7 +248,12 @@ internal object PlanterUI {
 
     private class PlanterUiModel(
         private val holder: BlockUIMenuType.BlockUIHolder,
-    ) {
+    ) : IoPanelModel {
+        override val player = holder.player
+
+        override val controller
+            get() = blockEntity?.ioController
+
         private val blockEntity: PlanterBlockEntity?
             get() =
                 holder.player.level().blockEntityOrNull(
@@ -351,46 +273,7 @@ internal object PlanterUI {
 
         fun pendingTooltipTag(): Tag = blockEntity?.pendingTooltipTag() ?: CompoundTag()
 
-        fun isNetworkForwardingEnabled(): Boolean = blockEntity?.isNetworkForwardingEnabled == true
-
-        fun isDownwardOutputEnabled(): Boolean = blockEntity?.isDownwardOutputEnabled == true
-
-        fun toggleDownwardOutput() {
-            blockEntity?.toggleDownwardOutput()
-        }
-
-        fun toggleNetworkForwarding() {
-            val entity = blockEntity ?: return
-            val player = holder.player as? ServerPlayer ?: return
-            if (entity.isNetworkForwardingEnabled) {
-                entity.disableNetworkForwarding()
-                player.displayActionBar(
-                    "message.lazy.planter.network_forwarding",
-                    Component.translatable("gui.lazy.planter.disabled"),
-                )
-                return
-            }
-            when (val result = NetworkStorage.primaryNetwork(player)) {
-                is NetworkStorageResult.Success -> {
-                    entity.enableNetworkForwarding(result.value)
-                    if (entity.isNetworkForwardingEnabled) {
-                        player.displayActionBar(
-                            "message.lazy.planter.network_forwarding",
-                            Component.translatable("gui.lazy.planter.enabled"),
-                        )
-                    } else {
-                        player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
-                    }
-                }
-
-                NetworkStorageResult.NetworkNotFound ->
-                    player.displayActionBar("message.lazy.beyond_dimensions.no_primary_network")
-
-                else -> player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
-            }
-        }
-
-        fun isValid(): Boolean {
+        override fun isValid(): Boolean {
             val block = holder.blockState.block as? PlanterBlock ?: return false
             return block.stillValid(holder)
         }
@@ -433,7 +316,4 @@ internal object PlanterUI {
             .boolS2C { value() }
             .initialValue(false)
             .build()
-
-    private const val LEFT_MOUSE_BUTTON = 0
-    private const val ENABLED_BUTTON_CLASS = "lazy-planter__icon-button--enabled"
 }

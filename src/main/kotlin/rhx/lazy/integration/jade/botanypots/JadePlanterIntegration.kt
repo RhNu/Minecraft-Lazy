@@ -3,6 +3,7 @@ package rhx.lazy.integration.jade.botanypots
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.resources.ResourceLocation
+import rhx.lazy.core.io.IoRoute
 import rhx.lazy.integration.botanypots.PlanterBlockEntity
 import rhx.lazy.integration.jade.JadeProviderIds
 import snownee.jade.api.BlockAccessor
@@ -20,7 +21,7 @@ internal data class PlanterJadeData(
     val progressPercent: Int,
     val pendingProducts: Boolean,
     val downwardOutput: Boolean,
-    val networkForwarding: Boolean,
+    val networkOutput: Boolean,
 )
 
 internal object PlanterJadeDataProvider : StreamServerDataProvider<BlockAccessor, PlanterJadeData> {
@@ -36,7 +37,7 @@ internal object PlanterJadeDataProvider : StreamServerDataProvider<BlockAccessor
                 },
             pendingProducts = blockEntity.hasPendingDrops,
             downwardOutput = blockEntity.isDownwardOutputEnabled,
-            networkForwarding = blockEntity.isNetworkForwardingEnabled,
+            networkOutput = blockEntity.ioController.route == IoRoute.NETWORK,
         )
     }
 
@@ -56,7 +57,7 @@ private object PlanterJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, Plant
         buffer.writeVarInt(value.progressPercent + PROGRESS_OFFSET)
         buffer.writeBoolean(value.pendingProducts)
         buffer.writeBoolean(value.downwardOutput)
-        buffer.writeBoolean(value.networkForwarding)
+        buffer.writeBoolean(value.networkOutput)
     }
 
     override fun decode(buffer: RegistryFriendlyByteBuf): PlanterJadeData =
@@ -64,7 +65,7 @@ private object PlanterJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, Plant
             progressPercent = buffer.readVarInt() - PROGRESS_OFFSET,
             pendingProducts = buffer.readBoolean(),
             downwardOutput = buffer.readBoolean(),
-            networkForwarding = buffer.readBoolean(),
+            networkOutput = buffer.readBoolean(),
         )
 
     private const val PROGRESS_OFFSET = 1

@@ -17,18 +17,21 @@ import net.neoforged.neoforge.items.IItemHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper
-import rhx.lazy.core.ManagedBlockEntity
-import rhx.lazy.core.storage.NetworkStorage
-import rhx.lazy.core.storage.NetworkStorageId
-import rhx.lazy.core.storage.NetworkStoragePort
-import rhx.lazy.core.storage.NetworkStorageResult
+import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.IoResourceKind
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoRouteAdapter
+import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.io.NetworkTransferResult
 
 internal class EssenceConverterBlockEntity(
     pos: BlockPos,
     state: BlockState,
-    private val networkStorage: NetworkStoragePort = NetworkStorage,
     private val capacityProvider: () -> Long = { EssenceConverterConfigs.settings.maxStoredEssence.get() },
-) : ManagedBlockEntity(EssenceConverterRegistries.blockEntity.get(), pos, state) {
+) : IoManagedBlockEntity(EssenceConverterRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
     private var targetTierName = NO_TARGET
@@ -41,25 +44,18 @@ internal class EssenceConverterBlockEntity(
     @field:LazyManaged
     private var storedRemainder = 0
 
-    @field:Persisted
-    @field:LazyManaged
-    private var outputMode = EssenceOutputMode.DOWNWARD
-
-    @field:Persisted
-    @field:LazyManaged
-    private var dimensionNetworkId = INVALID_NETWORK_ID
-
-    @field:Persisted
-    @field:LazyManaged
-    private var networkOutputPaused = false
-
     val inputHandler: IItemHandlerModifiable = InputHandler()
     val outputHandler: IItemHandlerModifiable = OutputHandler()
     val combinedHandler: IItemHandlerModifiable = CombinedInvWrapper(inputHandler, outputHandler)
 
     private var downwardCache: BlockCapabilityCache<IItemHandler, Direction?>? = null
-    private var networkRetryTicks = 0
     private var stateRepairPendingPersistence = false
+
+    private val ioAdapter = EssenceIoRouteAdapter()
+
+    init {
+        installIoAdapter(ioAdapter)
+    }
 
     val targetTier: EssenceTier?
         get() = EssenceTier.fromSerializedName(targetTierName)
@@ -70,14 +66,8 @@ internal class EssenceConverterBlockEntity(
     val remainderUnits: Int
         get() = storedRemainder
 
-    val currentOutputMode: EssenceOutputMode
-        get() = outputMode
-
-    val boundDimensionNetworkId: Int?
-        get() = dimensionNetworkId.takeIf { it >= 0 }
-
     val isNetworkOutputPaused: Boolean
-        get() = networkOutputPaused
+        get() = ioController.networkPaused
 
     val capacity: Long
         get() = capacityProvider().coerceAtLeast(1L)
@@ -97,42 +87,10 @@ internal class EssenceConverterBlockEntity(
         return true
     }
 
-    fun setDownwardOutput() {
-        if (
-            outputMode == EssenceOutputMode.DOWNWARD &&
-            dimensionNetworkId == INVALID_NETWORK_ID &&
-            !networkOutputPaused
-        ) {
-            return
-        }
-        outputMode = EssenceOutputMode.DOWNWARD
-        dimensionNetworkId = INVALID_NETWORK_ID
-        networkOutputPaused = false
-        networkRetryTicks = 0
-        outputStateChanged()
-    }
-
-    fun setNetworkOutput(networkId: NetworkStorageId): Boolean {
-        if (!networkStorage.isAvailable) return false
-        outputMode = EssenceOutputMode.NETWORK
-        dimensionNetworkId = networkId.value
-        networkOutputPaused = false
-        networkRetryTicks = 0
-        outputStateChanged()
-        return true
-    }
-
     fun onServerTick() {
         persistStateRepairs()
         normalizeState()
-        if (outputMode == EssenceOutputMode.NETWORK && !networkStorage.isAvailable) {
-            setDownwardOutput()
-        }
-        if (storedOutput <= 0L) return
-        when (outputMode) {
-            EssenceOutputMode.DOWNWARD -> pushDownward()
-            EssenceOutputMode.NETWORK -> if (!networkOutputPaused) pushToNetwork()
-        }
+        ioController.tick()
     }
 
     fun saveContentsToItem(
@@ -142,11 +100,7 @@ internal class EssenceConverterBlockEntity(
         saveToItem(stack, registries)
         val data = stack.get(DataComponents.BLOCK_ENTITY_DATA) ?: return
         val root = data.copyTag()
-        val managed = root.getCompound(MANAGED_DATA_KEY)
-        managed.remove(OUTPUT_MODE_FIELD)
-        managed.remove(DIMENSION_NETWORK_ID_FIELD)
-        managed.remove(NETWORK_OUTPUT_PAUSED_FIELD)
-        root.put(MANAGED_DATA_KEY, managed)
+        stripIoConfiguration(root)
         stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(root))
     }
 
@@ -156,18 +110,7 @@ internal class EssenceConverterBlockEntity(
     ) {
         super.loadAdditional(tag, registries)
         downwardCache = null
-        networkRetryTicks = 0
-        var repaired = normalizeState(markChanges = false)
-        val outputState =
-            EssenceOutputState(outputMode, dimensionNetworkId, networkOutputPaused)
-                .repairAfterLoad(networkStorage.isAvailable)
-        if (outputState != EssenceOutputState(outputMode, dimensionNetworkId, networkOutputPaused)) {
-            repaired = true
-        }
-        outputMode = outputState.mode
-        dimensionNetworkId = outputState.networkId
-        networkOutputPaused = outputState.networkPaused
-        stateRepairPendingPersistence = repaired
+        stateRepairPendingPersistence = normalizeState(markChanges = false)
     }
 
     override fun setRemoved() {
@@ -206,49 +149,39 @@ internal class EssenceConverterBlockEntity(
         if (remainderChanged) markDirty(STORED_REMAINDER_FIELD)
     }
 
-    private fun pushDownward() {
-        val serverLevel = level as? ServerLevel ?: return
-        val target = downwardCache(serverLevel).getCapability() ?: return
-        val tier = targetTier ?: return
+    private fun pushDownward(): IoPushResult {
+        val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
+        val target = downwardCache(serverLevel).getCapability() ?: return IoPushResult.Success
+        val tier = targetTier ?: return IoPushResult.Success
         val offered = storedOutput.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        if (offered <= 0) return
+        if (offered <= 0) return IoPushResult.Success
         val stack = tier.createStack(offered)
-        if (stack.isEmpty) return
+        if (stack.isEmpty) return IoPushResult.Success
         val inserted = EssenceOutputPusher.pushMaximum(target, stack)
         if (inserted > 0) applyLedger(currentLedger().removeOutput(inserted.toLong()))
+        return IoPushResult.Success
     }
 
-    private fun pushToNetwork() {
-        if (networkRetryTicks > 0) {
-            networkRetryTicks--
-            return
-        }
-        val tier = targetTier ?: return
+    private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
+        val networkTarget = target ?: return IoPushResult.TargetMissing
+        val tier = targetTier ?: return IoPushResult.Success
         val template = tier.createStack()
-        if (template.isEmpty || dimensionNetworkId < 0) {
-            networkRetryTicks = NETWORK_RETRY_INTERVAL - 1
-            return
-        }
-
-        when (
-            val result =
-                networkStorage.insertItemAmount(
-                    NetworkStorageId(dimensionNetworkId),
-                    template,
-                    storedOutput,
-                    simulate = false,
-                )
-        ) {
-            is NetworkStorageResult.Success -> {
-                val remainder = result.value.coerceIn(0L, storedOutput)
+        if (template.isEmpty || storedOutput <= 0L) return IoPushResult.Success
+        val provider =
+            NetworkOutputProviders.get(networkTarget.providerId)
+                ?: return IoPushResult.TargetMissing
+        val result = provider.insert(networkTarget, NetworkPayload.Items(template, storedOutput), false)
+        return when (result) {
+            is NetworkTransferResult.Success -> {
+                val remainder = result.remainder.coerceIn(0L, storedOutput)
                 val inserted = storedOutput - remainder
                 if (inserted > 0L) applyLedger(currentLedger().removeOutput(inserted))
-                networkRetryTicks = 0
+                IoPushResult.Success
             }
 
-            NetworkStorageResult.OutcomeUnknown -> pauseNetworkOutput()
-
-            else -> networkRetryTicks = NETWORK_RETRY_INTERVAL - 1
+            NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
+            NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
+            NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
         }
     }
 
@@ -264,26 +197,28 @@ internal class EssenceConverterBlockEntity(
                     {},
                 ).also { downwardCache = it }
 
-    private fun outputStateChanged() {
-        markDirty(OUTPUT_MODE_FIELD)
-        markDirty(DIMENSION_NETWORK_ID_FIELD)
-        markDirty(NETWORK_OUTPUT_PAUSED_FIELD)
-    }
-
-    private fun pauseNetworkOutput() {
-        if (networkOutputPaused) return
-        networkOutputPaused = true
-        networkRetryTicks = 0
-        markDirty(NETWORK_OUTPUT_PAUSED_FIELD)
-    }
-
     private fun persistStateRepairs() {
         if (!stateRepairPendingPersistence) return
         stateRepairPendingPersistence = false
         markDirty(TARGET_TIER_FIELD)
         markDirty(STORED_OUTPUT_FIELD)
         markDirty(STORED_REMAINDER_FIELD)
-        outputStateChanged()
+    }
+
+    private inner class EssenceIoRouteAdapter : IoRouteAdapter {
+        override val supportedRoutes: Set<IoRoute> =
+            setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
+        override val resourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ITEM)
+
+        override fun push(
+            route: IoRoute,
+            target: NetworkTargetRef?,
+        ): IoPushResult =
+            when (route) {
+                IoRoute.DOWNWARD -> pushDownward()
+                IoRoute.NETWORK -> pushToNetwork(target)
+                else -> IoPushResult.Success
+            }
     }
 
     private inner class InputHandler : IItemHandlerModifiable {
@@ -403,13 +338,7 @@ internal class EssenceConverterBlockEntity(
         internal const val TARGET_TIER_FIELD = "targetTierName"
         internal const val STORED_OUTPUT_FIELD = "storedOutput"
         internal const val STORED_REMAINDER_FIELD = "storedRemainder"
-        internal const val OUTPUT_MODE_FIELD = "outputMode"
-        internal const val DIMENSION_NETWORK_ID_FIELD = "dimensionNetworkId"
-        internal const val NETWORK_OUTPUT_PAUSED_FIELD = "networkOutputPaused"
-
         private const val NO_TARGET = ""
-        private const val INVALID_NETWORK_ID = -1
-        private const val NETWORK_RETRY_INTERVAL = 20
 
         private fun validateSlot(slot: Int) {
             if (slot != 0) throw IndexOutOfBoundsException("Essence Converter slot $slot is out of range")

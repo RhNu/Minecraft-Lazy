@@ -17,6 +17,8 @@ import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import rhx.lazy.core.blockEntityOrNull
+import rhx.lazy.core.io.IoPanelModel
+import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
 
 internal object ItemCopierUI {
@@ -98,6 +100,8 @@ internal object ItemCopierUI {
                                 }
                             },
                         ).element
+
+                    IoPanelUI.addIoControl(this, model)
                 }
 
                 label(
@@ -162,6 +166,7 @@ internal object ItemCopierUI {
                 root,
                 StylesheetManager.MC,
                 stylesheet,
+                IoPanelUI.stylesheet,
             ),
             holder.player,
         )
@@ -169,7 +174,12 @@ internal object ItemCopierUI {
 
     private class ItemCopierUiModel(
         private val holder: BlockUIMenuType.BlockUIHolder,
-    ) {
+    ) : IoPanelModel {
+        override val player = holder.player
+
+        override val controller
+            get() = blockEntity?.ioController
+
         private val blockEntity: ItemCopierBlockEntity?
             get() =
                 holder.player.level().blockEntityOrNull(
@@ -193,7 +203,7 @@ internal object ItemCopierUI {
             entity.cycleGear()
         }
 
-        fun isValid(): Boolean {
+        override fun isValid(): Boolean {
             val block = holder.blockState.block as? ItemCopierBlock ?: return false
             return block.stillValid(holder)
         }

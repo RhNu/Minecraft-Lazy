@@ -1,0 +1,49 @@
+.lazy-io__trigger {
+  width: 16;
+  height: 16;
+  padding-all: 1;
+  base-background: built-in(ui-mc:RECT_3);
+  hover-background: built-in(ui-mc:RECT_3) color(#dddddd);
+  pressed-background: built-in(ui-mc:RECT_BORDER);
+}
+
+.lazy-io__panel {
+  padding-all: 5;
+  gap-row: 3;
+  align-items: center;
+}
+
+.lazy-io__title {
+  height: 10;
+  horizontal-align: center;
+  text-color: #404040;
+  text-shadow: false;
+}
+
+.lazy-io__routes {
+  height: 20;
+  gap-column: 3;
+  justify-content: center;
+}
+
+.lazy-io__route-button,
+.lazy-io__provider-button {
+  width: 20;
+  height: 20;
+  padding-all: 2;
+  base-background: built-in(ui-mc:RECT_3);
+  hover-background: built-in(ui-mc:RECT_3) color(#dddddd);
+  pressed-background: built-in(ui-mc:RECT_BORDER);
+}
+
+.lazy-io__button--selected {
+  base-background: built-in(ui-mc:RECT_BORDER);
+  hover-background: built-in(ui-mc:RECT_BORDER);
+  pressed-background: built-in(ui-mc:RECT_BORDER);
+}
+
+.lazy-io__providers {
+  height: 20;
+  gap-column: 3;
+  justify-content: center;
+}

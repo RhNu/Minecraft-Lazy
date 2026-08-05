@@ -3,10 +3,11 @@ package rhx.lazy.feature.energy
 import net.minecraft.core.BlockPos
 import net.minecraft.core.RegistryAccess
 import net.minecraft.core.registries.BuiltInRegistries
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class EnergySourceBlockEntityPersistenceTest {
@@ -15,29 +16,21 @@ class EnergySourceBlockEntityPersistenceTest {
     @Test
     fun `network push survives managed data round trip`() {
         val storage = FakeNetworkStorage()
+        val provider = FakeNetworkOutputProvider(storage)
         val source =
             EnergySourceBlockEntity(
                 BlockPos.ZERO,
                 EnergyRegistries.sourceBlock.get().defaultBlockState(),
-                storage,
             )
-        assertTrue(
-            source.setOutputMode(
-                EnergyOutputMode.NETWORK,
-                FakeNetworkStorage.TEST_NETWORK_ID,
-            ),
-        )
+        assertTrue(source.ioController.setNetworkTarget(provider.target))
 
         val restored =
             EnergySourceBlockEntity(
                 BlockPos.ZERO,
                 EnergyRegistries.sourceBlock.get().defaultBlockState(),
-                storage,
             )
         restored.loadWithComponents(source.saveWithFullMetadata(registries), registries)
 
-        assertFalse(restored.isActivePushEnabled())
-        assertTrue(restored.isNetworkPushEnabled())
-        assertEquals(EnergyOutputMode.NETWORK, restored.outputMode())
+        assertEquals(IoRoute.NETWORK, restored.ioController.route)
     }
 }

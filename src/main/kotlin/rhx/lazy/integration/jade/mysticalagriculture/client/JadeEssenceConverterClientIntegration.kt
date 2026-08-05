@@ -38,7 +38,13 @@ private object EssenceConverterJadeComponentProvider : IBlockComponentProvider {
         tooltip.add(
             Component.translatable(
                 "jade.lazy.essence_converter.output_mode",
-                Component.translatable("gui.lazy.essence_converter.${data.outputMode}"),
+                Component.translatable(
+                    if (data.outputMode == "network_paused") {
+                        "gui.lazy.io.network_paused"
+                    } else {
+                        "gui.lazy.io.route.${data.outputMode}"
+                    },
+                ),
             ),
         )
     }

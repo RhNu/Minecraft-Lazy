@@ -6,6 +6,8 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,109 +16,66 @@ import kotlin.test.assertTrue
 
 class BufferNetworkForwardingTest {
     @Test
-    fun `enabling forwarding moves existing contents and keeps network remainders`() {
+    fun `network route drains existing items and fluids and keeps remainders`() {
         val storage =
             FakeNetworkStorage().apply {
                 itemCapacity = 100
                 fluidCapacity = 20_000
             }
-        val buffer = newBuffer(storage)
+        val buffer = newBuffer()
         buffer.itemHandler.insertItem(0, ItemStack(Items.DIAMOND, 180), false)
         buffer.fluidHandler.fill(
             FluidStack(Fluids.WATER, 40_000),
             IFluidHandler.FluidAction.EXECUTE,
         )
+        setNetworkRoute(buffer, storage)
 
-        buffer.enableNetworkForwarding(FakeNetworkStorage.TEST_NETWORK_ID)
+        buffer.onServerTick()
 
         assertEquals(100, storage.storedItemAmount)
         assertEquals(80, buffer.getItemCount(0))
         assertEquals(20_000, storage.storedFluidAmount)
         assertEquals(20_000, buffer.getFluid(0).amount)
-        assertTrue(buffer.isNetworkForwardingEnabled)
+        assertEquals(IoRoute.NETWORK, buffer.ioController.route)
     }
 
     @Test
-    fun `new inputs go to the network before using local capacity`() {
-        val storage =
-            FakeNetworkStorage().apply {
-                itemCapacity = 100
-                fluidCapacity = 20_000
-            }
-        val buffer = newBuffer(storage)
-        buffer.enableNetworkForwarding(FakeNetworkStorage.TEST_NETWORK_ID)
+    fun `network route does not intercept new input before the outbound tick`() {
+        val storage = FakeNetworkStorage().apply { itemCapacity = 100 }
+        val buffer = newBuffer()
+        setNetworkRoute(buffer, storage)
 
-        val itemRemainder = buffer.itemHandler.insertItem(0, ItemStack(Items.EMERALD, 180), false)
-        val fluidAccepted =
-            buffer.fluidHandler.fill(
-                FluidStack(Fluids.LAVA, 40_000),
-                IFluidHandler.FluidAction.EXECUTE,
-            )
+        val remainder = buffer.itemHandler.insertItem(0, ItemStack(Items.EMERALD, 180), false)
 
-        assertTrue(itemRemainder.isEmpty)
-        assertEquals(100, storage.storedItemAmount)
-        assertEquals(80, buffer.getItemCount(0))
-        assertEquals(40_000, fluidAccepted)
-        assertEquals(20_000, storage.storedFluidAmount)
-        assertEquals(20_000, buffer.getFluid(0).amount)
-
-        storage.itemCapacity = 120
-        val differentItemRemainder =
-            buffer.itemHandler.insertItem(
-                0,
-                ItemStack(Items.DIAMOND, 20),
-                false,
-            )
-        assertTrue(differentItemRemainder.isEmpty)
-        assertEquals(120, storage.storedItemAmount)
-        assertEquals(80, buffer.getItemCount(0))
-    }
-
-    @Test
-    fun `network remainder never enters an incompatible local slot`() {
-        val storage =
-            FakeNetworkStorage().apply {
-                itemCapacity = 0
-            }
-        val buffer = newBuffer(storage)
-        buffer.itemHandler.insertItem(0, ItemStack(Items.DIAMOND, 80), false)
-        buffer.enableNetworkForwarding(FakeNetworkStorage.TEST_NETWORK_ID)
-        storage.itemCapacity = 10
-
-        val simulatedRemainder =
-            buffer.itemHandler.insertItem(
-                0,
-                ItemStack(Items.EMERALD, 20),
-                true,
-            )
-        assertEquals(10, simulatedRemainder.count)
-        assertTrue(ItemStack.isSameItemSameComponents(ItemStack(Items.EMERALD), simulatedRemainder))
+        assertTrue(remainder.isEmpty)
+        assertEquals(180, buffer.getItemCount(0))
         assertEquals(0, storage.storedItemAmount)
-        assertEquals(80, buffer.getItemCount(0))
 
-        val remainder =
-            buffer.itemHandler.insertItem(
-                0,
-                ItemStack(Items.EMERALD, 20),
-                false,
-            )
-        assertEquals(10, remainder.count)
-        assertTrue(ItemStack.isSameItemSameComponents(ItemStack(Items.EMERALD), remainder))
-        assertEquals(10, storage.storedItemAmount)
+        buffer.onServerTick()
+
+        assertEquals(100, storage.storedItemAmount)
         assertEquals(80, buffer.getItemCount(0))
-        assertTrue(
-            ItemStack.isSameItemSameComponents(
-                ItemStack(Items.DIAMOND),
-                buffer.getItemTemplate(0),
-            ),
-        )
     }
 
     @Test
-    fun `simulation mutates neither network nor buffer`() {
+    fun `network remainder stays in the local buffer`() {
+        val storage = FakeNetworkStorage().apply { itemCapacity = 10 }
+        val buffer = newBuffer()
+        buffer.itemHandler.insertItem(0, ItemStack(Items.DIAMOND, 80), false)
+        setNetworkRoute(buffer, storage)
+
+        buffer.onServerTick()
+
+        assertEquals(10, storage.storedItemAmount)
+        assertEquals(70, buffer.getItemCount(0))
+        assertEquals(IoRoute.NETWORK, buffer.ioController.route)
+    }
+
+    @Test
+    fun `local simulation mutates neither network nor buffer`() {
         val storage = FakeNetworkStorage()
-        val buffer = newBuffer(storage)
-        buffer.enableNetworkForwarding(FakeNetworkStorage.TEST_NETWORK_ID)
+        val buffer = newBuffer()
+        setNetworkRoute(buffer, storage)
 
         val itemRemainder = buffer.itemHandler.insertItem(0, ItemStack(Items.GOLD_INGOT, 32), true)
         val fluidAccepted =
@@ -131,28 +90,34 @@ class BufferNetworkForwardingTest {
         assertEquals(0, storage.storedFluidAmount)
         assertEquals(0, buffer.totalItemCount)
         assertEquals(0, buffer.totalFluidAmount)
-        assertTrue(buffer.isNetworkForwardingEnabled)
+        assertEquals(IoRoute.NETWORK, buffer.ioController.route)
     }
 
     @Test
-    fun `missing network disables forwarding and falls back to local storage`() {
+    fun `missing network falls back to passive without changing local contents`() {
         val storage = FakeNetworkStorage()
-        val buffer = newBuffer(storage)
-        buffer.enableNetworkForwarding(FakeNetworkStorage.TEST_NETWORK_ID)
+        val buffer = newBuffer()
+        buffer.itemHandler.insertItem(0, ItemStack(Items.IRON_INGOT, 24), false)
+        setNetworkRoute(buffer, storage)
         storage.networkExists = false
 
-        val remainder = buffer.itemHandler.insertItem(0, ItemStack(Items.IRON_INGOT, 24), false)
+        buffer.onServerTick()
 
-        assertTrue(remainder.isEmpty)
         assertEquals(24, buffer.getItemCount(0))
-        assertFalse(buffer.isNetworkForwardingEnabled)
-        assertEquals(null, buffer.boundDimensionNetworkId)
+        assertEquals(IoRoute.PASSIVE, buffer.ioController.route)
+        assertFalse(buffer.ioController.networkPaused)
     }
 
-    private fun newBuffer(storage: FakeNetworkStorage): BufferBlockEntity =
+    private fun setNetworkRoute(
+        buffer: BufferBlockEntity,
+        storage: FakeNetworkStorage,
+    ) {
+        assertTrue(buffer.ioController.setNetworkTarget(FakeNetworkOutputProvider(storage).target))
+    }
+
+    private fun newBuffer(): BufferBlockEntity =
         BufferBlockEntity(
             BlockPos.ZERO,
             BufferRegistries.block.get().defaultBlockState(),
-            storage,
         )
 }

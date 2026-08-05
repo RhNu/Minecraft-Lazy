@@ -14,10 +14,13 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.EntityBlock
 import net.minecraft.world.level.block.SoundType
 import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import rhx.lazy.core.blockEntityOrNull
 import rhx.lazy.core.displayActionBar
+import rhx.lazy.core.serverTicker
 import rhx.lazy.core.sidedItemUseResult
 import rhx.lazy.core.sidedUseResult
 
@@ -74,6 +77,15 @@ internal class BufferBlock :
     ): ItemInteractionResult = level.sidedItemUseResult(handleUse(level, pos, player))
 
     override fun createUI(holder: BlockUIMenuType.BlockUIHolder): ModularUI = BufferUI.create(holder)
+
+    override fun <T : BlockEntity?> getTicker(
+        level: Level,
+        state: BlockState,
+        blockEntityType: BlockEntityType<T>,
+    ): BlockEntityTicker<T>? =
+        level.serverTicker(blockEntityType, BufferRegistries.blockEntity.get()) {
+            onServerTick()
+        }
 
     override fun stillValid(holder: BlockUIMenuType.BlockUIHolder): Boolean {
         val level = holder.player.level()

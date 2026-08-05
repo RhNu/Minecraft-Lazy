@@ -35,14 +35,6 @@ internal class BufferBlockItem(
                             BufferBlockEntity.TOTAL_FLUID_CAPACITY,
                         ).withStyle(ChatFormatting.GRAY)
             }
-            if (managed.getBoolean(BufferBlockEntity.NETWORK_FORWARDING_FIELD)) {
-                tooltipComponents +=
-                    Component
-                        .translatable(
-                            "tooltip.lazy.buffer.network_forwarding",
-                            managed.getInt(BufferBlockEntity.DIMENSION_NETWORK_ID_FIELD),
-                        ).withStyle(ChatFormatting.GRAY)
-            }
         }
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag)
     }

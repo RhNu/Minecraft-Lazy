@@ -26,16 +26,17 @@ import net.minecraft.world.level.gameevent.GameEvent
 import net.minecraft.world.phys.Vec2
 import net.minecraft.world.phys.Vec3
 import net.neoforged.neoforge.items.IItemHandlerModifiable
-import rhx.lazy.core.ManagedBlockEntity
-import rhx.lazy.core.storage.NetworkStorage
-import rhx.lazy.core.storage.NetworkStorageId
-import rhx.lazy.core.storage.NetworkStoragePort
+import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.IoResourceKind
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoRouteAdapter
+import rhx.lazy.core.io.NetworkTargetRef
 
 internal class PlanterBlockEntity(
     pos: BlockPos,
     state: BlockState,
-    private val networkStorage: NetworkStoragePort = NetworkStorage,
-) : ManagedBlockEntity(PlanterRegistries.blockEntity.get(), pos, state) {
+) : IoManagedBlockEntity(PlanterRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
     private val inputs = MutableList(INPUT_SLOT_COUNT) { ItemStack.EMPTY }
@@ -52,18 +53,6 @@ internal class PlanterBlockEntity(
     @field:LazyManaged
     private var growthTicks = 0f
 
-    @field:Persisted
-    @field:LazyManaged
-    private var downwardOutputEnabled = false
-
-    @field:Persisted
-    @field:LazyManaged
-    private var networkForwardingEnabled = false
-
-    @field:Persisted
-    @field:LazyManaged
-    private var dimensionNetworkId = INVALID_NETWORK_ID
-
     private var renderSeed = ItemStack.EMPTY
 
     private val recipeContext = PlanterBotanyContext(this)
@@ -73,12 +62,15 @@ internal class PlanterBlockEntity(
             blockPos = pos,
             outputs = outputs,
             pendingDrops = pendingDrops,
-            networkStorage = networkStorage,
-            networkId = ::networkIdOrNull,
-            disableNetworkForwarding = ::disableNetworkForwarding,
             markOutputsDirty = { markDirty(OUTPUTS_FIELD) },
             markPendingDirty = { markDirty(PENDING_DROPS_FIELD) },
         )
+
+    private val ioAdapter = PlanterIoRouteAdapter()
+
+    init {
+        installIoAdapter(ioAdapter)
+    }
 
     internal val activeCrop: Crop?
         get() = recipeResolver.activeCrop
@@ -91,10 +83,7 @@ internal class PlanterBlockEntity(
     val bottomOutputHandler: IItemHandlerModifiable = outputRouter.outputHandler
 
     val isDownwardOutputEnabled: Boolean
-        get() = downwardOutputEnabled
-
-    val isNetworkForwardingEnabled: Boolean
-        get() = networkForwardingEnabled
+        get() = ioController.route == IoRoute.DOWNWARD
 
     val hasPendingDrops: Boolean
         get() = outputRouter.hasPendingDrops
@@ -106,7 +95,7 @@ internal class PlanterBlockEntity(
         val level = level as? ServerLevel ?: return
         if (isRemoved) return
 
-        routeStoredItems(level)
+        routeStoredItems()
         if (outputRouter.hasPendingDrops) return
 
         val pot = insertedPotBlock() ?: return recipeResolver.clearActive()
@@ -147,30 +136,6 @@ internal class PlanterBlockEntity(
         return requiredGrowthTicks(crop, soil, pot)
     }
 
-    fun toggleDownwardOutput() {
-        downwardOutputEnabled = !downwardOutputEnabled
-        markDirty(DOWNWARD_OUTPUT_FIELD)
-        if (downwardOutputEnabled) {
-            (level as? ServerLevel)?.let(::routeStoredItems)
-        }
-    }
-
-    fun enableNetworkForwarding(networkId: NetworkStorageId) {
-        networkForwardingEnabled = true
-        dimensionNetworkId = networkId.value
-        markDirty(NETWORK_FORWARDING_FIELD)
-        markDirty(DIMENSION_NETWORK_ID_FIELD)
-        (level as? ServerLevel)?.let(::routeStoredItems)
-    }
-
-    fun disableNetworkForwarding() {
-        if (!networkForwardingEnabled && dimensionNetworkId == INVALID_NETWORK_ID) return
-        networkForwardingEnabled = false
-        dimensionNetworkId = INVALID_NETWORK_ID
-        markDirty(NETWORK_FORWARDING_FIELD)
-        markDirty(DIMENSION_NETWORK_ID_FIELD)
-    }
-
     fun pendingTooltipTag(): CompoundTag = outputRouter.pendingTooltipTag(level?.registryAccess())
 
     fun takeAllForDrop(): List<ItemStack> {
@@ -208,10 +173,6 @@ internal class PlanterBlockEntity(
             inputs[slot] = normalizeSingle(inputs[slot])
         }
         outputRouter.normalizeAfterLoad()
-        if (networkForwardingEnabled && dimensionNetworkId < 0) {
-            networkForwardingEnabled = false
-            dimensionNetworkId = INVALID_NETWORK_ID
-        }
         recipeResolver.invalidate()
     }
 
@@ -250,7 +211,7 @@ internal class PlanterBlockEntity(
         repeat(rolls) {
             crop.onHarvest(recipeContext, level, outputRouter::enqueue)
         }
-        routeStoredItems(level)
+        routeStoredItems()
         growthTicks = 0f
         markDirty(GROWTH_TICKS_FIELD)
         level.gameEvent(GameEvent.BLOCK_CHANGE, blockPos, GameEvent.Context.of(blockState))
@@ -289,20 +250,21 @@ internal class PlanterBlockEntity(
             scale * pot.getYieldModifier(recipeContext, level, crop, soil)
     }
 
-    private fun routeStoredItems(level: ServerLevel) {
-        outputRouter.route(
-            level = level,
-            networkForwardingEnabled = networkForwardingEnabled,
-            downwardOutputEnabled = downwardOutputEnabled,
-        )
+    private fun routeStoredItems() {
+        ioController.tick()
     }
 
-    private fun networkIdOrNull(): NetworkStorageId? =
-        if (networkForwardingEnabled && dimensionNetworkId >= 0) {
-            NetworkStorageId(dimensionNetworkId)
-        } else {
-            null
-        }
+    private inner class PlanterIoRouteAdapter : IoRouteAdapter {
+        override val supportedRoutes: Set<IoRoute> =
+            setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
+        override val resourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ITEM)
+        override val ticksWhenPassive: Boolean = true
+
+        override fun push(
+            route: IoRoute,
+            target: NetworkTargetRef?,
+        ): IoPushResult = outputRouter.route(level as? ServerLevel, route, target)
+    }
 
     private fun createCommandSource(level: ServerLevel): CommandSourceStack {
         val name = Component.translatable("block.lazy.planter")
@@ -419,11 +381,7 @@ internal class PlanterBlockEntity(
         private const val OUTPUTS_FIELD = "outputs"
         private const val PENDING_DROPS_FIELD = "pendingDrops"
         private const val GROWTH_TICKS_FIELD = "growthTicks"
-        private const val DOWNWARD_OUTPUT_FIELD = "downwardOutputEnabled"
-        private const val NETWORK_FORWARDING_FIELD = "networkForwardingEnabled"
-        private const val DIMENSION_NETWORK_ID_FIELD = "dimensionNetworkId"
         private const val RENDER_SEED_TAG = "render_seed"
-        private const val INVALID_NETWORK_ID = -1
         private const val FUNCTION_PERMISSION_LEVEL = 2
 
         private fun validateInputSlot(slot: Int) {

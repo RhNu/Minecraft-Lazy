@@ -12,13 +12,21 @@ import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.IItemHandler
-import rhx.lazy.core.ManagedBlockEntity
+import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.IoResourceKind
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoRouteAdapter
+import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.io.NetworkTransferResult
 import java.util.EnumMap
 
 internal class ItemCopierBlockEntity(
     pos: BlockPos,
     state: BlockState,
-) : ManagedBlockEntity(ItemCopierRegistries.blockEntity.get(), pos, state) {
+) : IoManagedBlockEntity(ItemCopierRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
     private var template = ItemStack.EMPTY
@@ -31,6 +39,12 @@ internal class ItemCopierBlockEntity(
 
     private val neighborItemCaches =
         EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction?>>(Direction::class.java)
+
+    private val ioAdapter = ItemCopierIoRouteAdapter()
+
+    init {
+        installIoAdapter(ioAdapter)
+    }
 
     fun getTemplate(): ItemStack = if (template.isEmpty) ItemStack.EMPTY else template.copy()
 
@@ -64,14 +78,8 @@ internal class ItemCopierBlockEntity(
     fun hasTemplate(): Boolean = !template.isEmpty
 
     fun onServerTick() {
-        if (template.isEmpty || !advanceSchedule()) return
-        val serverLevel = level as? ServerLevel ?: return
-        ItemCopierPusher.pushToHandlers(
-            template,
-            Direction.entries.map { direction ->
-                cacheFor(serverLevel, direction).getCapability()
-            },
-        )
+        if (template.isEmpty) return
+        ioController.tick()
     }
 
     internal fun advanceSchedule(): Boolean {
@@ -117,6 +125,52 @@ internal class ItemCopierBlockEntity(
                 {},
             )
         }
+
+    private inner class ItemCopierIoRouteAdapter : IoRouteAdapter {
+        override val supportedRoutes: Set<IoRoute> =
+            setOf(IoRoute.PASSIVE, IoRoute.ADJACENT, IoRoute.NETWORK)
+        override val resourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ITEM)
+
+        override fun push(
+            route: IoRoute,
+            target: NetworkTargetRef?,
+        ): IoPushResult {
+            if (route == IoRoute.PASSIVE) return IoPushResult.Success
+            if (!advanceSchedule()) return IoPushResult.Success
+            return when (route) {
+                IoRoute.ADJACENT -> {
+                    val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
+                    ItemCopierPusher.pushToHandlers(
+                        template,
+                        Direction.entries.map { direction -> cacheFor(serverLevel, direction).getCapability() },
+                    )
+                    IoPushResult.Success
+                }
+
+                IoRoute.NETWORK -> pushToNetwork(target)
+                else -> IoPushResult.Success
+            }
+        }
+
+        private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
+            val networkTarget = target ?: return IoPushResult.TargetMissing
+            val provider =
+                NetworkOutputProviders.get(networkTarget.providerId)
+                    ?: return IoPushResult.TargetMissing
+            val result =
+                provider.insert(
+                    networkTarget,
+                    NetworkPayload.Items(template.copyWithCount(1), template.maxStackSize.toLong()),
+                    false,
+                )
+            return when (result) {
+                is NetworkTransferResult.Success -> IoPushResult.Success
+                NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
+                NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
+                NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
+            }
+        }
+    }
 
     companion object {
         internal const val MANAGED_DATA_KEY = "managed"

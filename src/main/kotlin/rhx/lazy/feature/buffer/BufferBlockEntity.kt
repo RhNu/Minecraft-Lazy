@@ -3,25 +3,33 @@ package rhx.lazy.feature.buffer
 import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
+import net.neoforged.neoforge.capabilities.BlockCapabilityCache
+import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
+import net.neoforged.neoforge.items.IItemHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
-import rhx.lazy.core.ManagedBlockEntity
-import rhx.lazy.core.storage.NetworkStorage
-import rhx.lazy.core.storage.NetworkStorageId
-import rhx.lazy.core.storage.NetworkStoragePort
-import rhx.lazy.core.storage.NetworkStorageResult
+import net.neoforged.neoforge.items.ItemHandlerHelper
+import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.IoResourceKind
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoRouteAdapter
+import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.io.NetworkTransferResult
 import kotlin.math.min
 
 internal class BufferBlockEntity(
     pos: BlockPos,
     state: BlockState,
-    private val networkStorage: NetworkStoragePort = NetworkStorage,
-) : ManagedBlockEntity(BufferRegistries.blockEntity.get(), pos, state) {
+) : IoManagedBlockEntity(BufferRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
     private val itemTemplates = MutableList(ITEM_SLOT_COUNT) { ItemStack.EMPTY }
@@ -42,28 +50,23 @@ internal class BufferBlockEntity(
     @field:LazyManaged
     private var fluidTotal = 0
 
-    @field:Persisted
-    @field:LazyManaged
-    private var networkForwardingEnabled = false
-
-    @field:Persisted
-    @field:LazyManaged
-    private var dimensionNetworkId = INVALID_NETWORK_ID
-
     val itemHandler: IItemHandlerModifiable = BufferItemHandler()
     val fluidHandler: IFluidHandler = BufferFluidHandler()
+
+    private var downwardItemCache: BlockCapabilityCache<IItemHandler, Direction?>? = null
+    private var downwardFluidCache: BlockCapabilityCache<IFluidHandler, Direction?>? = null
+
+    private val ioAdapter = BufferIoRouteAdapter()
+
+    init {
+        installIoAdapter(ioAdapter)
+    }
 
     val totalItemCount: Int
         get() = itemTotal
 
     val totalFluidAmount: Int
         get() = fluidTotal
-
-    val isNetworkForwardingEnabled: Boolean
-        get() = networkForwardingEnabled
-
-    val boundDimensionNetworkId: Int?
-        get() = dimensionNetworkId.takeIf { it >= 0 }
 
     fun hasContents(): Boolean = totalItemCount > 0 || totalFluidAmount > 0
 
@@ -72,20 +75,6 @@ internal class BufferBlockEntity(
         clearWithoutNotification()
         contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD, FLUIDS_FIELD)
         return true
-    }
-
-    fun enableNetworkForwarding(networkId: NetworkStorageId) {
-        networkForwardingEnabled = true
-        dimensionNetworkId = networkId.value
-        networkStateChanged()
-        flushContentsToNetwork()
-    }
-
-    fun disableNetworkForwarding() {
-        if (!networkForwardingEnabled && dimensionNetworkId == INVALID_NETWORK_ID) return
-        networkForwardingEnabled = false
-        dimensionNetworkId = INVALID_NETWORK_ID
-        networkStateChanged()
     }
 
     fun getItemTemplate(slot: Int): ItemStack {
@@ -111,10 +100,16 @@ internal class BufferBlockEntity(
     ) {
         super.loadAdditional(tag, registries)
         normalizeContents()
-        if (networkForwardingEnabled && dimensionNetworkId < 0) {
-            networkForwardingEnabled = false
-            dimensionNetworkId = INVALID_NETWORK_ID
-        }
+    }
+
+    fun onServerTick() {
+        ioController.tick()
+    }
+
+    override fun setRemoved() {
+        downwardItemCache = null
+        downwardFluidCache = null
+        super.setRemoved()
     }
 
     private fun contentsChanged(vararg fields: String) {
@@ -123,91 +118,6 @@ internal class BufferBlockEntity(
         fields.forEach(::markDirty)
         markDirty(ITEM_TOTAL_FIELD)
         markDirty(FLUID_TOTAL_FIELD)
-    }
-
-    private fun networkStateChanged() {
-        markDirty(NETWORK_FORWARDING_FIELD)
-        markDirty(DIMENSION_NETWORK_ID_FIELD)
-    }
-
-    private fun networkIdOrNull(): NetworkStorageId? =
-        if (networkForwardingEnabled && dimensionNetworkId >= 0) {
-            NetworkStorageId(dimensionNetworkId)
-        } else {
-            null
-        }
-
-    private fun flushContentsToNetwork() {
-        val networkId = networkIdOrNull() ?: return
-        if (level?.isClientSide == true) return
-
-        var itemsChanged = false
-        var fluidsChanged = false
-        var failed = false
-
-        for (slot in itemTemplates.indices) {
-            val template = itemTemplates[slot]
-            val stored = itemCounts[slot]
-            if (template.isEmpty || stored <= 0) continue
-
-            when (
-                val result =
-                    networkStorage.insertItem(
-                        networkId,
-                        template.copyWithCount(stored),
-                        simulate = false,
-                    )
-            ) {
-                is NetworkStorageResult.Success -> {
-                    val remainder = result.value.count.coerceIn(0, stored)
-                    if (remainder != stored) {
-                        itemCounts[slot] = remainder
-                        if (remainder == 0) itemTemplates[slot] = ItemStack.EMPTY
-                        itemsChanged = true
-                    }
-                }
-
-                else -> {
-                    failed = true
-                    break
-                }
-            }
-        }
-
-        if (!failed) {
-            for (tank in fluids.indices) {
-                val stored = fluids[tank]
-                if (stored.isEmpty || stored.amount <= 0) continue
-
-                when (val result = networkStorage.insertFluid(networkId, stored, simulate = false)) {
-                    is NetworkStorageResult.Success -> {
-                        val remainder = result.value.amount.coerceIn(0, stored.amount)
-                        if (remainder != stored.amount) {
-                            fluids[tank] =
-                                if (remainder == 0) {
-                                    FluidStack.EMPTY
-                                } else {
-                                    stored.copyWithAmount(remainder)
-                                }
-                            fluidsChanged = true
-                        }
-                    }
-
-                    else -> {
-                        failed = true
-                        break
-                    }
-                }
-            }
-        }
-
-        if (itemsChanged || fluidsChanged) {
-            val fields = mutableListOf<String>()
-            if (itemsChanged) fields += listOf(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
-            if (fluidsChanged) fields += FLUIDS_FIELD
-            contentsChanged(*fields.toTypedArray())
-        }
-        if (failed) disableNetworkForwarding()
     }
 
     private fun clearWithoutNotification() {
@@ -276,27 +186,8 @@ internal class BufferBlockEntity(
         ): ItemStack {
             validateItemSlot(slot)
             if (stack.isEmpty) return stack
-            if (networkIdOrNull() == null && !isItemValid(slot, stack)) return stack
-
-            val forwardedRemainder = forwardItem(stack, simulate)
-            if (!isItemLocallyValid(slot, forwardedRemainder)) return forwardedRemainder
-            return insertItemLocally(slot, forwardedRemainder, simulate)
-        }
-
-        private fun forwardItem(
-            stack: ItemStack,
-            simulate: Boolean,
-        ): ItemStack {
-            val networkId = networkIdOrNull() ?: return stack
-            if (level?.isClientSide == true) return stack
-
-            return when (val result = networkStorage.insertItem(networkId, stack, simulate)) {
-                is NetworkStorageResult.Success -> result.value
-                else -> {
-                    if (!simulate) disableNetworkForwarding()
-                    stack
-                }
-            }
+            if (!isItemValid(slot, stack)) return stack
+            return insertItemLocally(slot, stack, simulate)
         }
 
         private fun insertItemLocally(
@@ -347,7 +238,7 @@ internal class BufferBlockEntity(
             stack: ItemStack,
         ): Boolean {
             validateItemSlot(slot)
-            return networkIdOrNull() != null || isItemLocallyValid(slot, stack)
+            return isItemLocallyValid(slot, stack)
         }
 
         private fun isItemLocallyValid(
@@ -403,25 +294,7 @@ internal class BufferBlockEntity(
             action: IFluidHandler.FluidAction,
         ): Int {
             if (resource.isEmpty || resource.amount <= 0) return 0
-            val forwardedRemainder = forwardFluid(resource, action.simulate())
-            val forwarded = resource.amount - forwardedRemainder.amount
-            return forwarded + fillLocally(forwardedRemainder, action)
-        }
-
-        private fun forwardFluid(
-            resource: FluidStack,
-            simulate: Boolean,
-        ): FluidStack {
-            val networkId = networkIdOrNull() ?: return resource
-            if (level?.isClientSide == true) return resource
-
-            return when (val result = networkStorage.insertFluid(networkId, resource, simulate)) {
-                is NetworkStorageResult.Success -> result.value
-                else -> {
-                    if (!simulate) disableNetworkForwarding()
-                    resource
-                }
-            }
+            return fillLocally(resource, action)
         }
 
         private fun fillLocally(
@@ -492,6 +365,165 @@ internal class BufferBlockEntity(
         }
     }
 
+    private inner class BufferIoRouteAdapter : IoRouteAdapter {
+        override val supportedRoutes: Set<IoRoute> =
+            setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
+        override val resourceKinds: Set<IoResourceKind> =
+            setOf(IoResourceKind.ITEM, IoResourceKind.FLUID)
+
+        override fun push(
+            route: IoRoute,
+            target: rhx.lazy.core.io.NetworkTargetRef?,
+        ): IoPushResult =
+            when (route) {
+                IoRoute.DOWNWARD -> pushDownward()
+                IoRoute.NETWORK -> pushToNetwork(target)
+                else -> IoPushResult.Success
+            }
+
+        private fun pushDownward(): IoPushResult {
+            val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
+            var itemsChanged = false
+            var fluidsChanged = false
+            val itemTarget = itemCache(serverLevel).getCapability()
+            if (itemTarget != null) {
+                itemTemplates.indices.forEach { slot ->
+                    val template = itemTemplates[slot]
+                    val stored = itemCounts[slot]
+                    if (template.isEmpty || stored <= 0) return@forEach
+                    val remainder = ItemHandlerHelper.insertItemStacked(itemTarget, template.copyWithCount(stored), false)
+                    val remaining = remainder.count.coerceIn(0, stored)
+                    if (remaining != stored) {
+                        itemCounts[slot] = remaining
+                        if (remaining == 0) itemTemplates[slot] = ItemStack.EMPTY
+                        itemsChanged = true
+                    }
+                }
+            }
+            val fluidTarget = fluidCache(serverLevel).getCapability()
+            if (fluidTarget != null) {
+                fluids.indices.forEach { tank ->
+                    val stored = fluids[tank]
+                    if (stored.isEmpty || stored.amount <= 0) return@forEach
+                    val accepted = fluidTarget.fill(stored.copy(), IFluidHandler.FluidAction.EXECUTE)
+                    if (accepted > 0) {
+                        val remaining = stored.amount - accepted
+                        fluids[tank] = if (remaining == 0) FluidStack.EMPTY else stored.copyWithAmount(remaining)
+                        fluidsChanged = true
+                    }
+                }
+            }
+            if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
+            if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
+            return IoPushResult.Success
+        }
+
+        private fun pushToNetwork(target: rhx.lazy.core.io.NetworkTargetRef?): IoPushResult {
+            val networkTarget = target ?: return IoPushResult.TargetMissing
+            var itemsChanged = false
+            var fluidsChanged = false
+
+            fun resultOrSuccess(result: NetworkTransferResult): IoPushResult =
+                when (result) {
+                    is NetworkTransferResult.Success -> IoPushResult.Success
+                    NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
+                    NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
+                    NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
+                }
+
+            itemTemplates.indices.forEach { slot ->
+                val template = itemTemplates[slot]
+                val stored = itemCounts[slot]
+                if (template.isEmpty || stored <= 0) return@forEach
+                val result = insertItems(networkTarget, template, stored.toLong())
+                when (result) {
+                    is NetworkTransferResult.Success -> {
+                        val remaining = result.remainder.coerceIn(0L, stored.toLong()).toInt()
+                        if (remaining != stored) {
+                            itemCounts[slot] = remaining
+                            if (remaining == 0) itemTemplates[slot] = ItemStack.EMPTY
+                            itemsChanged = true
+                        }
+                    }
+
+                    else -> {
+                        if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
+                        if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
+                        return resultOrSuccess(result)
+                    }
+                }
+            }
+            fluids.indices.forEach { tank ->
+                val stored = fluids[tank]
+                if (stored.isEmpty || stored.amount <= 0) return@forEach
+                val result = insertFluid(networkTarget, stored)
+                when (result) {
+                    is NetworkTransferResult.Success -> {
+                        val remaining = result.remainder.coerceIn(0L, stored.amount.toLong()).toInt()
+                        if (remaining != stored.amount) {
+                            fluids[tank] = if (remaining == 0) FluidStack.EMPTY else stored.copyWithAmount(remaining)
+                            fluidsChanged = true
+                        }
+                    }
+
+                    else -> {
+                        if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
+                        if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
+                        return resultOrSuccess(result)
+                    }
+                }
+            }
+            if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
+            if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
+            return IoPushResult.Success
+        }
+
+        private fun insertItems(
+            target: rhx.lazy.core.io.NetworkTargetRef,
+            template: ItemStack,
+            amount: Long,
+        ): NetworkTransferResult {
+            val provider = NetworkOutputProviders.get(target.providerId) ?: return NetworkTransferResult.TargetMissing
+            return provider.insert(target, NetworkPayload.Items(template, amount), false)
+        }
+
+        private fun insertFluid(
+            target: rhx.lazy.core.io.NetworkTargetRef,
+            stack: FluidStack,
+        ): NetworkTransferResult {
+            val provider = NetworkOutputProviders.get(target.providerId) ?: return NetworkTransferResult.TargetMissing
+            return provider.insert(target, NetworkPayload.Fluid(stack), false)
+        }
+
+        private fun itemCache(level: ServerLevel): BlockCapabilityCache<IItemHandler, Direction?> {
+            val cached = downwardItemCache
+            if (cached != null) return cached
+            return BlockCapabilityCache
+                .create<IItemHandler, Direction?>(
+                    Capabilities.ItemHandler.BLOCK,
+                    level,
+                    blockPos.below(),
+                    Direction.UP,
+                    { !isRemoved },
+                    {},
+                ).also { downwardItemCache = it }
+        }
+
+        private fun fluidCache(level: ServerLevel): BlockCapabilityCache<IFluidHandler, Direction?> {
+            val cached = downwardFluidCache
+            if (cached != null) return cached
+            return BlockCapabilityCache
+                .create<IFluidHandler, Direction?>(
+                    Capabilities.FluidHandler.BLOCK,
+                    level,
+                    blockPos.below(),
+                    Direction.UP,
+                    { !isRemoved },
+                    {},
+                ).also { downwardFluidCache = it }
+        }
+    }
+
     companion object {
         const val ITEM_SLOT_COUNT = 8
         const val ITEM_SLOT_CAPACITY = 256
@@ -503,13 +535,9 @@ internal class BufferBlockEntity(
         internal const val MANAGED_DATA_KEY = "managed"
         internal const val ITEM_TOTAL_FIELD = "itemTotal"
         internal const val FLUID_TOTAL_FIELD = "fluidTotal"
-        internal const val NETWORK_FORWARDING_FIELD = "networkForwardingEnabled"
-        internal const val DIMENSION_NETWORK_ID_FIELD = "dimensionNetworkId"
-
         private const val ITEM_TEMPLATES_FIELD = "itemTemplates"
         private const val ITEM_COUNTS_FIELD = "itemCounts"
         private const val FLUIDS_FIELD = "fluids"
-        private const val INVALID_NETWORK_ID = -1
     }
 }
 

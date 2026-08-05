@@ -1,14 +1,48 @@
 package rhx.lazy.integration.botanypots
 
 import net.minecraft.core.BlockPos
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.NetworkOutputProvider
+import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.io.NetworkTargetResolution
+import rhx.lazy.core.io.NetworkTransferResult
+import rhx.lazy.core.storage.NetworkStorageResult
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PlanterOutputRouterTest {
+    @Test
+    fun `passive route moves pending products into internal output slots`() {
+        val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
+        val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
+        var outputDirtyCalls = 0
+        var pendingDirtyCalls = 0
+        val router =
+            createRouter(
+                pending = pending,
+                outputs = outputs,
+                markOutputsDirty = { outputDirtyCalls++ },
+                markPendingDirty = { pendingDirtyCalls++ },
+            )
+
+        assertEquals(rhx.lazy.core.io.IoPushResult.Success, router.route(null, IoRoute.PASSIVE, null))
+
+        assertTrue(pending.isEmpty())
+        assertEquals(20, outputs.single { !it.isEmpty }.count)
+        assertEquals(1, outputDirtyCalls)
+        assertEquals(1, pendingDirtyCalls)
+    }
+
     @Test
     fun `output handler restores a stack after a slot implementation temporarily clears it`() {
         val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
@@ -28,14 +62,10 @@ class PlanterOutputRouterTest {
         val storage = FakeNetworkStorage().apply { itemCapacity = 0 }
         val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
         var dirtyCalls = 0
-        val router =
-            createRouter(
-                storage = storage,
-                pending = pending,
-                markPendingDirty = { dirtyCalls++ },
-            )
+        val router = createRouter(pending = pending, markPendingDirty = { dirtyCalls++ })
+        val provider = registerProvider(storage)
 
-        router.forwardPendingToNetwork()
+        routeNetwork(router, provider)
 
         assertEquals(0, dirtyCalls)
         assertEquals(20, pending.single().count)
@@ -46,14 +76,10 @@ class PlanterOutputRouterTest {
         val storage = FakeNetworkStorage().apply { itemCapacity = 8 }
         val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
         var dirtyCalls = 0
-        val router =
-            createRouter(
-                storage = storage,
-                pending = pending,
-                markPendingDirty = { dirtyCalls++ },
-            )
+        val router = createRouter(pending = pending, markPendingDirty = { dirtyCalls++ })
+        val provider = registerProvider(storage)
 
-        router.forwardPendingToNetwork()
+        routeNetwork(router, provider)
 
         assertEquals(1, dirtyCalls)
         assertEquals(12, pending.single().count)
@@ -61,22 +87,70 @@ class PlanterOutputRouterTest {
     }
 
     private fun createRouter(
-        storage: FakeNetworkStorage = FakeNetworkStorage(),
         pending: MutableList<ItemStack> = mutableListOf(),
+        markOutputsDirty: () -> Unit = {},
         markPendingDirty: () -> Unit = {},
-        outputs: MutableList<ItemStack> =
-            MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) {
-                ItemStack.EMPTY
-            },
+        outputs: MutableList<ItemStack> = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY },
     ): PlanterOutputRouter =
         PlanterOutputRouter(
             blockPos = BlockPos.ZERO,
             outputs = outputs,
             pendingDrops = pending,
-            networkStorage = storage,
-            networkId = { FakeNetworkStorage.TEST_NETWORK_ID },
-            disableNetworkForwarding = {},
-            markOutputsDirty = {},
+            markOutputsDirty = markOutputsDirty,
             markPendingDirty = markPendingDirty,
         )
+
+    private fun routeNetwork(
+        router: PlanterOutputRouter,
+        provider: TestProvider,
+    ) {
+        router.routeNetwork(provider.target)
+    }
+
+    private fun registerProvider(storage: FakeNetworkStorage): TestProvider {
+        val provider = TestProvider(storage)
+        NetworkOutputProviders.register(provider)
+        return provider
+    }
+
+    private class TestProvider(
+        private val storage: FakeNetworkStorage,
+    ) : NetworkOutputProvider {
+        override val id: ResourceLocation =
+            ResourceLocation.fromNamespaceAndPath("lazy", "test_planter_${nextId++}")
+        override val displayName: Component = Component.literal("Test planter")
+        override val supportedResourceKinds = setOf(rhx.lazy.core.io.IoResourceKind.ITEM)
+        val target = NetworkTargetRef(id, CompoundTag())
+
+        override fun icon(): ItemStack = ItemStack(Items.CHEST)
+
+        override fun resolvePrimaryTarget(player: ServerPlayer): NetworkTargetResolution = NetworkTargetResolution.Unavailable
+
+        override fun isTargetValid(target: NetworkTargetRef): Boolean = target.providerId == id
+
+        override fun insert(
+            target: NetworkTargetRef,
+            payload: NetworkPayload,
+            simulate: Boolean,
+        ): NetworkTransferResult {
+            val items = payload as NetworkPayload.Items
+            return when (
+                val result =
+                    storage.insertItemAmount(
+                        rhx.lazy.core.storage
+                            .NetworkStorageId(0),
+                        items.template,
+                        items.amount,
+                        simulate,
+                    )
+            ) {
+                is NetworkStorageResult.Success -> NetworkTransferResult.Success(result.value)
+                else -> NetworkTransferResult.TemporarilyUnavailable
+            }
+        }
+
+        companion object {
+            private var nextId = 0
+        }
+    }
 }

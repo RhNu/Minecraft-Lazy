@@ -4,8 +4,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
+import rhx.lazy.core.io.IoRoute
 import rhx.lazy.feature.buffer.BufferBlockEntity
-import rhx.lazy.feature.energy.EnergyOutputMode
 import rhx.lazy.feature.energy.EnergySourceBlockEntity
 import rhx.lazy.feature.itemcopier.ItemCopierBlockEntity
 import rhx.lazy.feature.repairer.RepairerBlockEntity
@@ -15,7 +15,7 @@ import snownee.jade.api.StreamServerDataProvider
 internal data class BufferJadeData(
     val itemCount: Int,
     val fluidAmount: Int,
-    val networkForwarding: Boolean,
+    val networkOutput: Boolean,
 )
 
 internal object BufferJadeDataProvider : StreamServerDataProvider<BlockAccessor, BufferJadeData> {
@@ -24,7 +24,7 @@ internal object BufferJadeDataProvider : StreamServerDataProvider<BlockAccessor,
         return BufferJadeData(
             itemCount = blockEntity.totalItemCount,
             fluidAmount = blockEntity.totalFluidAmount,
-            networkForwarding = blockEntity.isNetworkForwardingEnabled,
+            networkOutput = blockEntity.ioController.route == rhx.lazy.core.io.IoRoute.NETWORK,
         )
     }
 
@@ -40,35 +40,34 @@ private object BufferJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, Buffer
     ) {
         buffer.writeVarInt(value.itemCount)
         buffer.writeVarInt(value.fluidAmount)
-        buffer.writeBoolean(value.networkForwarding)
+        buffer.writeBoolean(value.networkOutput)
     }
 
     override fun decode(buffer: RegistryFriendlyByteBuf): BufferJadeData =
         BufferJadeData(
             itemCount = buffer.readVarInt(),
             fluidAmount = buffer.readVarInt(),
-            networkForwarding = buffer.readBoolean(),
+            networkOutput = buffer.readBoolean(),
         )
 }
 
-internal object EnergySourceJadeDataProvider : StreamServerDataProvider<BlockAccessor, EnergyOutputMode> {
-    override fun streamData(accessor: BlockAccessor): EnergyOutputMode? = (accessor.blockEntity as? EnergySourceBlockEntity)?.outputMode()
+internal object EnergySourceJadeDataProvider : StreamServerDataProvider<BlockAccessor, IoRoute> {
+    override fun streamData(accessor: BlockAccessor): IoRoute? = (accessor.blockEntity as? EnergySourceBlockEntity)?.ioController?.route
 
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, EnergyOutputMode> = EnergyOutputModeCodec
+    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, IoRoute> = IoRouteCodec
 
     override fun getUid(): ResourceLocation = JadeProviderIds.energySource
 }
 
-private object EnergyOutputModeCodec : StreamCodec<RegistryFriendlyByteBuf, EnergyOutputMode> {
+private object IoRouteCodec : StreamCodec<RegistryFriendlyByteBuf, IoRoute> {
     override fun encode(
         buffer: RegistryFriendlyByteBuf,
-        value: EnergyOutputMode,
+        value: IoRoute,
     ) {
         buffer.writeVarInt(value.ordinal)
     }
 
-    override fun decode(buffer: RegistryFriendlyByteBuf): EnergyOutputMode =
-        EnergyOutputMode.entries.getOrElse(buffer.readVarInt()) { EnergyOutputMode.PASSIVE }
+    override fun decode(buffer: RegistryFriendlyByteBuf): IoRoute = IoRoute.entries.getOrElse(buffer.readVarInt()) { IoRoute.PASSIVE }
 }
 
 internal data class ItemCopierJadeData(

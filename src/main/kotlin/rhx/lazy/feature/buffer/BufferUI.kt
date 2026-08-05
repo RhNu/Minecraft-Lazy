@@ -23,26 +23,22 @@ import dev.vfyjxf.taffy.style.AlignContent
 import dev.vfyjxf.taffy.style.AlignItems
 import dev.vfyjxf.taffy.style.TaffyPosition
 import net.minecraft.network.chat.Component
-import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import rhx.lazy.core.blockEntityOrNull
-import rhx.lazy.core.displayActionBar
+import rhx.lazy.core.io.IoPanelModel
+import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
-import rhx.lazy.core.storage.NetworkStorage
-import rhx.lazy.core.storage.NetworkStorageResult
 
 internal object BufferUI {
     private val stylesheet = lazyId("lss/buffer.lss")
 
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         lateinit var confirmationLayer: UIElement
-        lateinit var networkButton: UIElement
         lateinit var clearButton: UIElement
         val model = BufferUiModel(holder)
-        val networkControlsVisible = NetworkStorage.isAvailable
 
         val root =
             element(
@@ -138,24 +134,7 @@ internal object BufferUI {
                         cls = { +"lazy-buffer__actions" }
                     },
                 ) {
-                    networkButton =
-                        button(
-                            {
-                                visible = networkControlsVisible
-                                noText()
-                                cls = {
-                                    +"lazy-buffer__icon-button"
-                                    +"lazy-buffer__toggle-button"
-                                }
-                                onServerClick = { event ->
-                                    if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                        model.toggleNetworkForwarding()
-                                    }
-                                }
-                            },
-                        ).element.apply {
-                            addPreIcon(ItemStackTexture(ItemStack(Items.ENDER_CHEST)))
-                        }
+                    IoPanelUI.addIoControl(this, model)
                     clearButton =
                         button(
                             {
@@ -239,12 +218,6 @@ internal object BufferUI {
                     }.element
             }
 
-        bindToggleButtonState(
-            root,
-            networkButton,
-            model::isNetworkForwardingEnabled,
-        )
-
         val hasContents = BindableValue(false)
         hasContents.setDisplay(false)
         hasContents.registerValueListener(clearButton::setActive)
@@ -258,6 +231,7 @@ internal object BufferUI {
                 root,
                 StylesheetManager.MC,
                 stylesheet,
+                IoPanelUI.stylesheet,
             ),
             holder.player,
         )
@@ -265,7 +239,12 @@ internal object BufferUI {
 
     private class BufferUiModel(
         private val holder: BlockUIMenuType.BlockUIHolder,
-    ) {
+    ) : IoPanelModel {
+        override val player = holder.player
+
+        override val controller
+            get() = blockEntity?.ioController
+
         private val blockEntity: BufferBlockEntity?
             get() =
                 holder.player.level().blockEntityOrNull(
@@ -295,44 +274,7 @@ internal object BufferUI {
             blockEntity?.clearContents()
         }
 
-        fun isNetworkForwardingEnabled(): Boolean = blockEntity?.isNetworkForwardingEnabled == true
-
-        fun toggleNetworkForwarding() {
-            val entity = blockEntity ?: return
-            val player = holder.player as? ServerPlayer ?: return
-            if (entity.isNetworkForwardingEnabled) {
-                entity.disableNetworkForwarding()
-                player.displayActionBar(
-                    "message.lazy.buffer.network_forwarding",
-                    Component.translatable("gui.lazy.buffer.network_forwarding.disabled"),
-                )
-                return
-            }
-
-            when (val result = NetworkStorage.primaryNetwork(player)) {
-                is NetworkStorageResult.Success -> {
-                    entity.enableNetworkForwarding(result.value)
-                    if (entity.isNetworkForwardingEnabled) {
-                        player.displayActionBar(
-                            "message.lazy.buffer.network_forwarding",
-                            Component.translatable("gui.lazy.buffer.network_forwarding.enabled"),
-                        )
-                    } else {
-                        player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
-                    }
-                }
-
-                NetworkStorageResult.NetworkNotFound -> {
-                    player.displayActionBar("message.lazy.beyond_dimensions.no_primary_network")
-                }
-
-                else -> {
-                    player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
-                }
-            }
-        }
-
-        fun isValid(): Boolean {
+        override fun isValid(): Boolean {
             val block = holder.blockState.block as? BufferBlock ?: return false
             return block.stillValid(holder)
         }
@@ -353,36 +295,6 @@ internal object BufferUI {
             .boolS2C { value() }
             .initialValue(false)
             .build()
-
-    private fun bindToggleButtonState(
-        root: UIElement,
-        button: UIElement,
-        state: () -> Boolean,
-    ) {
-        val value = BindableValue(false)
-        value.setDisplay(false)
-        value.registerValueListener { enabled ->
-            if (enabled) {
-                button.addClass(ENABLED_BUTTON_CLASS)
-            } else {
-                button.removeClass(ENABLED_BUTTON_CLASS)
-            }
-            button.style { style ->
-                style.tooltips(
-                    Component.translatable("gui.lazy.buffer.network_forwarding.toggle"),
-                    Component.translatable(
-                        if (enabled) {
-                            "gui.lazy.buffer.network_forwarding.enabled"
-                        } else {
-                            "gui.lazy.buffer.network_forwarding.disabled"
-                        },
-                    ),
-                )
-            }
-        }
-        value.bind(booleanBinding(state))
-        root.addChild(value)
-    }
 
     private object EmptyFluidHandler : IFluidHandler {
         override fun getTanks(): Int = BufferBlockEntity.FLUID_TANK_COUNT
@@ -413,5 +325,4 @@ internal object BufferUI {
     }
 
     private const val LEFT_MOUSE_BUTTON = 0
-    private const val ENABLED_BUTTON_CLASS = "lazy-buffer__icon-button--enabled"
 }

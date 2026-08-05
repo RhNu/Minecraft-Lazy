@@ -35,7 +35,7 @@ private object PlanterJadeComponentProvider : IBlockComponentProvider {
             Component.translatable(
                 "jade.lazy.planter.outputs",
                 enabledState(data.downwardOutput),
-                enabledState(data.networkForwarding),
+                enabledState(data.networkOutput),
             ),
         )
     }

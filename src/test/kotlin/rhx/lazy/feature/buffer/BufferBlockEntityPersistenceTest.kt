@@ -10,6 +10,8 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -80,19 +82,14 @@ class BufferBlockEntityPersistenceTest {
 
     @Test
     fun `buffer block item carries managed data for placement`() {
-        val source =
-            newBuffer(
-                FakeNetworkStorage().apply {
-                    itemCapacity = 0
-                    fluidCapacity = 0
-                },
-            )
+        val source = newBuffer()
         source.itemHandler.insertItem(0, ItemStack(Items.EMERALD, 180), false)
         source.fluidHandler.fill(
             FluidStack(Fluids.LAVA, 32_000),
             IFluidHandler.FluidAction.EXECUTE,
         )
-        source.enableNetworkForwarding(FakeNetworkStorage.TEST_NETWORK_ID)
+        val provider = FakeNetworkOutputProvider(FakeNetworkStorage())
+        source.ioController.setNetworkTarget(provider.target)
 
         val dropped = ItemStack(BufferRegistries.item.get())
         source.saveToItem(dropped, registries)
@@ -103,17 +100,19 @@ class BufferBlockEntityPersistenceTest {
 
         assertEquals(180, restored.getItemCount(0))
         assertEquals(32_000, restored.getFluid(0).amount)
-        assertTrue(restored.isNetworkForwardingEnabled)
-        assertEquals(FakeNetworkStorage.TEST_NETWORK_ID.value, restored.boundDimensionNetworkId)
+        assertEquals(IoRoute.NETWORK, restored.ioController.route)
+        assertEquals(
+            FakeNetworkStorage.TEST_NETWORK_ID.value,
+            restored.ioController.target
+                ?.data
+                ?.getInt("networkId"),
+        )
     }
 
-    private fun newBuffer(): BufferBlockEntity = newBuffer(FakeNetworkStorage(isAvailable = false))
-
-    private fun newBuffer(storage: FakeNetworkStorage): BufferBlockEntity =
+    private fun newBuffer(): BufferBlockEntity =
         BufferBlockEntity(
             BlockPos.ZERO,
             BufferRegistries.block.get().defaultBlockState(),
-            storage,
         )
 
     @Suppress("UNCHECKED_CAST")

@@ -1,6 +1,10 @@
 package rhx.lazy.feature.energy
 
 import net.minecraft.core.BlockPos
+import net.minecraft.nbt.CompoundTag
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,73 +14,50 @@ import kotlin.test.assertTrue
 class EnergySourceOutputModeTest {
     @Test
     fun `output modes are mutually exclusive`() {
-        val source = newSource(FakeNetworkStorage())
+        val source = newSource()
 
-        assertEquals(EnergyOutputMode.PASSIVE, source.outputMode())
+        assertEquals(IoRoute.PASSIVE, source.ioController.route)
 
-        assertTrue(source.setOutputMode(EnergyOutputMode.ACTIVE))
-        assertEquals(EnergyOutputMode.ACTIVE, source.outputMode())
-        assertTrue(source.isActivePushEnabled())
-        assertFalse(source.isNetworkPushEnabled())
+        assertTrue(source.ioController.setRoute(IoRoute.ADJACENT))
+        assertEquals(IoRoute.ADJACENT, source.ioController.route)
 
-        assertTrue(
-            source.setOutputMode(
-                EnergyOutputMode.NETWORK,
-                FakeNetworkStorage.TEST_NETWORK_ID,
-            ),
-        )
-        assertEquals(EnergyOutputMode.NETWORK, source.outputMode())
-        assertFalse(source.isActivePushEnabled())
-        assertTrue(source.isNetworkPushEnabled())
+        val provider = FakeNetworkOutputProvider(FakeNetworkStorage())
+        assertTrue(source.ioController.setNetworkTarget(provider.target))
+        assertEquals(IoRoute.NETWORK, source.ioController.route)
 
-        assertTrue(source.setOutputMode(EnergyOutputMode.PASSIVE))
-        assertEquals(EnergyOutputMode.PASSIVE, source.outputMode())
-        assertFalse(source.isActivePushEnabled())
-        assertFalse(source.isNetworkPushEnabled())
+        source.ioController.setPassive()
+        assertEquals(IoRoute.PASSIVE, source.ioController.route)
     }
 
     @Test
-    fun `network mode requires an available integration and selected network`() {
-        val availableSource = newSource(FakeNetworkStorage())
-        val source = newSource(FakeNetworkStorage(isAvailable = false))
+    fun `network mode rejects malformed provider targets`() {
+        val source = newSource()
+        val provider = FakeNetworkOutputProvider(FakeNetworkStorage())
 
-        assertFalse(availableSource.setOutputMode(EnergyOutputMode.NETWORK))
-        assertEquals(EnergyOutputMode.PASSIVE, availableSource.outputMode())
-        assertFalse(
-            source.setOutputMode(
-                EnergyOutputMode.NETWORK,
-                FakeNetworkStorage.TEST_NETWORK_ID,
-            ),
-        )
-        assertEquals(EnergyOutputMode.PASSIVE, source.outputMode())
-        assertFalse(source.isNetworkPushEnabled())
+        assertFalse(source.ioController.setNetworkTarget(NetworkTargetRef(provider.id, CompoundTag())))
+        assertEquals(IoRoute.PASSIVE, source.ioController.route)
     }
 
     @Test
     fun `network output sends configured energy and stale binding degrades to passive`() {
         val storage = FakeNetworkStorage()
-        val source = newSource(storage)
-        source.setOutputMode(
-            EnergyOutputMode.NETWORK,
-            FakeNetworkStorage.TEST_NETWORK_ID,
-        )
+        val source = newSource()
+        val provider = FakeNetworkOutputProvider(storage)
+        source.ioController.setNetworkTarget(provider.target)
 
         source.onServerTick()
         assertEquals(ENERGY_TRANSFER_LIMIT.toLong(), storage.storedEnergy)
-        assertEquals(EnergyOutputMode.NETWORK, source.outputMode())
+        assertEquals(IoRoute.NETWORK, source.ioController.route)
 
         storage.networkExists = false
         source.onServerTick()
 
-        assertEquals(EnergyOutputMode.PASSIVE, source.outputMode())
-        assertFalse(source.isActivePushEnabled())
-        assertFalse(source.isNetworkPushEnabled())
+        assertEquals(IoRoute.PASSIVE, source.ioController.route)
     }
 
-    private fun newSource(storage: FakeNetworkStorage): EnergySourceBlockEntity =
+    private fun newSource(): EnergySourceBlockEntity =
         EnergySourceBlockEntity(
             BlockPos.ZERO,
             EnergyRegistries.sourceBlock.get().defaultBlockState(),
-            storage,
         )
 }

@@ -2,8 +2,8 @@ package rhx.lazy.integration.jade.client
 
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import rhx.lazy.core.io.IoRoute
 import rhx.lazy.feature.buffer.BufferBlockEntity
-import rhx.lazy.feature.energy.EnergyOutputMode
 import rhx.lazy.integration.jade.BufferJadeDataProvider
 import rhx.lazy.integration.jade.EnergySourceJadeDataProvider
 import rhx.lazy.integration.jade.ItemCopierJadeDataProvider
@@ -33,8 +33,8 @@ internal object BufferJadeComponentProvider : IBlockComponentProvider {
         )
         tooltip.add(
             Component.translatable(
-                "jade.lazy.buffer.network_forwarding",
-                enabledState(data.networkForwarding),
+                "jade.lazy.buffer.network_output",
+                enabledState(data.networkOutput),
             ),
         )
     }
@@ -109,12 +109,7 @@ internal object RepairerJadeComponentProvider : IBlockComponentProvider {
     override fun getUid(): ResourceLocation = JadeProviderIds.repairer
 }
 
-private fun EnergyOutputMode.translationKey(): String =
-    when (this) {
-        EnergyOutputMode.PASSIVE -> "gui.lazy.energy_source.passive"
-        EnergyOutputMode.ACTIVE -> "gui.lazy.energy_source.active"
-        EnergyOutputMode.NETWORK -> "gui.lazy.energy_source.network"
-    }
+private fun IoRoute.translationKey(): String = "gui.lazy.io.route.${name.lowercase()}"
 
 internal fun enabledState(enabled: Boolean): Component =
     Component.translatable(

@@ -24,15 +24,14 @@ import dev.vfyjxf.taffy.style.AlignContent
 import dev.vfyjxf.taffy.style.AlignItems
 import dev.vfyjxf.taffy.style.TaffyPosition
 import net.minecraft.network.chat.Component
-import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.blockEntityOrNull
 import rhx.lazy.core.displayActionBar
+import rhx.lazy.core.io.IoPanelModel
+import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
-import rhx.lazy.core.storage.NetworkStorage
-import rhx.lazy.core.storage.NetworkStorageResult
 
 internal object EssenceConverterUI {
     private val stylesheet = lazyId("lss/essence_converter.lss")
@@ -40,7 +39,6 @@ internal object EssenceConverterUI {
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         val model = EssenceConverterUiModel(holder)
         val targetButtons = mutableMapOf<EssenceTier, UIElement>()
-        val outputButtons = mutableMapOf<EssenceOutputMode, UIElement>()
         lateinit var amountDisplay: UIElement
         lateinit var remainderDisplay: UIElement
         lateinit var inputSlot: UIElement
@@ -164,21 +162,7 @@ internal object EssenceConverterUI {
                             cls = { +"lazy-essence-converter__actions" }
                         },
                     ) {
-                        outputButtons[EssenceOutputMode.DOWNWARD] =
-                            outputButton(
-                                model,
-                                EssenceOutputMode.DOWNWARD,
-                                ItemStack(Items.HOPPER),
-                                "gui.lazy.essence_converter.downward",
-                            )
-                        outputButtons[EssenceOutputMode.NETWORK] =
-                            outputButton(
-                                model,
-                                EssenceOutputMode.NETWORK,
-                                ItemStack(Items.ENDER_CHEST),
-                                "gui.lazy.essence_converter.network",
-                                NetworkStorage.isAvailable,
-                            )
+                        IoPanelUI.addIoControl(this, model)
                         clearButton =
                             button(
                                 {
@@ -251,14 +235,6 @@ internal object EssenceConverterUI {
         targetButtons.forEach { (tier, button) ->
             bindSelected(root, button) { model.targetTier() == tier }
         }
-        outputButtons.forEach { (mode, button) ->
-            bindSelected(root, button) { model.outputMode() == mode }
-        }
-        bindTooltip(
-            root,
-            outputButtons.getValue(EssenceOutputMode.NETWORK),
-            model::networkOutputTooltip,
-        )
         bindTooltip(root, amountDisplay, model::amountTooltip)
         bindTooltip(root, remainderDisplay, model::remainderTooltip)
         bindInputAvailability(root, inputSlot, lockedInputSlot, model::hasTarget)
@@ -269,29 +245,10 @@ internal object EssenceConverterUI {
         root.addChild(hasContents)
 
         return ModularUI(
-            UI.of(root, StylesheetManager.MC, stylesheet),
+            UI.of(root, StylesheetManager.MC, stylesheet, IoPanelUI.stylesheet),
             holder.player,
         )
     }
-
-    private fun com.lowdragmc.lowdraglib2.gui.ui.UIContainer<*, *>.outputButton(
-        model: EssenceConverterUiModel,
-        mode: EssenceOutputMode,
-        icon: ItemStack,
-        translationKey: String,
-        available: Boolean = true,
-    ): UIElement =
-        button(
-            {
-                active = available
-                noText()
-                cls = { +"lazy-essence-converter__icon-button" }
-                style = { tooltips(Component.translatable(translationKey)) }
-                onServerClick = { event ->
-                    if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) model.selectOutputMode(mode)
-                }
-            },
-        ).element.apply { addPreIcon(ItemStackTexture(icon)) }
 
     private fun bindSelected(
         root: UIElement,
@@ -339,7 +296,12 @@ internal object EssenceConverterUI {
 
     private class EssenceConverterUiModel(
         private val holder: BlockUIMenuType.BlockUIHolder,
-    ) {
+    ) : IoPanelModel {
+        override val player = holder.player
+
+        override val controller
+            get() = blockEntity?.ioController
+
         private val blockEntity: EssenceConverterBlockEntity?
             get() =
                 holder.player.level().blockEntityOrNull(
@@ -353,8 +315,6 @@ internal object EssenceConverterUI {
         fun targetTier(): EssenceTier? = blockEntity?.targetTier
 
         fun hasTarget(): Boolean = targetTier() != null
-
-        fun outputMode(): EssenceOutputMode = blockEntity?.currentOutputMode ?: EssenceOutputMode.DOWNWARD
 
         fun hasContents(): Boolean = blockEntity?.hasContents() == true
 
@@ -381,15 +341,6 @@ internal object EssenceConverterUI {
             )
         }
 
-        fun networkOutputTooltip(): Component =
-            Component.translatable(
-                if (blockEntity?.isNetworkOutputPaused == true) {
-                    "gui.lazy.essence_converter.network.paused"
-                } else {
-                    "gui.lazy.essence_converter.network"
-                },
-            )
-
         fun selectTarget(tier: EssenceTier) {
             val entity = blockEntity ?: return
             if (!entity.selectTarget(tier)) {
@@ -397,26 +348,11 @@ internal object EssenceConverterUI {
             }
         }
 
-        fun selectOutputMode(mode: EssenceOutputMode) {
-            val entity = blockEntity ?: return
-            if (mode == EssenceOutputMode.DOWNWARD) {
-                entity.setDownwardOutput()
-                return
-            }
-            val player = holder.player as? ServerPlayer ?: return
-            when (val result = NetworkStorage.primaryNetwork(player)) {
-                is NetworkStorageResult.Success -> entity.setNetworkOutput(result.value)
-                NetworkStorageResult.NetworkNotFound ->
-                    player.displayActionBar("message.lazy.beyond_dimensions.no_primary_network")
-                else -> player.displayActionBar("message.lazy.beyond_dimensions.unavailable")
-            }
-        }
-
         fun clearContents() {
             blockEntity?.clearContents()
         }
 
-        fun isValid(): Boolean {
+        override fun isValid(): Boolean {
             val block = holder.blockState.block as? EssenceConverterBlock ?: return false
             return block.stillValid(holder)
         }

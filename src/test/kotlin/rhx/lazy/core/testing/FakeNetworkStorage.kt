@@ -1,11 +1,24 @@
 package rhx.lazy.core.testing
 
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.Tag
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.neoforged.neoforge.fluids.FluidStack
+import rhx.lazy.core.io.IoResourceKind
+import rhx.lazy.core.io.NetworkOutputProvider
+import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.io.NetworkTargetResolution
+import rhx.lazy.core.io.NetworkTransferResult
 import rhx.lazy.core.storage.NetworkStorageId
 import rhx.lazy.core.storage.NetworkStoragePort
 import rhx.lazy.core.storage.NetworkStorageResult
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.min
 
 internal class FakeNetworkStorage(
@@ -137,6 +150,76 @@ internal class FakeNetworkStorage(
 
     companion object {
         val TEST_NETWORK_ID = NetworkStorageId(7)
+    }
+}
+
+internal class FakeNetworkOutputProvider(
+    private val storage: FakeNetworkStorage,
+    override val supportedResourceKinds: Set<IoResourceKind> = IoResourceKind.entries.toSet(),
+) : NetworkOutputProvider {
+    override val id: ResourceLocation =
+        ResourceLocation.fromNamespaceAndPath("lazy", "test_network_${nextId.getAndIncrement()}")
+    override val displayName: Component = Component.literal("Test network")
+
+    val target: NetworkTargetRef =
+        NetworkTargetRef(
+            id,
+            CompoundTag().apply { putInt(NETWORK_ID_TAG, FakeNetworkStorage.TEST_NETWORK_ID.value) },
+        )
+
+    init {
+        NetworkOutputProviders.register(this)
+    }
+
+    override fun icon(): ItemStack = ItemStack(Items.CHEST)
+
+    override fun resolvePrimaryTarget(player: ServerPlayer): NetworkTargetResolution =
+        when (val result = storage.primaryNetwork(player)) {
+            is NetworkStorageResult.Success -> NetworkTargetResolution.Success(target.copy())
+            NetworkStorageResult.NetworkNotFound -> NetworkTargetResolution.NotFound
+            NetworkStorageResult.Unavailable -> NetworkTargetResolution.Unavailable
+            else -> NetworkTargetResolution.Failed
+        }
+
+    override fun isTargetValid(target: NetworkTargetRef): Boolean = networkId(target) != null
+
+    override fun insert(
+        target: NetworkTargetRef,
+        payload: NetworkPayload,
+        simulate: Boolean,
+    ): NetworkTransferResult {
+        val networkId = networkId(target) ?: return NetworkTransferResult.TargetMissing
+        val result =
+            when (payload) {
+                is NetworkPayload.Items -> storage.insertItemAmount(networkId, payload.template, payload.amount, simulate)
+                is NetworkPayload.Fluid -> storage.insertFluid(networkId, payload.stack, simulate)
+                is NetworkPayload.Energy -> storage.insertEnergy(networkId, payload.amount, simulate)
+            }
+        return when (result) {
+            is NetworkStorageResult.Success<*> ->
+                when (val value = result.value) {
+                    is Long -> NetworkTransferResult.Success(value)
+                    is FluidStack -> NetworkTransferResult.Success(value.amount.toLong())
+                    else -> error("Unexpected fake network result: $value")
+                }
+
+            NetworkStorageResult.NetworkNotFound -> NetworkTransferResult.TargetMissing
+            NetworkStorageResult.OutcomeUnknown -> NetworkTransferResult.OutcomeUnknown
+            else -> NetworkTransferResult.TemporarilyUnavailable
+        }
+    }
+
+    private fun networkId(target: NetworkTargetRef): NetworkStorageId? {
+        if (target.providerId != id || !target.data.contains(NETWORK_ID_TAG, Tag.TAG_INT.toInt())) return null
+        return target.data
+            .getInt(NETWORK_ID_TAG)
+            .takeIf { it >= 0 }
+            ?.let(::NetworkStorageId)
+    }
+
+    private companion object {
+        const val NETWORK_ID_TAG = "networkId"
+        val nextId = AtomicInteger()
     }
 }
 

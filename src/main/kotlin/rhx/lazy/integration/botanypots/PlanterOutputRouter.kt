@@ -10,18 +10,18 @@ import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
-import rhx.lazy.core.storage.NetworkStorageId
-import rhx.lazy.core.storage.NetworkStoragePort
-import rhx.lazy.core.storage.NetworkStorageResult
+import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.io.NetworkTransferResult
 import kotlin.math.min
 
 internal class PlanterOutputRouter(
     private val blockPos: BlockPos,
     private val outputs: MutableList<ItemStack>,
     private val pendingDrops: MutableList<ItemStack>,
-    private val networkStorage: NetworkStoragePort,
-    private val networkId: () -> NetworkStorageId?,
-    private val disableNetworkForwarding: () -> Unit,
     private val markOutputsDirty: () -> Unit,
     private val markPendingDirty: () -> Unit,
 ) {
@@ -31,25 +31,31 @@ internal class PlanterOutputRouter(
         get() = pendingDrops.isNotEmpty()
 
     fun route(
-        level: ServerLevel,
-        networkForwardingEnabled: Boolean,
-        downwardOutputEnabled: Boolean,
-    ) {
-        if (networkForwardingEnabled) {
-            forwardPendingToNetwork()
-            forwardOutputsToNetwork()
-        }
+        level: ServerLevel?,
+        route: IoRoute,
+        target: NetworkTargetRef?,
+    ): IoPushResult {
         movePendingToOutputs()
-        if (!downwardOutputEnabled) return
+        return when (route) {
+            IoRoute.PASSIVE -> IoPushResult.Success
+            IoRoute.DOWNWARD -> {
+                val serverLevel = level ?: return IoPushResult.Retry
+                var hadPending: Boolean
+                var pushed: Boolean
+                do {
+                    hadPending = pendingDrops.isNotEmpty()
+                    pushed = pushOutputsDown(serverLevel)
+                    if (pushed) movePendingToOutputs()
+                } while (pushed && hadPending)
+                IoPushResult.Success
+            }
 
-        var hadPending: Boolean
-        var pushed: Boolean
-        do {
-            hadPending = pendingDrops.isNotEmpty()
-            pushed = pushOutputsDown(level)
-            if (pushed) movePendingToOutputs()
-        } while (pushed && hadPending)
+            IoRoute.NETWORK -> pushToNetwork(target)
+            IoRoute.ADJACENT -> IoPushResult.Success
+        }
     }
+
+    internal fun routeNetwork(target: NetworkTargetRef): IoPushResult = pushToNetwork(target)
 
     fun enqueue(stack: ItemStack) {
         if (stack.isEmpty) return
@@ -96,49 +102,91 @@ internal class PlanterOutputRouter(
         pendingDrops.addAll(normalizedPending)
     }
 
-    internal fun forwardPendingToNetwork() {
-        var changed = false
-        var slot = 0
-        while (slot < pendingDrops.size && networkId() != null) {
-            val original = pendingDrops[slot]
-            val remainder = forwardToNetwork(original)
-            if (!ItemStack.matches(original, remainder)) {
-                changed = true
-            }
-            if (remainder.isEmpty) {
-                pendingDrops.removeAt(slot)
-            } else {
-                pendingDrops[slot] = remainder
-                slot++
+    private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
+        val networkTarget = target ?: return IoPushResult.TargetMissing
+        var pendingChanged = false
+        var outputsChanged = false
+
+        fun handle(stack: ItemStack): NetworkTransferResult {
+            val provider =
+                NetworkOutputProviders.get(networkTarget.providerId)
+                    ?: return NetworkTransferResult.TargetMissing
+            return provider.insert(
+                networkTarget,
+                NetworkPayload.Items(stack.copyWithCount(1), stack.count.toLong()),
+                false,
+            )
+        }
+
+        var pendingIndex = 0
+        while (pendingIndex < pendingDrops.size) {
+            val original = pendingDrops[pendingIndex]
+            when (val result = handle(original)) {
+                is NetworkTransferResult.Success -> {
+                    val remainder = original.copyWithCount(result.remainder.coerceIn(0L, original.count.toLong()).toInt())
+                    if (!ItemStack.matches(original, remainder)) pendingChanged = true
+                    if (remainder.isEmpty) {
+                        pendingDrops.removeAt(pendingIndex)
+                    } else {
+                        pendingDrops[pendingIndex] = remainder
+                        pendingIndex++
+                    }
+                }
+
+                NetworkTransferResult.TargetMissing -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.TargetMissing
+                }
+
+                NetworkTransferResult.OutcomeUnknown -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.OutcomeUnknown
+                }
+
+                NetworkTransferResult.TemporarilyUnavailable -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.Retry
+                }
             }
         }
-        if (changed) markPendingDirty()
-    }
 
-    private fun forwardOutputsToNetwork() {
-        var changed = false
         for (slot in outputs.indices) {
-            if (networkId() == null) break
             val original = outputs[slot]
             if (original.isEmpty) continue
-            val remainder = forwardToNetwork(original)
-            if (!ItemStack.matches(original, remainder)) {
-                outputs[slot] = remainder
-                changed = true
-            }
-        }
-        if (changed) markOutputsDirty()
-    }
+            when (val result = handle(original)) {
+                is NetworkTransferResult.Success -> {
+                    val remainder = original.copyWithCount(result.remainder.coerceIn(0L, original.count.toLong()).toInt())
+                    if (!ItemStack.matches(original, remainder)) {
+                        outputs[slot] = remainder
+                        outputsChanged = true
+                    }
+                }
 
-    private fun forwardToNetwork(stack: ItemStack): ItemStack {
-        val targetNetwork = networkId() ?: return stack
-        return when (val result = networkStorage.insertItem(targetNetwork, stack, simulate = false)) {
-            is NetworkStorageResult.Success -> normalizedRemainder(stack, result.value)
-            else -> {
-                disableNetworkForwarding()
-                stack
+                NetworkTransferResult.TargetMissing -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.TargetMissing
+                }
+
+                NetworkTransferResult.OutcomeUnknown -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.OutcomeUnknown
+                }
+
+                NetworkTransferResult.TemporarilyUnavailable -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.Retry
+                }
             }
         }
+        if (pendingChanged) markPendingDirty()
+        if (outputsChanged) markOutputsDirty()
+        return IoPushResult.Success
     }
 
     private fun movePendingToOutputs() {
@@ -339,15 +387,6 @@ internal class PlanterOutputRouter(
                 remaining -= amount
             }
             return split
-        }
-
-        private fun normalizedRemainder(
-            original: ItemStack,
-            returned: ItemStack,
-        ): ItemStack {
-            if (returned.isEmpty) return ItemStack.EMPTY
-            if (!ItemStack.isSameItemSameComponents(original, returned)) return original
-            return original.copyWithCount(returned.count.coerceIn(0, original.count))
         }
     }
 }
