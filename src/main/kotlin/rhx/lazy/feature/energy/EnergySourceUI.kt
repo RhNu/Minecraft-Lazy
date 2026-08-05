@@ -3,6 +3,7 @@ package rhx.lazy.feature.energy
 import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import com.lowdragmc.lowdraglib2.gui.ui.UI
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement
 import com.lowdragmc.lowdraglib2.gui.ui.element
 import com.lowdragmc.lowdraglib2.gui.ui.elements.label
 import com.lowdragmc.lowdraglib2.gui.ui.row
@@ -18,6 +19,7 @@ internal object EnergySourceUI {
 
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         val model = EnergySourceUiModel(holder)
+        lateinit var installIoPanel: (UIElement) -> Unit
 
         val root =
             element(
@@ -40,9 +42,11 @@ internal object EnergySourceUI {
                         cls = { +"lazy-energy-source__actions" }
                     },
                 ) {
-                    IoPanelUI.addIoControl(this, model)
+                    installIoPanel = IoPanelUI.addIoControl(this, model)
                 }
             }
+
+        installIoPanel(root)
 
         return ModularUI(
             UI.of(

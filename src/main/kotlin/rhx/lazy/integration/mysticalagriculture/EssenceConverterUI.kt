@@ -45,6 +45,7 @@ internal object EssenceConverterUI {
         lateinit var lockedInputSlot: UIElement
         lateinit var clearButton: UIElement
         lateinit var confirmationLayer: UIElement
+        lateinit var installIoPanel: (UIElement) -> Unit
 
         val root =
             element(
@@ -162,7 +163,7 @@ internal object EssenceConverterUI {
                             cls = { +"lazy-essence-converter__actions" }
                         },
                     ) {
-                        IoPanelUI.addIoControl(this, model)
+                        installIoPanel = IoPanelUI.addIoControl(this, model)
                         clearButton =
                             button(
                                 {
@@ -243,6 +244,7 @@ internal object EssenceConverterUI {
         hasContents.registerValueListener(clearButton::setActive)
         hasContents.bind(booleanBinding(model::hasContents))
         root.addChild(hasContents)
+        installIoPanel(root)
 
         return ModularUI(
             UI.of(root, StylesheetManager.MC, stylesheet, IoPanelUI.stylesheet),

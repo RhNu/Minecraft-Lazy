@@ -38,6 +38,7 @@ internal object BufferUI {
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         lateinit var confirmationLayer: UIElement
         lateinit var clearButton: UIElement
+        lateinit var installIoPanel: (UIElement) -> Unit
         val model = BufferUiModel(holder)
 
         val root =
@@ -134,7 +135,7 @@ internal object BufferUI {
                         cls = { +"lazy-buffer__actions" }
                     },
                 ) {
-                    IoPanelUI.addIoControl(this, model)
+                    installIoPanel = IoPanelUI.addIoControl(this, model)
                     clearButton =
                         button(
                             {
@@ -225,6 +226,7 @@ internal object BufferUI {
             booleanBinding(model::hasContents),
         )
         root.addChild(hasContents)
+        installIoPanel(root)
 
         return ModularUI(
             UI.of(

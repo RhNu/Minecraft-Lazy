@@ -5,6 +5,7 @@ import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.DataBindingBuilder
 import com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import com.lowdragmc.lowdraglib2.gui.ui.UI
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement
 import com.lowdragmc.lowdraglib2.gui.ui.element
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button
@@ -29,6 +30,7 @@ internal object ItemCopierUI {
         val templateTexture = ItemStackTexture(ItemStack.EMPTY)
         lateinit var templateButton: Button
         lateinit var gearButton: Button
+        lateinit var installIoPanel: (UIElement) -> Unit
 
         val root =
             element(
@@ -101,7 +103,7 @@ internal object ItemCopierUI {
                             },
                         ).element
 
-                    IoPanelUI.addIoControl(this, model)
+                    installIoPanel = IoPanelUI.addIoControl(this, model)
                 }
 
                 label(
@@ -160,6 +162,7 @@ internal object ItemCopierUI {
                 .build(),
         )
         root.addChild(displayedGear)
+        installIoPanel(root)
 
         return ModularUI(
             UI.of(

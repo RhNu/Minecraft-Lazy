@@ -33,7 +33,7 @@ internal object IoPanelUI {
     fun addIoControl(
         parent: UIContainer<*, *>,
         model: IoPanelModel,
-    ): UIElement {
+    ): (UIElement) -> Unit {
         val controller = model.controller
         val supportedRoutes = controller?.supportedRoutes ?: setOf(IoRoute.PASSIVE)
         val providers =
@@ -126,33 +126,35 @@ internal object IoPanelUI {
                 }
             }
         dialog.addContent(panel)
+        dialog.setDisplay(false)
 
-        val trigger =
-            parent
-                .button(
-                    {
-                        noText()
-                        cls = { +"lazy-io__trigger" }
-                        style = { tooltips(Component.translatable("gui.lazy.io.open")) }
-                        onClick = { dialog.show(parent.element.rootElement()) }
-                    },
-                ).element
-                .apply {
-                    addPreIcon(ItemStackTexture(ItemStack(Items.COMPARATOR)))
-                }
+        parent
+            .button(
+                {
+                    noText()
+                    cls = { +"lazy-io__trigger" }
+                    style = { tooltips(Component.translatable("gui.lazy.io.open")) }
+                    onClick = { dialog.setDisplay(true) }
+                },
+            ).element
+            .apply {
+                addPreIcon(ItemStackTexture(ItemStack(Items.COMPARATOR)))
+            }
 
-        routeButtons.forEach { (route, button) ->
-            bindSelected(button, model) { model.controller?.route == route }
+        return { root ->
+            root.addChild(dialog)
+            routeButtons.forEach { (route, button) ->
+                bindSelected(root, button) { model.controller?.route == route }
+            }
+            providerButtons.forEach { (providerId, button) ->
+                bindSelected(root, button) { model.controller?.target?.providerId == providerId }
+            }
         }
-        providerButtons.forEach { (providerId, button) ->
-            bindSelected(button, model) { model.controller?.target?.providerId == providerId }
-        }
-        return trigger
     }
 
     private fun bindSelected(
+        root: UIElement,
         button: UIElement,
-        model: IoPanelModel,
         selected: () -> Boolean,
     ) {
         val value = BindableValue(false)
@@ -162,11 +164,11 @@ internal object IoPanelUI {
         }
         value.bind(
             DataBindingBuilder
-                .boolS2C(selected)
+                .boolS2C { selected() }
                 .initialValue(false)
                 .build(),
         )
-        button.parent?.addChild(value)
+        root.addChild(value)
     }
 
     private fun selectRoute(
@@ -258,14 +260,6 @@ internal object IoPanelUI {
             IoRoute.ADJACENT -> ItemStack(Items.DISPENSER)
             IoRoute.NETWORK -> ItemStack(Items.ENDER_CHEST)
         }
-
-    private fun UIElement.rootElement(): UIElement {
-        var root = this
-        while (true) {
-            val parent = root.parent ?: return root
-            root = parent
-        }
-    }
 
     private const val LEFT_MOUSE_BUTTON = 0
     private const val SELECTED_BUTTON_CLASS = "lazy-io__button--selected"

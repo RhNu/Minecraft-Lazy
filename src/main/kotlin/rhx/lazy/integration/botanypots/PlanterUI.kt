@@ -37,6 +37,7 @@ internal object PlanterUI {
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         val model = PlanterUiModel(holder)
         lateinit var pendingWarning: UIElement
+        lateinit var installIoPanel: (UIElement) -> Unit
 
         val root =
             element(
@@ -93,7 +94,7 @@ internal object PlanterUI {
                                 cls = { +"lazy-planter__actions" }
                             },
                         ) {
-                            IoPanelUI.addIoControl(this, model)
+                            installIoPanel = IoPanelUI.addIoControl(this, model)
 
                             element(
                                 {
@@ -179,6 +180,7 @@ internal object PlanterUI {
                 .build(),
         )
         root.addChild(pendingTooltip)
+        installIoPanel(root)
 
         return ModularUI(
             UI.of(
