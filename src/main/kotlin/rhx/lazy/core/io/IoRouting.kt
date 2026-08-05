@@ -14,10 +14,35 @@ internal enum class IoRoute {
     NETWORK,
 }
 
-internal enum class IoResourceKind {
-    ITEM,
-    FLUID,
-    ENERGY,
+internal class NetworkInsertCapability(
+    val id: ResourceLocation,
+    val displayName: Component,
+) {
+    override fun equals(other: Any?): Boolean = other is NetworkInsertCapability && id == other.id
+
+    override fun hashCode(): Int = id.hashCode()
+
+    override fun toString(): String = id.toString()
+}
+
+internal object NetworkInsertCapabilities {
+    val ITEM =
+        NetworkInsertCapability(
+            ResourceLocation.fromNamespaceAndPath("lazy", "item"),
+            Component.translatable("gui.lazy.io.capability.item"),
+        )
+    val FLUID =
+        NetworkInsertCapability(
+            ResourceLocation.fromNamespaceAndPath("lazy", "fluid"),
+            Component.translatable("gui.lazy.io.capability.fluid"),
+        )
+    val ENERGY =
+        NetworkInsertCapability(
+            ResourceLocation.fromNamespaceAndPath("neoforge", "energy"),
+            Component.translatable("gui.lazy.io.capability.energy"),
+        )
+
+    val all: Set<NetworkInsertCapability> = setOf(ITEM, FLUID, ENERGY)
 }
 
 internal data class NetworkTargetRef(
@@ -36,22 +61,36 @@ internal sealed interface NetworkTargetResolution {
 
     data object NotFound : NetworkTargetResolution
 
+    data object Unlinked : NetworkTargetResolution
+
+    data object Ambiguous : NetworkTargetResolution
+
+    data object Incompatible : NetworkTargetResolution
+
     data object Failed : NetworkTargetResolution
 }
 
 internal sealed interface NetworkPayload {
+    val capability: NetworkInsertCapability
+
     data class Items(
         val template: ItemStack,
         val amount: Long,
-    ) : NetworkPayload
+    ) : NetworkPayload {
+        override val capability: NetworkInsertCapability = NetworkInsertCapabilities.ITEM
+    }
 
     data class Fluid(
         val stack: FluidStack,
-    ) : NetworkPayload
+    ) : NetworkPayload {
+        override val capability: NetworkInsertCapability = NetworkInsertCapabilities.FLUID
+    }
 
     data class Energy(
         val amount: Long,
-    ) : NetworkPayload
+    ) : NetworkPayload {
+        override val capability: NetworkInsertCapability = NetworkInsertCapabilities.ENERGY
+    }
 }
 
 internal sealed interface NetworkTransferResult {
@@ -63,13 +102,15 @@ internal sealed interface NetworkTransferResult {
 
     data object TargetMissing : NetworkTransferResult
 
+    data object InvalidTarget : NetworkTransferResult
+
     data object OutcomeUnknown : NetworkTransferResult
 }
 
 internal interface NetworkOutputProvider {
     val id: ResourceLocation
     val displayName: Component
-    val supportedResourceKinds: Set<IoResourceKind>
+    val capabilities: Set<NetworkInsertCapability>
 
     fun icon(): ItemStack
 
@@ -99,6 +140,19 @@ internal object NetworkOutputProviders {
     fun get(id: ResourceLocation): NetworkOutputProvider? = providers[id]
 }
 
+internal object NetworkOutputRouter {
+    fun insert(
+        target: NetworkTargetRef,
+        payload: NetworkPayload,
+        simulate: Boolean,
+    ): NetworkTransferResult {
+        val provider = NetworkOutputProviders.get(target.providerId) ?: return NetworkTransferResult.TemporarilyUnavailable
+        if (payload.capability !in provider.capabilities) return NetworkTransferResult.TemporarilyUnavailable
+        if (!provider.isTargetValid(target)) return NetworkTransferResult.InvalidTarget
+        return provider.insert(target, payload, simulate)
+    }
+}
+
 internal sealed interface IoPushResult {
     data object Success : IoPushResult
 
@@ -111,14 +165,14 @@ internal sealed interface IoPushResult {
 
 internal interface IoRouteAdapter {
     val supportedRoutes: Set<IoRoute>
-    val resourceKinds: Set<IoResourceKind>
+    val capabilities: Set<NetworkInsertCapability>
     val ticksWhenPassive: Boolean
         get() = false
 
     fun supportsNetworkTarget(target: NetworkTargetRef): Boolean =
         NetworkOutputProviders
             .get(target.providerId)
-            ?.let { provider -> resourceKinds.any { it in provider.supportedResourceKinds } && provider.isTargetValid(target) }
+            ?.let { provider -> capabilities.any { it in provider.capabilities } && provider.isTargetValid(target) }
             ?: false
 
     fun push(

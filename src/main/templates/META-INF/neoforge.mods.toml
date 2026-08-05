@@ -101,5 +101,37 @@ ordering="AFTER"
 side="BOTH"
 reason="Adds Insanium support to the Essence Converter"
 
+[[dependencies.${mod_id}]]
+modId="ae2"
+type="optional"
+versionRange="${ae2_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables direct item and fluid output to ME networks"
+
+[[dependencies.${mod_id}]]
+modId="appflux"
+type="optional"
+versionRange="${applied_flux_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables Forge Energy output into Applied Flux ME storage"
+
+[[dependencies.${mod_id}]]
+modId="guideme"
+type="optional"
+versionRange="${guideme_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Provides the guide framework used by the tested AE2 integration stack"
+
+[[dependencies.${mod_id}]]
+modId="glodium"
+type="optional"
+versionRange="${glodium_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Provides the shared runtime required by Applied Flux"
+
 [modproperties.fzzy_config]
 fzzy_config="${mod_id}"

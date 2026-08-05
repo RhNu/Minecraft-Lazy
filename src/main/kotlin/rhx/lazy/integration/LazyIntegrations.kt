@@ -2,6 +2,8 @@ package rhx.lazy.integration
 
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.ModList
+import rhx.lazy.integration.ae2.Ae2IntegrationModule
+import rhx.lazy.integration.appflux.AppliedFluxIntegrationModule
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
 import rhx.lazy.integration.botanypots.BotanyPotsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
@@ -13,6 +15,8 @@ internal object LazyIntegrations {
         IntegrationManager(
             modules =
                 listOf(
+                    Ae2IntegrationModule,
+                    AppliedFluxIntegrationModule,
                     BeyondDimensionsIntegrationModule,
                     BotanyPotsIntegrationModule,
                     SilentGearIntegrationModule,

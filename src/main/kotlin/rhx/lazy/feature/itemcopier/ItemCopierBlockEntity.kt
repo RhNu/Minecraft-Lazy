@@ -14,10 +14,10 @@ import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.IItemHandler
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoResourceKind
 import rhx.lazy.core.io.IoRoute
 import rhx.lazy.core.io.IoRouteAdapter
-import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkInsertCapabilities
+import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTransferResult
@@ -129,7 +129,7 @@ internal class ItemCopierBlockEntity(
     private inner class ItemCopierIoRouteAdapter : IoRouteAdapter {
         override val supportedRoutes: Set<IoRoute> =
             setOf(IoRoute.PASSIVE, IoRoute.ADJACENT, IoRoute.NETWORK)
-        override val resourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ITEM)
+        override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
 
         override fun push(
             route: IoRoute,
@@ -154,11 +154,8 @@ internal class ItemCopierBlockEntity(
 
         private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
             val networkTarget = target ?: return IoPushResult.TargetMissing
-            val provider =
-                NetworkOutputProviders.get(networkTarget.providerId)
-                    ?: return IoPushResult.TargetMissing
             val result =
-                provider.insert(
+                NetworkOutputRouter.insert(
                     networkTarget,
                     NetworkPayload.Items(template.copyWithCount(1), template.maxStackSize.toLong()),
                     false,
@@ -166,6 +163,7 @@ internal class ItemCopierBlockEntity(
             return when (result) {
                 is NetworkTransferResult.Success -> IoPushResult.Success
                 NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
+                NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
                 NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
                 NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
             }

@@ -9,10 +9,10 @@ import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.energy.IEnergyStorage
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoResourceKind
 import rhx.lazy.core.io.IoRoute
 import rhx.lazy.core.io.IoRouteAdapter
-import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkInsertCapabilities
+import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTransferResult
@@ -45,7 +45,7 @@ internal class EnergySourceBlockEntity(
     private inner class EnergyIoRouteAdapter : IoRouteAdapter {
         override val supportedRoutes: Set<IoRoute> =
             setOf(IoRoute.PASSIVE, IoRoute.ADJACENT, IoRoute.NETWORK)
-        override val resourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ENERGY)
+        override val capabilities = setOf(NetworkInsertCapabilities.ENERGY)
 
         override fun push(
             route: IoRoute,
@@ -70,10 +70,9 @@ internal class EnergySourceBlockEntity(
 
         private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
             val networkTarget = target ?: return IoPushResult.TargetMissing
-            val provider = NetworkOutputProviders.get(networkTarget.providerId) ?: return IoPushResult.TargetMissing
             return when (
                 val result =
-                    provider.insert(
+                    NetworkOutputRouter.insert(
                         networkTarget,
                         NetworkPayload.Energy(ENERGY_TRANSFER_LIMIT.toLong()),
                         simulate = false,
@@ -81,6 +80,7 @@ internal class EnergySourceBlockEntity(
             ) {
                 is NetworkTransferResult.Success -> IoPushResult.Success
                 NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
+                NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
                 NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
                 NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
             }

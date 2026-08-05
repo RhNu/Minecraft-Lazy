@@ -12,7 +12,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import rhx.lazy.core.io.IoPushResult
 import rhx.lazy.core.io.IoRoute
-import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTransferResult
@@ -107,16 +107,12 @@ internal class PlanterOutputRouter(
         var pendingChanged = false
         var outputsChanged = false
 
-        fun handle(stack: ItemStack): NetworkTransferResult {
-            val provider =
-                NetworkOutputProviders.get(networkTarget.providerId)
-                    ?: return NetworkTransferResult.TargetMissing
-            return provider.insert(
+        fun handle(stack: ItemStack): NetworkTransferResult =
+            NetworkOutputRouter.insert(
                 networkTarget,
                 NetworkPayload.Items(stack.copyWithCount(1), stack.count.toLong()),
                 false,
             )
-        }
 
         var pendingIndex = 0
         while (pendingIndex < pendingDrops.size) {
@@ -134,6 +130,12 @@ internal class PlanterOutputRouter(
                 }
 
                 NetworkTransferResult.TargetMissing -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.TargetMissing
+                }
+
+                NetworkTransferResult.InvalidTarget -> {
                     if (pendingChanged) markPendingDirty()
                     if (outputsChanged) markOutputsDirty()
                     return IoPushResult.TargetMissing
@@ -166,6 +168,12 @@ internal class PlanterOutputRouter(
                 }
 
                 NetworkTransferResult.TargetMissing -> {
+                    if (pendingChanged) markPendingDirty()
+                    if (outputsChanged) markOutputsDirty()
+                    return IoPushResult.TargetMissing
+                }
+
+                NetworkTransferResult.InvalidTarget -> {
                     if (pendingChanged) markPendingDirty()
                     if (outputsChanged) markOutputsDirty()
                     return IoPushResult.TargetMissing

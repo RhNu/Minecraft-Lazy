@@ -2,11 +2,10 @@ package rhx.lazy.integration
 
 import net.neoforged.bus.api.BusBuilder
 import net.neoforged.fml.ModList
-import rhx.lazy.core.storage.NetworkStorage
-import rhx.lazy.core.storage.NetworkStorageId
-import rhx.lazy.core.storage.NetworkStorageResult
 import rhx.lazy.feature.repairer.ItemRepairHookResult
 import rhx.lazy.feature.repairer.ItemRepairHooks
+import rhx.lazy.integration.ae2.Ae2IntegrationModule
+import rhx.lazy.integration.appflux.AppliedFluxIntegrationModule
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
 import rhx.lazy.integration.botanypots.BotanyPotsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
@@ -26,6 +25,8 @@ class IntegrationClassloadingTest {
         val manager =
             IntegrationManager(
                 listOf(
+                    Ae2IntegrationModule,
+                    AppliedFluxIntegrationModule,
                     BeyondDimensionsIntegrationModule,
                     BotanyPotsIntegrationModule,
                     SilentGearIntegrationModule,
@@ -38,14 +39,9 @@ class IntegrationClassloadingTest {
         manager.initialize(bus)
         manager.initializeClient(bus, bus)
 
-        assertFalse(NetworkStorage.isAvailable)
         assertSame(
             ItemRepairHookResult.Success,
             ItemRepairHooks.afterRepair(net.minecraft.world.item.ItemStack.EMPTY, null),
-        )
-        assertSame(
-            NetworkStorageResult.Unavailable,
-            NetworkStorage.energyAmount(NetworkStorageId(0)),
         )
     }
 
@@ -68,6 +64,10 @@ class IntegrationClassloadingTest {
                 "jade",
                 "mysticalagriculture",
                 "mysticalagradditions",
+                "ae2",
+                "appflux",
+                "guideme",
+                "glodium",
             )
         val OPTIONAL_API_CLASSES =
             listOf(
@@ -78,6 +78,10 @@ class IntegrationClassloadingTest {
                 "snownee.jade.api.IWailaPlugin",
                 "com.blakebr0.mysticalagriculture.MysticalAgriculture",
                 "com.blakebr0.mysticalagradditions.MysticalAgradditions",
+                "appeng.api.features.GridLinkables",
+                "com.glodblock.github.appflux.common.me.key.FluxKey",
+                "guideme.Guide",
+                "com.glodblock.github.glodium.Glodium",
             )
     }
 }

@@ -1,107 +1,131 @@
 package rhx.lazy.integration.beyonddimensions
 
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import rhx.lazy.core.storage.NetworkStorageId
-import rhx.lazy.core.storage.NetworkStoragePort
-import rhx.lazy.core.storage.NetworkStorageResult
-import rhx.lazy.core.testing.FakeNetworkStorage
+import net.neoforged.neoforge.fluids.FluidStack
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
-import kotlin.test.assertTrue
 
 class GuardedNetworkStoragePortTest {
     @Test
-    fun `runtime failures become explicit results without disabling the provider`() {
+    fun `runtime failures become explicit results`() {
         val delegate =
-            object : NetworkStoragePort by FakeNetworkStorage() {
-                override fun itemAmount(
-                    networkId: NetworkStorageId,
-                    stack: ItemStack,
-                ): NetworkStorageResult<Long> = throw IllegalStateException("upstream failure")
+            object : TestPort() {
+                override fun insertFluid(
+                    networkId: BeyondDimensionsNetworkId,
+                    stack: FluidStack,
+                    simulate: Boolean,
+                ): BeyondDimensionsStorageResult<Long> = throw IllegalStateException("upstream failure")
             }
         val guarded = GuardedNetworkStoragePort("test", delegate)
 
         repeat(2) {
             assertSame(
-                NetworkStorageResult.Failed,
-                guarded.itemAmount(FakeNetworkStorage.TEST_NETWORK_ID, ItemStack(Items.STONE)),
+                BeyondDimensionsStorageResult.Failed,
+                guarded.insertFluid(NETWORK_ID, FluidStack.EMPTY, simulate = true),
             )
         }
-        assertTrue(guarded.isAvailable)
     }
 
     @Test
     fun `linkage failures also become explicit results`() {
         val delegate =
-            object : NetworkStoragePort by FakeNetworkStorage() {
-                override fun energyAmount(networkId: NetworkStorageId): NetworkStorageResult<Long> =
-                    throw NoClassDefFoundError("missing.Api")
+            object : TestPort() {
+                override fun insertEnergy(
+                    networkId: BeyondDimensionsNetworkId,
+                    amount: Long,
+                    simulate: Boolean,
+                ): BeyondDimensionsStorageResult<Long> = throw NoClassDefFoundError("missing.Api")
             }
         val guarded = GuardedNetworkStoragePort("test", delegate)
 
-        assertSame(NetworkStorageResult.Failed, guarded.energyAmount(FakeNetworkStorage.TEST_NETWORK_ID))
-        assertTrue(guarded.isAvailable)
+        assertSame(
+            BeyondDimensionsStorageResult.OutcomeUnknown,
+            guarded.insertEnergy(NETWORK_ID, 1, simulate = false),
+        )
     }
 
     @Test
     fun `failed mutations report an unknown outcome unless simulated`() {
         val delegate =
-            object : NetworkStoragePort by FakeNetworkStorage() {
-                override fun insertItemAmount(
-                    networkId: NetworkStorageId,
+            object : TestPort() {
+                override fun insertItems(
+                    networkId: BeyondDimensionsNetworkId,
                     template: ItemStack,
                     amount: Long,
                     simulate: Boolean,
-                ): NetworkStorageResult<Long> = throw IllegalStateException("failure after possible commit")
+                ): BeyondDimensionsStorageResult<Long> = throw IllegalStateException("failure after possible commit")
             }
         val guarded = GuardedNetworkStoragePort("test", delegate)
 
         assertSame(
-            NetworkStorageResult.OutcomeUnknown,
-            guarded.insertItemAmount(
-                FakeNetworkStorage.TEST_NETWORK_ID,
-                ItemStack(Items.STONE),
-                64,
-                simulate = false,
-            ),
+            BeyondDimensionsStorageResult.OutcomeUnknown,
+            guarded.insertItems(NETWORK_ID, ItemStack(Items.STONE), 64, simulate = false),
         )
         assertSame(
-            NetworkStorageResult.Failed,
-            guarded.insertItemAmount(
-                FakeNetworkStorage.TEST_NETWORK_ID,
-                ItemStack(Items.STONE),
-                64,
-                simulate = true,
-            ),
+            BeyondDimensionsStorageResult.Failed,
+            guarded.insertItems(NETWORK_ID, ItemStack(Items.STONE), 64, simulate = true),
         )
     }
 
     @Test
     fun `bulk item insertion preserves long quantities and simulation`() {
-        val storage = FakeNetworkStorage().apply { itemCapacity = Int.MAX_VALUE.toLong() + 10L }
+        val capacity = Int.MAX_VALUE.toLong() + 10L
         val amount = Int.MAX_VALUE.toLong() + 20L
+        var stored = 0L
+        val port =
+            object : TestPort() {
+                override fun insertItems(
+                    networkId: BeyondDimensionsNetworkId,
+                    template: ItemStack,
+                    amount: Long,
+                    simulate: Boolean,
+                ): BeyondDimensionsStorageResult<Long> {
+                    val accepted = (capacity - stored).coerceAtLeast(0).coerceAtMost(amount)
+                    if (!simulate) stored += accepted
+                    return BeyondDimensionsStorageResult.Success(amount - accepted)
+                }
+            }
 
         assertEquals(
-            NetworkStorageResult.Success(10L),
-            storage.insertItemAmount(
-                FakeNetworkStorage.TEST_NETWORK_ID,
-                ItemStack(Items.STONE),
-                amount,
-                simulate = true,
-            ),
+            BeyondDimensionsStorageResult.Success(10L),
+            port.insertItems(NETWORK_ID, ItemStack(Items.STONE), amount, simulate = true),
         )
-        assertEquals(0L, storage.storedItemAmount)
+        assertEquals(0L, stored)
         assertEquals(
-            NetworkStorageResult.Success(10L),
-            storage.insertItemAmount(
-                FakeNetworkStorage.TEST_NETWORK_ID,
-                ItemStack(Items.STONE),
-                amount,
-                simulate = false,
-            ),
+            BeyondDimensionsStorageResult.Success(10L),
+            port.insertItems(NETWORK_ID, ItemStack(Items.STONE), amount, simulate = false),
         )
-        assertEquals(Int.MAX_VALUE.toLong() + 10L, storage.storedItemAmount)
+        assertEquals(capacity, stored)
+    }
+
+    private open class TestPort : BeyondDimensionsStoragePort {
+        override fun primaryNetwork(player: ServerPlayer): BeyondDimensionsStorageResult<BeyondDimensionsNetworkId> =
+            BeyondDimensionsStorageResult.Success(NETWORK_ID)
+
+        override fun insertItems(
+            networkId: BeyondDimensionsNetworkId,
+            template: ItemStack,
+            amount: Long,
+            simulate: Boolean,
+        ): BeyondDimensionsStorageResult<Long> = BeyondDimensionsStorageResult.Success(0L)
+
+        override fun insertFluid(
+            networkId: BeyondDimensionsNetworkId,
+            stack: FluidStack,
+            simulate: Boolean,
+        ): BeyondDimensionsStorageResult<Long> = BeyondDimensionsStorageResult.Success(0L)
+
+        override fun insertEnergy(
+            networkId: BeyondDimensionsNetworkId,
+            amount: Long,
+            simulate: Boolean,
+        ): BeyondDimensionsStorageResult<Long> = BeyondDimensionsStorageResult.Success(0L)
+    }
+
+    private companion object {
+        val NETWORK_ID = BeyondDimensionsNetworkId(7)
     }
 }

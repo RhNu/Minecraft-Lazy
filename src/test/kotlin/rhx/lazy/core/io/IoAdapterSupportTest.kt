@@ -22,6 +22,12 @@ class IoAdapterSupportTest {
             IoRoute.ADJACENT,
             IoRoute.NETWORK,
         )
+        assertEquals(setOf(NetworkInsertCapabilities.ENERGY), energySource().ioController.capabilities)
+        assertEquals(
+            setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID),
+            buffer().ioController.capabilities,
+        )
+        assertEquals(setOf(NetworkInsertCapabilities.ITEM), itemCopier().ioController.capabilities)
         assertRoutes(
             BufferBlockEntity(
                 BlockPos.ZERO,
@@ -41,6 +47,24 @@ class IoAdapterSupportTest {
             IoRoute.NETWORK,
         )
     }
+
+    private fun energySource() =
+        EnergySourceBlockEntity(
+            BlockPos.ZERO,
+            EnergyRegistries.sourceBlock.get().defaultBlockState(),
+        )
+
+    private fun buffer() =
+        BufferBlockEntity(
+            BlockPos.ZERO,
+            BufferRegistries.block.get().defaultBlockState(),
+        )
+
+    private fun itemCopier() =
+        ItemCopierBlockEntity(
+            BlockPos.ZERO,
+            ItemCopierRegistries.block.get().defaultBlockState(),
+        )
 
     private fun assertRoutes(
         blockEntity: IoManagedBlockEntity,

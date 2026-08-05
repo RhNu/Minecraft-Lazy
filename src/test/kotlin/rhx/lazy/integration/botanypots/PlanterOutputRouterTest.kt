@@ -8,13 +8,13 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputProvider
 import rhx.lazy.core.io.NetworkOutputProviders
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
 import rhx.lazy.core.io.NetworkTransferResult
-import rhx.lazy.core.storage.NetworkStorageResult
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -119,7 +119,7 @@ class PlanterOutputRouterTest {
         override val id: ResourceLocation =
             ResourceLocation.fromNamespaceAndPath("lazy", "test_planter_${nextId++}")
         override val displayName: Component = Component.literal("Test planter")
-        override val supportedResourceKinds = setOf(rhx.lazy.core.io.IoResourceKind.ITEM)
+        override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
         val target = NetworkTargetRef(id, CompoundTag())
 
         override fun icon(): ItemStack = ItemStack(Items.CHEST)
@@ -134,19 +134,7 @@ class PlanterOutputRouterTest {
             simulate: Boolean,
         ): NetworkTransferResult {
             val items = payload as NetworkPayload.Items
-            return when (
-                val result =
-                    storage.insertItemAmount(
-                        rhx.lazy.core.storage
-                            .NetworkStorageId(0),
-                        items.template,
-                        items.amount,
-                        simulate,
-                    )
-            ) {
-                is NetworkStorageResult.Success -> NetworkTransferResult.Success(result.value)
-                else -> NetworkTransferResult.TemporarilyUnavailable
-            }
+            return storage.insertItemAmount(items.template, items.amount, simulate)
         }
 
         companion object {

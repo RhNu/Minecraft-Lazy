@@ -40,8 +40,7 @@ internal object IoPanelUI {
             NetworkOutputProviders
                 .all()
                 .filter { provider ->
-                    IoRoute.NETWORK in supportedRoutes &&
-                        controller?.resourceKinds?.any { it in provider.supportedResourceKinds } == true
+                    IoRoute.NETWORK in supportedRoutes
                 }
 
         val routeButtons = mutableMapOf<IoRoute, UIElement>()
@@ -111,7 +110,7 @@ internal object IoPanelUI {
                                         {
                                             noText()
                                             cls = { +"lazy-io__provider-button" }
-                                            style = { tooltips(provider.displayName) }
+                                            style = { tooltips(providerTooltip(provider, controller)) }
                                             onServerClick = { event ->
                                                 if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
                                                     selectNetwork(model, provider.id)
@@ -187,8 +186,10 @@ internal object IoPanelUI {
         val provider = NetworkOutputProviders.get(providerId) ?: return
         when (val resolution = provider.resolvePrimaryTarget(player)) {
             is NetworkTargetResolution.Success -> {
-                if (model.controller?.setNetworkTarget(resolution.target) != true) {
-                    player.displayActionBar("message.lazy.io.network.unavailable")
+                if (model.controller?.setNetworkTarget(resolution.target) == true) {
+                    player.displayActionBar("message.lazy.io.network.success", provider.displayName)
+                } else {
+                    player.displayActionBar("message.lazy.io.network.incompatible")
                 }
             }
 
@@ -197,6 +198,15 @@ internal object IoPanelUI {
 
             NetworkTargetResolution.NotFound ->
                 player.displayActionBar("message.lazy.io.network.no_target")
+
+            NetworkTargetResolution.Unlinked ->
+                player.displayActionBar("message.lazy.io.network.unlinked")
+
+            NetworkTargetResolution.Ambiguous ->
+                player.displayActionBar("message.lazy.io.network.ambiguous")
+
+            NetworkTargetResolution.Incompatible ->
+                player.displayActionBar("message.lazy.io.network.incompatible")
 
             NetworkTargetResolution.Failed ->
                 player.displayActionBar("message.lazy.io.network.failed")
@@ -212,6 +222,34 @@ internal object IoPanelUI {
                 IoRoute.NETWORK -> "gui.lazy.io.route.network"
             },
         )
+
+    private fun providerTooltip(
+        provider: NetworkOutputProvider,
+        controller: IoRouteController?,
+    ): Component =
+        provider.displayName
+            .copy()
+            .append("\n")
+            .append(
+                Component.translatable(
+                    "gui.lazy.io.provider.capabilities",
+                    capabilityList(provider.capabilities),
+                ),
+            ).apply {
+                if (controller?.capabilities?.none { it in provider.capabilities } == true) {
+                    append("\n")
+                    append(Component.translatable("gui.lazy.io.provider.incompatible"))
+                }
+            }
+
+    private fun capabilityList(capabilities: Set<NetworkInsertCapability>): Component {
+        val result = Component.empty()
+        capabilities.forEachIndexed { index, capability ->
+            if (index > 0) result.append(", ")
+            result.append(capability.displayName)
+        }
+        return result
+    }
 
     private fun routeIcon(route: IoRoute): ItemStack =
         when (route) {

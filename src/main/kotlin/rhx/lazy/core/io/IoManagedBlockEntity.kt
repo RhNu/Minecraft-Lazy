@@ -145,8 +145,8 @@ internal class IoRouteController(
     val supportedRoutes: Set<IoRoute>
         get() = adapter?.supportedRoutes ?: setOf(IoRoute.PASSIVE)
 
-    val resourceKinds: Set<IoResourceKind>
-        get() = adapter?.resourceKinds ?: emptySet()
+    val capabilities: Set<NetworkInsertCapability>
+        get() = adapter?.capabilities ?: emptySet()
 
     internal fun install(newAdapter: IoRouteAdapter) {
         adapter = newAdapter
@@ -167,8 +167,7 @@ internal class IoRouteController(
             blockEntity.updateIoNetworkPaused(false)
             return
         }
-        val target = blockEntity.storedIoTarget()
-        if (target == null || !currentAdapter().supportsNetworkTarget(target)) {
+        if (blockEntity.storedIoTarget() == null) {
             setPassive()
         }
     }

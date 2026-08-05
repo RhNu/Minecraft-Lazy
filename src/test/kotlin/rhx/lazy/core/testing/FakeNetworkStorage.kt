@@ -8,23 +8,22 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.neoforged.neoforge.fluids.FluidStack
-import rhx.lazy.core.io.IoResourceKind
+import rhx.lazy.core.io.NetworkInsertCapabilities
+import rhx.lazy.core.io.NetworkInsertCapability
 import rhx.lazy.core.io.NetworkOutputProvider
 import rhx.lazy.core.io.NetworkOutputProviders
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
 import rhx.lazy.core.io.NetworkTransferResult
-import rhx.lazy.core.storage.NetworkStorageId
-import rhx.lazy.core.storage.NetworkStoragePort
-import rhx.lazy.core.storage.NetworkStorageResult
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.min
 
 internal class FakeNetworkStorage(
-    override var isAvailable: Boolean = true,
-) : NetworkStoragePort {
+    var isAvailable: Boolean = true,
+) {
     var networkExists = true
+    var outcomeUnknown = false
     var itemCapacity = Long.MAX_VALUE
     var fluidCapacity = Long.MAX_VALUE
     var energyCapacity = Long.MAX_VALUE
@@ -35,127 +34,66 @@ internal class FakeNetworkStorage(
     var storedFluidAmount = 0L
     var storedEnergy = 0L
 
-    override fun primaryNetwork(player: ServerPlayer): NetworkStorageResult<NetworkStorageId> =
-        if (networkExists) {
-            NetworkStorageResult.Success(TEST_NETWORK_ID)
-        } else {
-            NetworkStorageResult.NetworkNotFound
-        }
-
-    override fun itemAmount(
-        networkId: NetworkStorageId,
-        stack: ItemStack,
-    ): NetworkStorageResult<Long> = withNetwork { storedItemAmount }
-
-    override fun insertItem(
-        networkId: NetworkStorageId,
-        stack: ItemStack,
-        simulate: Boolean,
-    ): NetworkStorageResult<ItemStack> =
-        withNetwork {
-            val accepted = min(stack.count.toLong(), (itemCapacity - storedItemAmount).coerceAtLeast(0L))
-            if (!simulate && accepted > 0L) {
-                storedItem = stack.copyWithCount(1)
-                storedItemAmount += accepted
-            }
-            stack.copyWithAmount(stack.count.toLong() - accepted)
-        }
-
-    override fun insertItemAmount(
-        networkId: NetworkStorageId,
+    fun insertItemAmount(
         template: ItemStack,
         amount: Long,
         simulate: Boolean,
-    ): NetworkStorageResult<Long> =
-        withNetwork {
-            if (template.isEmpty || amount <= 0L) return@withNetwork 0L
+    ): NetworkTransferResult =
+        transfer {
+            if (template.isEmpty || amount <= 0L) return@transfer 0L
             val accepted = min(amount, (itemCapacity - storedItemAmount).coerceAtLeast(0L))
-            if (!simulate) storedItemAmount += accepted
+            if (!simulate && accepted > 0) {
+                storedItem = template.copyWithCount(1)
+                storedItemAmount += accepted
+            }
             amount - accepted
         }
 
-    override fun extractItem(
-        networkId: NetworkStorageId,
-        template: ItemStack,
-        amount: Int,
-        simulate: Boolean,
-    ): NetworkStorageResult<ItemStack> =
-        withNetwork {
-            val extracted = min(amount.toLong().coerceAtLeast(0L), storedItemAmount)
-            if (!simulate) storedItemAmount -= extracted
-            template.copyWithAmount(extracted)
-        }
-
-    override fun fluidAmount(
-        networkId: NetworkStorageId,
-        stack: FluidStack,
-    ): NetworkStorageResult<Long> = withNetwork { storedFluidAmount }
-
-    override fun insertFluid(
-        networkId: NetworkStorageId,
+    fun insertFluid(
         stack: FluidStack,
         simulate: Boolean,
-    ): NetworkStorageResult<FluidStack> =
-        withNetwork {
+    ): NetworkTransferResult =
+        transfer {
             val accepted = min(stack.amount.toLong(), (fluidCapacity - storedFluidAmount).coerceAtLeast(0L))
-            if (!simulate && accepted > 0L) {
+            if (!simulate && accepted > 0) {
                 storedFluid = stack.copyWithAmount(1)
                 storedFluidAmount += accepted
             }
-            stack.copyWithAmount(stack.amount.toLong() - accepted)
+            stack.amount.toLong() - accepted
         }
 
-    override fun extractFluid(
-        networkId: NetworkStorageId,
-        template: FluidStack,
-        amount: Int,
-        simulate: Boolean,
-    ): NetworkStorageResult<FluidStack> =
-        withNetwork {
-            val extracted = min(amount.toLong().coerceAtLeast(0L), storedFluidAmount)
-            if (!simulate) storedFluidAmount -= extracted
-            template.copyWithAmount(extracted)
-        }
-
-    override fun energyAmount(networkId: NetworkStorageId): NetworkStorageResult<Long> = withNetwork { storedEnergy }
-
-    override fun insertEnergy(
-        networkId: NetworkStorageId,
+    fun insertEnergy(
         amount: Long,
         simulate: Boolean,
-    ): NetworkStorageResult<Long> =
-        withNetwork {
-            val accepted = min(amount.coerceAtLeast(0L), (energyCapacity - storedEnergy).coerceAtLeast(0L))
+    ): NetworkTransferResult =
+        transfer {
+            val requested = amount.coerceAtLeast(0L)
+            val accepted = min(requested, (energyCapacity - storedEnergy).coerceAtLeast(0L))
             if (!simulate) storedEnergy += accepted
-            amount.coerceAtLeast(0L) - accepted
+            requested - accepted
         }
 
-    override fun extractEnergy(
-        networkId: NetworkStorageId,
-        amount: Long,
-        simulate: Boolean,
-    ): NetworkStorageResult<Long> =
-        withNetwork {
-            val extracted = min(amount.coerceAtLeast(0L), storedEnergy)
-            if (!simulate) storedEnergy -= extracted
-            extracted
-        }
-
-    private fun <T> withNetwork(value: () -> T): NetworkStorageResult<T> =
+    private fun transfer(operation: () -> Long): NetworkTransferResult =
         when {
-            !isAvailable -> NetworkStorageResult.Unavailable
-            !networkExists -> NetworkStorageResult.NetworkNotFound
-            else -> NetworkStorageResult.Success(value())
+            outcomeUnknown -> NetworkTransferResult.OutcomeUnknown
+            !isAvailable -> NetworkTransferResult.TemporarilyUnavailable
+            !networkExists -> NetworkTransferResult.TargetMissing
+            else -> NetworkTransferResult.Success(operation())
         }
 
     companion object {
-        val TEST_NETWORK_ID = NetworkStorageId(7)
+        val TEST_NETWORK_ID = FakeNetworkId(7)
     }
 }
 
+@JvmInline
+internal value class FakeNetworkId(
+    val value: Int,
+)
+
 internal class FakeNetworkOutputProvider(
     private val storage: FakeNetworkStorage,
-    override val supportedResourceKinds: Set<IoResourceKind> = IoResourceKind.entries.toSet(),
+    override val capabilities: Set<NetworkInsertCapability> = NetworkInsertCapabilities.all,
 ) : NetworkOutputProvider {
     override val id: ResourceLocation =
         ResourceLocation.fromNamespaceAndPath("lazy", "test_network_${nextId.getAndIncrement()}")
@@ -174,11 +112,10 @@ internal class FakeNetworkOutputProvider(
     override fun icon(): ItemStack = ItemStack(Items.CHEST)
 
     override fun resolvePrimaryTarget(player: ServerPlayer): NetworkTargetResolution =
-        when (val result = storage.primaryNetwork(player)) {
-            is NetworkStorageResult.Success -> NetworkTargetResolution.Success(target.copy())
-            NetworkStorageResult.NetworkNotFound -> NetworkTargetResolution.NotFound
-            NetworkStorageResult.Unavailable -> NetworkTargetResolution.Unavailable
-            else -> NetworkTargetResolution.Failed
+        when {
+            !storage.isAvailable -> NetworkTargetResolution.Unavailable
+            !storage.networkExists -> NetworkTargetResolution.NotFound
+            else -> NetworkTargetResolution.Success(target.copy())
         }
 
     override fun isTargetValid(target: NetworkTargetRef): Boolean = networkId(target) != null
@@ -188,33 +125,20 @@ internal class FakeNetworkOutputProvider(
         payload: NetworkPayload,
         simulate: Boolean,
     ): NetworkTransferResult {
-        val networkId = networkId(target) ?: return NetworkTransferResult.TargetMissing
-        val result =
-            when (payload) {
-                is NetworkPayload.Items -> storage.insertItemAmount(networkId, payload.template, payload.amount, simulate)
-                is NetworkPayload.Fluid -> storage.insertFluid(networkId, payload.stack, simulate)
-                is NetworkPayload.Energy -> storage.insertEnergy(networkId, payload.amount, simulate)
-            }
-        return when (result) {
-            is NetworkStorageResult.Success<*> ->
-                when (val value = result.value) {
-                    is Long -> NetworkTransferResult.Success(value)
-                    is FluidStack -> NetworkTransferResult.Success(value.amount.toLong())
-                    else -> error("Unexpected fake network result: $value")
-                }
-
-            NetworkStorageResult.NetworkNotFound -> NetworkTransferResult.TargetMissing
-            NetworkStorageResult.OutcomeUnknown -> NetworkTransferResult.OutcomeUnknown
-            else -> NetworkTransferResult.TemporarilyUnavailable
+        if (networkId(target) == null) return NetworkTransferResult.InvalidTarget
+        return when (payload) {
+            is NetworkPayload.Items -> storage.insertItemAmount(payload.template, payload.amount, simulate)
+            is NetworkPayload.Fluid -> storage.insertFluid(payload.stack, simulate)
+            is NetworkPayload.Energy -> storage.insertEnergy(payload.amount, simulate)
         }
     }
 
-    private fun networkId(target: NetworkTargetRef): NetworkStorageId? {
+    private fun networkId(target: NetworkTargetRef): FakeNetworkId? {
         if (target.providerId != id || !target.data.contains(NETWORK_ID_TAG, Tag.TAG_INT.toInt())) return null
         return target.data
             .getInt(NETWORK_ID_TAG)
             .takeIf { it >= 0 }
-            ?.let(::NetworkStorageId)
+            ?.let(::FakeNetworkId)
     }
 
     private companion object {
@@ -222,9 +146,3 @@ internal class FakeNetworkOutputProvider(
         val nextId = AtomicInteger()
     }
 }
-
-private fun ItemStack.copyWithAmount(amount: Long): ItemStack =
-    if (amount <= 0L) ItemStack.EMPTY else copyWithCount(amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
-
-private fun FluidStack.copyWithAmount(amount: Long): FluidStack =
-    if (amount <= 0L) FluidStack.EMPTY else copyWithAmount(amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())

@@ -1,14 +1,16 @@
 package rhx.lazy.integration.beyonddimensions
 
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.item.ItemStack
+import net.neoforged.neoforge.fluids.FluidStack
 import rhx.lazy.core.io.NetworkTargetRef
-import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BeyondDimensionsNetworkProviderTest {
-    private val provider = BeyondDimensionsNetworkProvider(FakeNetworkStorage())
+    private val provider = BeyondDimensionsNetworkProvider(EmptyPort)
 
     @Test
     fun `target validation requires a typed nonnegative network id`() {
@@ -38,4 +40,27 @@ class BeyondDimensionsNetworkProviderTest {
             ),
         )
     }
+}
+
+private object EmptyPort : BeyondDimensionsStoragePort {
+    override fun primaryNetwork(player: ServerPlayer) = BeyondDimensionsStorageResult.NetworkNotFound
+
+    override fun insertItems(
+        networkId: BeyondDimensionsNetworkId,
+        template: ItemStack,
+        amount: Long,
+        simulate: Boolean,
+    ) = BeyondDimensionsStorageResult.Failed
+
+    override fun insertFluid(
+        networkId: BeyondDimensionsNetworkId,
+        stack: FluidStack,
+        simulate: Boolean,
+    ) = BeyondDimensionsStorageResult.Failed
+
+    override fun insertEnergy(
+        networkId: BeyondDimensionsNetworkId,
+        amount: Long,
+        simulate: Boolean,
+    ) = BeyondDimensionsStorageResult.Failed
 }

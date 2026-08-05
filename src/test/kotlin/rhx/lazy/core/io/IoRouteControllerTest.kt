@@ -127,6 +127,23 @@ class IoRouteControllerTest {
         )
     }
 
+    @Test
+    fun `temporarily missing provider does not erase a saved network binding`() {
+        val source = newSource()
+        val missingTarget =
+            NetworkTargetRef(
+                ResourceLocation.fromNamespaceAndPath("lazy", "temporarily_missing"),
+                CompoundTag().apply { putString("opaque", "preserved") },
+            )
+        source.updateIoRoute(IoRoute.NETWORK)
+        source.updateIoProvider(missingTarget)
+
+        source.ioController.normalize()
+
+        assertEquals(IoRoute.NETWORK, source.ioController.route)
+        assertEquals(missingTarget, source.ioController.target)
+    }
+
     private fun newSource(): EnergySourceBlockEntity =
         EnergySourceBlockEntity(
             BlockPos.ZERO,
@@ -139,7 +156,7 @@ class IoRouteControllerTest {
         override val id: ResourceLocation =
             ResourceLocation.fromNamespaceAndPath("lazy", "test_io_$suffix")
         override val displayName: Component = Component.literal("Test $suffix")
-        override val supportedResourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ENERGY)
+        override val capabilities: Set<NetworkInsertCapability> = setOf(NetworkInsertCapabilities.ENERGY)
 
         override fun icon(): ItemStack = ItemStack(Items.CHEST)
 
@@ -181,7 +198,7 @@ class IoRouteControllerTest {
             installIoAdapter(
                 object : IoRouteAdapter {
                     override val supportedRoutes: Set<IoRoute> = setOf(IoRoute.PASSIVE)
-                    override val resourceKinds: Set<IoResourceKind> = emptySet()
+                    override val capabilities: Set<NetworkInsertCapability> = emptySet()
                     override val ticksWhenPassive: Boolean = true
 
                     override fun push(

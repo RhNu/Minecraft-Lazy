@@ -28,9 +28,9 @@ import net.minecraft.world.phys.Vec3
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoResourceKind
 import rhx.lazy.core.io.IoRoute
 import rhx.lazy.core.io.IoRouteAdapter
+import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkTargetRef
 
 internal class PlanterBlockEntity(
@@ -257,7 +257,7 @@ internal class PlanterBlockEntity(
     private inner class PlanterIoRouteAdapter : IoRouteAdapter {
         override val supportedRoutes: Set<IoRoute> =
             setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
-        override val resourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ITEM)
+        override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
         override val ticksWhenPassive: Boolean = true
 
         override fun push(

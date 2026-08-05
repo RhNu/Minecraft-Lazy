@@ -18,10 +18,10 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoResourceKind
 import rhx.lazy.core.io.IoRoute
 import rhx.lazy.core.io.IoRouteAdapter
-import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkInsertCapabilities
+import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTransferResult
 import kotlin.math.min
@@ -368,8 +368,8 @@ internal class BufferBlockEntity(
     private inner class BufferIoRouteAdapter : IoRouteAdapter {
         override val supportedRoutes: Set<IoRoute> =
             setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
-        override val resourceKinds: Set<IoResourceKind> =
-            setOf(IoResourceKind.ITEM, IoResourceKind.FLUID)
+        override val capabilities =
+            setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID)
 
         override fun push(
             route: IoRoute,
@@ -427,6 +427,7 @@ internal class BufferBlockEntity(
                 when (result) {
                     is NetworkTransferResult.Success -> IoPushResult.Success
                     NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
+                    NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
                     NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
                     NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
                 }
@@ -482,18 +483,12 @@ internal class BufferBlockEntity(
             target: rhx.lazy.core.io.NetworkTargetRef,
             template: ItemStack,
             amount: Long,
-        ): NetworkTransferResult {
-            val provider = NetworkOutputProviders.get(target.providerId) ?: return NetworkTransferResult.TargetMissing
-            return provider.insert(target, NetworkPayload.Items(template, amount), false)
-        }
+        ): NetworkTransferResult = NetworkOutputRouter.insert(target, NetworkPayload.Items(template, amount), false)
 
         private fun insertFluid(
             target: rhx.lazy.core.io.NetworkTargetRef,
             stack: FluidStack,
-        ): NetworkTransferResult {
-            val provider = NetworkOutputProviders.get(target.providerId) ?: return NetworkTransferResult.TargetMissing
-            return provider.insert(target, NetworkPayload.Fluid(stack), false)
-        }
+        ): NetworkTransferResult = NetworkOutputRouter.insert(target, NetworkPayload.Fluid(stack), false)
 
         private fun itemCache(level: ServerLevel): BlockCapabilityCache<IItemHandler, Direction?> {
             val cached = downwardItemCache

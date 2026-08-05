@@ -19,10 +19,10 @@ import net.neoforged.neoforge.items.ItemHandlerHelper
 import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoResourceKind
 import rhx.lazy.core.io.IoRoute
 import rhx.lazy.core.io.IoRouteAdapter
-import rhx.lazy.core.io.NetworkOutputProviders
+import rhx.lazy.core.io.NetworkInsertCapabilities
+import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTransferResult
@@ -167,10 +167,7 @@ internal class EssenceConverterBlockEntity(
         val tier = targetTier ?: return IoPushResult.Success
         val template = tier.createStack()
         if (template.isEmpty || storedOutput <= 0L) return IoPushResult.Success
-        val provider =
-            NetworkOutputProviders.get(networkTarget.providerId)
-                ?: return IoPushResult.TargetMissing
-        val result = provider.insert(networkTarget, NetworkPayload.Items(template, storedOutput), false)
+        val result = NetworkOutputRouter.insert(networkTarget, NetworkPayload.Items(template, storedOutput), false)
         return when (result) {
             is NetworkTransferResult.Success -> {
                 val remainder = result.remainder.coerceIn(0L, storedOutput)
@@ -180,6 +177,7 @@ internal class EssenceConverterBlockEntity(
             }
 
             NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
+            NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
             NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
             NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
         }
@@ -208,7 +206,7 @@ internal class EssenceConverterBlockEntity(
     private inner class EssenceIoRouteAdapter : IoRouteAdapter {
         override val supportedRoutes: Set<IoRoute> =
             setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
-        override val resourceKinds: Set<IoResourceKind> = setOf(IoResourceKind.ITEM)
+        override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
 
         override fun push(
             route: IoRoute,
