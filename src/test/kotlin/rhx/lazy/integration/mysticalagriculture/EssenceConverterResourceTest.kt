@@ -33,24 +33,29 @@ class EssenceConverterResourceTest {
         assertFalse(loot.has("pools"))
 
         val model = readJson("/assets/lazy/models/block/essence_converter.json")
-        assertEquals("minecraft:block/cube_bottom_top", model["parent"].asString)
+        assertEquals("minecraft:block/block", model["parent"].asString)
+        assertEquals("minecraft:cutout", model["render_type"].asString)
         assertEquals(
-            "lazy:block/essence_converter",
+            "lazy:block/machine/side",
             model["textures"].asJsonObject["side"].asString,
         )
         assertEquals(
-            "lazy:block/machine_casing",
+            "lazy:block/machine/bottom",
             model["textures"].asJsonObject["bottom"].asString,
         )
         assertEquals(
-            "lazy:block/machine_casing",
+            "lazy:block/machine/top",
             model["textures"].asJsonObject["top"].asString,
+        )
+        assertEquals(
+            "lazy:block/overlay/essence_converter",
+            model["textures"].asJsonObject["overlay"].asString,
         )
         val itemModel = readJson("/assets/lazy/models/item/essence_converter.json")
         assertEquals("lazy:block/essence_converter", itemModel["parent"].asString)
 
         val image =
-            requireNotNull(javaClass.getResourceAsStream("/assets/lazy/textures/block/essence_converter.png"))
+            requireNotNull(javaClass.getResourceAsStream("/assets/lazy/textures/block/overlay/essence_converter.png"))
                 .use(ImageIO::read)
         assertEquals(16, image.width)
         assertEquals(16, image.height)

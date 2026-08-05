@@ -25,6 +25,7 @@ import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.JsonCodecProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
+import rhx.lazy.core.datagen.orientableMachineModel
 import rhx.lazy.feature.machine.MachineCasingRegistries
 import java.util.concurrent.CompletableFuture
 
@@ -87,15 +88,17 @@ internal object PlanterDataGeneration {
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
             val block = PlanterRegistries.block.get()
-            horizontalBlock(
-                block,
-                models().cubeBottomTop(
-                    BuiltInRegistries.BLOCK.getKey(block).path,
-                    blockTexture(block),
-                    modLoc("block/machine_casing"),
-                    modLoc("block/planter_top"),
-                ),
-            )
+            val name = BuiltInRegistries.BLOCK.getKey(block).path
+            val model =
+                models().orientableMachineModel(
+                    name = name,
+                    bottom = modLoc("block/machine/bottom"),
+                    side = modLoc("block/machine/side"),
+                    top = modLoc("block/machine/top"),
+                    overlay = modLoc("block/overlay/planter"),
+                    topOverlay = modLoc("block/overlay/planter_top"),
+                )
+            horizontalBlock(block, model)
         }
     }
 

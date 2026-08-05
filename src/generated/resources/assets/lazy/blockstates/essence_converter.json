@@ -1,7 +1,19 @@
 {
   "variants": {
-    "": {
+    "facing=east": {
+      "model": "lazy:block/essence_converter",
+      "y": 90
+    },
+    "facing=north": {
       "model": "lazy:block/essence_converter"
+    },
+    "facing=south": {
+      "model": "lazy:block/essence_converter",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "lazy:block/essence_converter",
+      "y": 270
     }
   }
 }

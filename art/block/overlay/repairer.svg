@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    shape-rendering="crispEdges">
+    <!-- Repairer overlay: larger square frame with a centered strike head. -->
+    <rect x="3" y="3" width="10" height="10" fill="#3c4950" />
+    <rect x="3" y="3" width="10" height="1" fill="#859399" />
+    <rect x="3" y="4" width="1" height="8" fill="#6f7d82" />
+    <rect x="12" y="4" width="1" height="8" fill="#354247" />
+    <rect x="4" y="12" width="8" height="1" fill="#2e3940" />
+
+    <rect x="5" y="5" width="6" height="5" fill="#0d7077" />
+    <rect x="5" y="5" width="6" height="1" fill="#33b1b7" />
+    <rect x="5" y="6" width="1" height="3" fill="#1b9099" />
+    <rect x="10" y="6" width="1" height="3" fill="#0b4851" />
+    <rect x="6" y="6" width="4" height="1" fill="#e7fff7" />
+    <rect x="7" y="7" width="2" height="1" fill="#80f1f4" />
+    <rect x="7" y="8" width="2" height="1" fill="#0d7077" />
+</svg>

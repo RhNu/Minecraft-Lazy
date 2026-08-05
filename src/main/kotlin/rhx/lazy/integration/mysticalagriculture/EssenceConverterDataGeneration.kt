@@ -26,6 +26,7 @@ import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.JsonCodecProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
+import rhx.lazy.core.datagen.orientableMachineModel
 import rhx.lazy.feature.machine.MachineCasingRegistries
 import java.util.concurrent.CompletableFuture
 
@@ -112,15 +113,16 @@ internal object EssenceConverterDataGeneration {
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
             val block = EssenceConverterRegistries.block.get()
-            simpleBlock(
-                block,
-                models().cubeBottomTop(
-                    "essence_converter",
-                    modLoc("block/essence_converter"),
-                    modLoc("block/machine_casing"),
-                    modLoc("block/machine_casing"),
-                ),
-            )
+            val name = BuiltInRegistries.BLOCK.getKey(block).path
+            val model =
+                models().orientableMachineModel(
+                    name = name,
+                    bottom = modLoc("block/machine/bottom"),
+                    side = modLoc("block/machine/side"),
+                    top = modLoc("block/machine/top"),
+                    overlay = modLoc("block/overlay/essence_converter"),
+                )
+            horizontalBlock(block, model)
         }
     }
 

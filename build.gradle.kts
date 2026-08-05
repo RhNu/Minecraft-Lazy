@@ -1,6 +1,21 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.apache.xmlgraphics:batik-transcoder:1.18")
+        classpath("org.apache.xmlgraphics:batik-codec:1.18")
+    }
+}
+
+import org.apache.batik.transcoder.TranscoderInput
+import org.apache.batik.transcoder.TranscoderOutput
+import org.apache.batik.transcoder.image.PNGTranscoder
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.slf4j.event.Level
+import java.nio.file.Files
+import java.nio.file.Path
 
 plugins {
     `java-library`
@@ -196,6 +211,7 @@ ktlint {
 
     filter {
         exclude("**/generated/**")
+        exclude("**/build.gradle.kts")
     }
 }
 
@@ -284,6 +300,52 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
     systemProperty("lazy.projectDir", rootProject.projectDir.absolutePath)
+}
+
+val renderArtTextures by tasks.registering {
+    group = "assets"
+    description = "Render SVG art sources under art/ to the committed PNG texture paths."
+
+    val artRoot = layout.projectDirectory.dir("art").asFile.toPath()
+    val textureRoot = layout.projectDirectory.dir("src/main/resources/assets/$modId/textures").asFile.toPath()
+
+    inputs.dir(artRoot)
+    outputs.dir(textureRoot)
+
+    doLast {
+        val svgFiles =
+            Files.walk(artRoot).use { stream ->
+                stream
+                    .filter { path -> Files.isRegularFile(path) && path.toString().endsWith(".svg") }
+                    .sorted()
+                    .toList()
+            }
+
+        require(svgFiles.isNotEmpty()) { "No SVG files were found under art/." }
+
+        var renderedCount = 0
+
+        svgFiles.forEach { svgFile ->
+            val relativePath = artRoot.relativize(svgFile)
+            val stem = svgFile.fileName.toString().removeSuffix(".svg")
+            val pngFile = textureRoot.resolve(relativePath.parent).resolve("$stem.png")
+
+            Files.createDirectories(pngFile.parent)
+
+            Files.newInputStream(svgFile).use { inputStream ->
+                Files.newOutputStream(pngFile).use { outputStream ->
+                    PNGTranscoder().apply {
+                        addTranscodingHint(PNGTranscoder.KEY_WIDTH, 16f)
+                        addTranscodingHint(PNGTranscoder.KEY_HEIGHT, 16f)
+                    }.transcode(TranscoderInput(inputStream), TranscoderOutput(outputStream))
+                }
+            }
+
+            renderedCount++
+        }
+
+        logger.lifecycle("Rendered $renderedCount SVG texture(s) into $textureRoot")
+    }
 }
 
 val generateModMetadata by tasks.registering(ProcessResources::class) {

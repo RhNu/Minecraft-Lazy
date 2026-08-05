@@ -1,5 +1,5 @@
 {
-  "icon": "lazy:slot/empty_teleporter_slot",
+  "icon": "lazy:slot/empty/empty_teleporter_slot",
   "size": 1,
   "validators": [
     "lazy:teleporter_slot"

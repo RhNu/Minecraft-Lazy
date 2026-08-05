@@ -15,7 +15,7 @@ class Ae2IntegrationContractTest {
         val paths =
             listOf(
                 "/assets/lazy/models/item/me_output_link_card.json",
-                "/assets/lazy/textures/item/me_output_link_card.png",
+                "/assets/lazy/textures/item/icon/me_output_link_card.png",
                 "/data/lazy/recipe/me_output_link_card.json",
             )
         paths.forEach { path -> assertNotNull(javaClass.getResource(path), "Missing generated resource $path") }
@@ -50,6 +50,6 @@ class Ae2IntegrationContractTest {
     fun `link card texture has an editable SVG source`() {
         val projectRoot = Path.of(requireNotNull(System.getProperty("lazy.projectDir")))
 
-        assertTrue(Files.isRegularFile(projectRoot.resolve("art/item/me_output_link_card.svg")))
+        assertTrue(Files.isRegularFile(projectRoot.resolve("art/item/icon/me_output_link_card.svg")))
     }
 }

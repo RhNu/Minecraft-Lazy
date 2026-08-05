@@ -59,7 +59,8 @@ internal object Ae2DataGeneration {
         helper: ExistingFileHelper,
     ) : ItemModelProvider(output, MOD_ID, helper) {
         override fun registerModels() {
-            basicItem(Ae2Registries.meOutputLinkCard.get())
+            withExistingParent("me_output_link_card", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/me_output_link_card"))
         }
     }
 }

@@ -40,7 +40,7 @@ class MachineCasingResourceTest {
 
         val model = readJson("/assets/lazy/models/block/machine_casing.json")
         assertEquals("minecraft:block/cube_all", model["parent"].asString)
-        assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["all"].asString)
+        assertEquals("lazy:block/machine/bottom", model["textures"].asJsonObject["all"].asString)
 
         assertEquals(
             "Machine Casing",
@@ -74,63 +74,69 @@ class MachineCasingResourceTest {
     }
 
     @Test
-    fun `machines use casing tops and bottoms and distinct side textures`() {
-        val casing = readTexture("machine_casing")
-        val casingPixels = casing.pixels()
+    fun `machines use orientable overlay models with shared base textures`() {
+        val bottomTexture = readTexture("machine/bottom")
         val columnMachines = listOf("buffer", "energy_source", "item_copier", "repairer")
 
         columnMachines.forEach { machine ->
             val model = readJson("/assets/lazy/models/block/$machine.json")
-            assertEquals("minecraft:block/cube_bottom_top", model["parent"].asString)
-            assertEquals("lazy:block/$machine", model["textures"].asJsonObject["side"].asString)
-            assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["bottom"].asString)
-            assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["top"].asString)
+            assertEquals("minecraft:block/block", model["parent"].asString)
+            assertEquals("minecraft:cutout", model["render_type"].asString)
+            assertEquals("lazy:block/machine/bottom", model["textures"].asJsonObject["bottom"].asString)
+            assertEquals("lazy:block/machine/side", model["textures"].asJsonObject["side"].asString)
+            assertEquals("lazy:block/machine/top", model["textures"].asJsonObject["top"].asString)
+            assertEquals("lazy:block/overlay/$machine", model["textures"].asJsonObject["overlay"].asString)
 
-            val texture = readTexture(machine)
-            assertEquals(16, texture.width)
-            assertEquals(16, texture.height)
-            assertFalse(texture.pixels().contentEquals(casingPixels), "$machine must have a visible overlay")
+            val overlayTexture = readTexture("overlay/$machine")
+            assertEquals(16, overlayTexture.width)
+            assertEquals(16, overlayTexture.height)
+            assertFalse(
+                overlayTexture.pixels().contentEquals(bottomTexture.pixels()),
+                "$machine overlay must differ from base bottom texture",
+            )
         }
 
         val planterModel = readJson("/assets/lazy/models/block/planter.json")
-        assertEquals("minecraft:block/cube_bottom_top", planterModel["parent"].asString)
-        assertEquals("lazy:block/planter", planterModel["textures"].asJsonObject["side"].asString)
-        assertEquals("lazy:block/machine_casing", planterModel["textures"].asJsonObject["bottom"].asString)
-        assertEquals("lazy:block/planter_top", planterModel["textures"].asJsonObject["top"].asString)
+        assertEquals("minecraft:block/block", planterModel["parent"].asString)
+        assertEquals("minecraft:cutout", planterModel["render_type"].asString)
+        assertEquals("lazy:block/machine/bottom", planterModel["textures"].asJsonObject["bottom"].asString)
+        assertEquals("lazy:block/machine/side", planterModel["textures"].asJsonObject["side"].asString)
+        assertEquals("lazy:block/machine/top", planterModel["textures"].asJsonObject["top"].asString)
+        assertEquals("lazy:block/overlay/planter", planterModel["textures"].asJsonObject["overlay"].asString)
+        assertEquals("lazy:block/overlay/planter_top", planterModel["textures"].asJsonObject["top_overlay"].asString)
 
-        val planterTexture = readTexture("planter")
-        assertEquals(16, planterTexture.width)
-        assertEquals(16, planterTexture.height)
-        assertFalse(planterTexture.pixels().contentEquals(casingPixels), "planter must have a visible overlay")
+        val planterOverlay = readTexture("overlay/planter")
+        assertEquals(16, planterOverlay.width)
+        assertEquals(16, planterOverlay.height)
+        assertFalse(
+            planterOverlay.pixels().contentEquals(bottomTexture.pixels()),
+            "planter overlay must differ from base bottom texture",
+        )
 
         val essenceConverterModel = readJson("/assets/lazy/models/block/essence_converter.json")
-        assertEquals("minecraft:block/cube_bottom_top", essenceConverterModel["parent"].asString)
+        assertEquals("minecraft:block/block", essenceConverterModel["parent"].asString)
+        assertEquals("minecraft:cutout", essenceConverterModel["render_type"].asString)
         assertEquals(
-            "lazy:block/essence_converter",
-            essenceConverterModel["textures"].asJsonObject["side"].asString,
-        )
-        assertEquals(
-            "lazy:block/machine_casing",
+            "lazy:block/machine/bottom",
             essenceConverterModel["textures"].asJsonObject["bottom"].asString,
         )
         assertEquals(
-            "lazy:block/machine_casing",
+            "lazy:block/machine/side",
+            essenceConverterModel["textures"].asJsonObject["side"].asString,
+        )
+        assertEquals(
+            "lazy:block/machine/top",
             essenceConverterModel["textures"].asJsonObject["top"].asString,
+        )
+        assertEquals(
+            "lazy:block/overlay/essence_converter",
+            essenceConverterModel["textures"].asJsonObject["overlay"].asString,
         )
     }
 
     @Test
-    fun `machine textures keep opposite casing rails equally bright`() {
-        val machineTextures =
-            listOf(
-                "machine_casing",
-                "buffer",
-                "energy_source",
-                "item_copier",
-                "repairer",
-                "planter",
-                "planter_top",
-            )
+    fun `machine base textures keep opposite casing rails equally bright`() {
+        val machineTextures = listOf("machine/bottom", "machine/side", "machine/top")
 
         machineTextures.forEach { name ->
             val texture = readTexture(name)
@@ -146,13 +152,16 @@ class MachineCasingResourceTest {
         val artRoot = Path.of(requireNotNull(System.getProperty("lazy.projectDir")), "art", "block")
         val sources =
             listOf(
-                "machine_casing_base.svg",
-                "buffer_overlay.svg",
-                "energy_source_overlay.svg",
-                "item_copier_overlay.svg",
-                "repairer_overlay.svg",
-                "planter_overlay.svg",
-                "planter_top_overlay.svg",
+                "machine/bottom.svg",
+                "machine/side.svg",
+                "machine/top.svg",
+                "overlay/buffer.svg",
+                "overlay/energy_source.svg",
+                "overlay/essence_converter.svg",
+                "overlay/item_copier.svg",
+                "overlay/repairer.svg",
+                "overlay/planter.svg",
+                "overlay/planter_top.svg",
             )
 
         sources.forEach { source ->

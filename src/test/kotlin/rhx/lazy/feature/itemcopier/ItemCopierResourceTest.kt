@@ -28,7 +28,7 @@ class ItemCopierResourceTest {
     fun `item copier texture is a nonempty sixteen pixel texture`() {
         val image =
             requireNotNull(
-                javaClass.getResourceAsStream("/assets/lazy/textures/block/item_copier.png"),
+                javaClass.getResourceAsStream("/assets/lazy/textures/block/overlay/item_copier.png"),
             ).use(ImageIO::read)
 
         assertEquals(16, image.width)
