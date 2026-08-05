@@ -41,6 +41,18 @@ internal object CuriosDataGeneration {
             createEntities(CuriosIntegrationModule.TELEPORTER_SLOT)
                 .addPlayer()
                 .addSlots(CuriosIntegrationModule.TELEPORTER_SLOT)
+
+            createSlot(CuriosIntegrationModule.ME_LINK_CARD_SLOT)
+                .size(1)
+                .icon(
+                    ResourceLocation.fromNamespaceAndPath(
+                        MOD_ID,
+                        "slot/empty_me_link_card_slot",
+                    ),
+                ).addValidator(CuriosIntegrationModule.meLinkCardSlotValidator)
+            createEntities(CuriosIntegrationModule.ME_LINK_CARD_SLOT)
+                .addPlayer()
+                .addSlots(CuriosIntegrationModule.ME_LINK_CARD_SLOT)
         }
     }
 }

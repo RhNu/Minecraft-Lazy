@@ -12,6 +12,11 @@ internal object CuriosIntegrationModule : IntegrationModule {
 
     val teleporterSlotValidator = lazyId("teleporter_slot")
 
+    const val ME_LINK_CARD_SLOT = "me_link_card"
+    const val ME_LINK_CARD_SLOT_INDEX = 0
+
+    val meLinkCardSlotValidator = lazyId("me_link_card_slot")
+
     override val modId: String = "curios"
     override val hasClientInitialization: Boolean = true
 

@@ -40,16 +40,22 @@ internal object Ae2NetworkOutputProvider : NetworkOutputProvider {
                 player.getItemInHand(InteractionHand.MAIN_HAND),
                 player.getItemInHand(InteractionHand.OFF_HAND),
             )
-        return when (
-            val selection =
-                MeLinkCardSelection.select(
-                    orderedHands.map(::linkedTarget),
-                    player.inventory.items.mapNotNull(::linkedTarget),
-                )
-        ) {
+        val curiosCard =
+            if (CuriosLinkCardSource.isAvailable()) {
+                CuriosLinkCardSource.findEquippedCard(player)
+            } else {
+                null
+            }
+        val inventoryTargets =
+            player.inventory.items.mapNotNull(::linkedTarget) +
+                listOfNotNull(curiosCard).mapNotNull(::linkedTarget)
+        return when (val selection = MeLinkCardSelection.select(orderedHands.map(::linkedTarget), inventoryTargets)) {
             is MeLinkCardSelection.Selected -> NetworkTargetResolution.Success(createTarget(selection.target))
             MeLinkCardSelection.Missing ->
-                if (orderedHands.any(Ae2Registries::isLinkCard) || player.inventory.items.any(Ae2Registries::isLinkCard)) {
+                if (orderedHands.any(Ae2Registries::isLinkCard) ||
+                    player.inventory.items.any(Ae2Registries::isLinkCard) ||
+                    listOfNotNull(curiosCard).any(Ae2Registries::isLinkCard)
+                ) {
                     NetworkTargetResolution.Unlinked
                 } else {
                     NetworkTargetResolution.NotFound

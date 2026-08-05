@@ -9,6 +9,9 @@ internal object CuriosAdapter {
         CuriosApi.registerCurioPredicate(CuriosIntegrationModule.teleporterSlotValidator) { result ->
             result.stack().item === TeleporterRegistries.item.get()
         }
+        if (CuriosMeLinkCardSlot.isAvailable()) {
+            CuriosMeLinkCardSlot.registerValidator()
+        }
         context.modBus.addListener(CuriosTeleporterNetworking::register)
         context.modBus.addListener(CuriosDataGeneration::gatherData)
     }

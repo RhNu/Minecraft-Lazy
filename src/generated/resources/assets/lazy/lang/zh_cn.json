@@ -13,6 +13,7 @@
   "config.jade.plugin_lazy.item_copier": "物品复制器状态",
   "config.jade.plugin_lazy.planter": "种植机状态",
   "config.jade.plugin_lazy.repairer": "修复器状态",
+  "curios.identifier.me_link_card": "ME链接卡",
   "curios.identifier.teleporter": "传送器",
   "dimension.lazy.void": "虚空",
   "dimension.minecraft.overworld": "主世界",

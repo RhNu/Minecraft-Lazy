@@ -13,6 +13,7 @@
   "config.jade.plugin_lazy.item_copier": "Item Copier status",
   "config.jade.plugin_lazy.planter": "Planter status",
   "config.jade.plugin_lazy.repairer": "Repairer status",
+  "curios.identifier.me_link_card": "ME Link Card",
   "curios.identifier.teleporter": "Teleporter",
   "dimension.lazy.void": "Void",
   "dimension.minecraft.overworld": "Overworld",
