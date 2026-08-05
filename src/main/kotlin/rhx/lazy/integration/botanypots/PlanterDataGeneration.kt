@@ -20,6 +20,7 @@ import net.minecraft.world.level.storage.loot.predicates.ExplosionCondition
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
+import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.conditions.ModLoadedCondition
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.JsonCodecProvider
@@ -87,15 +88,17 @@ internal object PlanterDataGeneration {
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
             val block = PlanterRegistries.block.get()
-            horizontalBlock(
-                block,
-                models().cubeBottomTop(
-                    BuiltInRegistries.BLOCK.getKey(block).path,
-                    blockTexture(block),
-                    modLoc("block/machine_casing"),
-                    modLoc("block/planter_top"),
-                ),
-            )
+            val name = BuiltInRegistries.BLOCK.getKey(block).path
+            val model =
+                models()
+                    .getBuilder(name)
+                    .parent(ModelFile.UncheckedModelFile(modLoc("block/planter_orientable")))
+                    .texture("bottom", modLoc("block/machine/bottom"))
+                    .texture("side", modLoc("block/machine/side"))
+                    .texture("top", modLoc("block/machine/top"))
+                    .texture("overlay", modLoc("block/overlay/planter"))
+                    .texture("top_overlay", modLoc("block/overlay/planter_top"))
+            horizontalBlock(block, model)
         }
     }
 

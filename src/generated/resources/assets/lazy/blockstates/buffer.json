@@ -1,7 +1,19 @@
 {
   "variants": {
-    "": {
+    "facing=east": {
+      "model": "lazy:block/buffer",
+      "y": 90
+    },
+    "facing=north": {
       "model": "lazy:block/buffer"
+    },
+    "facing=south": {
+      "model": "lazy:block/buffer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "lazy:block/buffer",
+      "y": 270
     }
   }
 }

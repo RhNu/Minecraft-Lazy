@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "lazy:item/energy_battery"
+    "layer0": "lazy:item/icon/energy_battery"
   }
 }

@@ -19,6 +19,7 @@ import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
+import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.Tags
 import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider
 import net.neoforged.neoforge.common.data.ExistingFileHelper
@@ -143,8 +144,10 @@ internal object DataGeneration {
         override fun registerModels() {
             withExistingParent("machine_casing", modLoc("block/machine_casing"))
             withExistingParent("buffer", modLoc("block/buffer"))
-            basicItem(TeleporterRegistries.item.get())
-            basicItem(EnergyRegistries.batteryItem.get())
+            withExistingParent("teleporter", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/teleporter"))
+            withExistingParent("energy_battery", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/energy_battery"))
             withExistingParent("energy_source", modLoc("block/energy_source"))
             withExistingParent("item_copier", modLoc("block/item_copier"))
             withExistingParent("repairer", modLoc("block/repairer"))
@@ -156,7 +159,10 @@ internal object DataGeneration {
         helper: net.neoforged.neoforge.common.data.ExistingFileHelper,
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
-            simpleBlock(MachineCasingRegistries.block.get())
+            simpleBlock(
+                MachineCasingRegistries.block.get(),
+                models().cubeAll("machine_casing", modLoc("block/machine/bottom")),
+            )
             machineBlock(BufferRegistries.block.get())
             machineBlock(EnergyRegistries.sourceBlock.get())
             machineBlock(ItemCopierRegistries.block.get())
@@ -164,15 +170,16 @@ internal object DataGeneration {
         }
 
         private fun machineBlock(block: Block) {
-            simpleBlock(
-                block,
-                models().cubeBottomTop(
-                    BuiltInRegistries.BLOCK.getKey(block).path,
-                    blockTexture(block),
-                    modLoc("block/machine_casing"),
-                    modLoc("block/machine_casing"),
-                ),
-            )
+            val name = BuiltInRegistries.BLOCK.getKey(block).path
+            val model =
+                models()
+                    .getBuilder(name)
+                    .parent(ModelFile.UncheckedModelFile(modLoc("block/machine_orientable")))
+                    .texture("bottom", modLoc("block/machine/bottom"))
+                    .texture("side", modLoc("block/machine/side"))
+                    .texture("top", modLoc("block/machine/top"))
+                    .texture("overlay", modLoc("block/overlay/$name"))
+            horizontalBlock(block, model)
         }
     }
 

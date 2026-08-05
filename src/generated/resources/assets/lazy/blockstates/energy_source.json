@@ -1,7 +1,19 @@
 {
   "variants": {
-    "": {
+    "facing=east": {
+      "model": "lazy:block/energy_source",
+      "y": 90
+    },
+    "facing=north": {
       "model": "lazy:block/energy_source"
+    },
+    "facing=south": {
+      "model": "lazy:block/energy_source",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "lazy:block/energy_source",
+      "y": 270
     }
   }
 }

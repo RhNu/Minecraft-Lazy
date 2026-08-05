@@ -20,6 +20,7 @@ import net.minecraft.world.level.storage.loot.LootTable
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
+import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.conditions.ICondition
 import net.neoforged.neoforge.common.conditions.ModLoadedCondition
 import net.neoforged.neoforge.common.data.ExistingFileHelper
@@ -112,15 +113,15 @@ internal object EssenceConverterDataGeneration {
     ) : BlockStateProvider(output, MOD_ID, helper) {
         override fun registerStatesAndModels() {
             val block = EssenceConverterRegistries.block.get()
-            simpleBlock(
-                block,
-                models().cubeBottomTop(
-                    "essence_converter",
-                    modLoc("block/essence_converter"),
-                    modLoc("block/machine_casing"),
-                    modLoc("block/machine_casing"),
-                ),
-            )
+            val model =
+                models()
+                    .getBuilder("essence_converter")
+                    .parent(ModelFile.UncheckedModelFile(modLoc("block/machine_orientable")))
+                    .texture("bottom", modLoc("block/machine/bottom"))
+                    .texture("side", modLoc("block/machine/side"))
+                    .texture("top", modLoc("block/machine/top"))
+                    .texture("overlay", modLoc("block/overlay/essence_converter"))
+            horizontalBlock(block, model)
         }
     }
 

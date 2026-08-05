@@ -1,8 +1,9 @@
 {
-  "parent": "minecraft:block/cube_bottom_top",
+  "parent": "lazy:block/machine_orientable",
   "textures": {
-    "bottom": "lazy:block/machine_casing",
-    "side": "lazy:block/buffer",
-    "top": "lazy:block/machine_casing"
+    "bottom": "lazy:block/machine/bottom",
+    "overlay": "lazy:block/overlay/buffer",
+    "side": "lazy:block/machine/side",
+    "top": "lazy:block/machine/top"
   }
 }

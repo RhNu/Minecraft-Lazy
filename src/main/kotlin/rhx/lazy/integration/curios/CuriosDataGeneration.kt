@@ -35,7 +35,7 @@ internal object CuriosDataGeneration {
                 .icon(
                     ResourceLocation.fromNamespaceAndPath(
                         MOD_ID,
-                        "slot/empty_teleporter_slot",
+                        "slot/empty/empty_teleporter_slot",
                     ),
                 ).addValidator(CuriosIntegrationModule.teleporterSlotValidator)
             createEntities(CuriosIntegrationModule.TELEPORTER_SLOT)
@@ -47,7 +47,7 @@ internal object CuriosDataGeneration {
                 .icon(
                     ResourceLocation.fromNamespaceAndPath(
                         MOD_ID,
-                        "slot/empty_me_link_card_slot",
+                        "slot/empty/empty_me_link_card_slot",
                     ),
                 ).addValidator(CuriosIntegrationModule.meLinkCardSlotValidator)
             createEntities(CuriosIntegrationModule.ME_LINK_CARD_SLOT)

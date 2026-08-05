@@ -34,10 +34,12 @@ class PlanterResourceTest {
     @Test
     fun `directional model and translations are generated`() {
         val model = readJson("/assets/lazy/models/block/planter.json")
-        assertEquals("minecraft:block/cube_bottom_top", model["parent"].asString)
-        assertEquals("lazy:block/planter", model["textures"].asJsonObject["side"].asString)
-        assertEquals("lazy:block/machine_casing", model["textures"].asJsonObject["bottom"].asString)
-        assertEquals("lazy:block/planter_top", model["textures"].asJsonObject["top"].asString)
+        assertEquals("lazy:block/planter_orientable", model["parent"].asString)
+        assertEquals("lazy:block/machine/side", model["textures"].asJsonObject["side"].asString)
+        assertEquals("lazy:block/machine/bottom", model["textures"].asJsonObject["bottom"].asString)
+        assertEquals("lazy:block/machine/top", model["textures"].asJsonObject["top"].asString)
+        assertEquals("lazy:block/overlay/planter", model["textures"].asJsonObject["overlay"].asString)
+        assertEquals("lazy:block/overlay/planter_top", model["textures"].asJsonObject["top_overlay"].asString)
 
         val variants = readJson("/assets/lazy/blockstates/planter.json")["variants"].asJsonObject
         assertEquals(
@@ -61,9 +63,9 @@ class PlanterResourceTest {
     }
 
     @Test
-    fun `top texture has a framed directional marker`() {
+    fun `top overlay has a framed directional marker`() {
         val image =
-            requireNotNull(javaClass.getResourceAsStream("/assets/lazy/textures/block/planter_top.png"))
+            requireNotNull(javaClass.getResourceAsStream("/assets/lazy/textures/block/overlay/planter_top.png"))
                 .use(ImageIO::read)
         assertEquals(16, image.width)
         assertEquals(16, image.height)

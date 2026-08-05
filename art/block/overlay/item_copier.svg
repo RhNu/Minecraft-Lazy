@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    shape-rendering="crispEdges">
+    <!-- Item copier overlay: larger square frame with two mirrored item blocks and one centered transfer line. -->
+    <rect x="3" y="3" width="10" height="10" fill="#3c4950" />
+    <rect x="3" y="3" width="10" height="1" fill="#859399" />
+    <rect x="3" y="4" width="1" height="8" fill="#6f7d82" />
+    <rect x="12" y="4" width="1" height="8" fill="#354247" />
+    <rect x="4" y="12" width="8" height="1" fill="#2e3940" />
+
+    <rect x="4" y="5" width="3" height="3" fill="#9156c9" />
+    <rect x="4" y="8" width="3" height="2" fill="#653692" />
+    <rect x="5" y="5" width="1" height="1" fill="#d8b5ff" />
+    <rect x="6" y="6" width="1" height="1" fill="#e9d2ff" />
+    <rect x="5" y="7" width="1" height="1" fill="#b878ee" />
+
+    <rect x="7" y="7" width="2" height="1" fill="#e4c8ff" />
+    <rect x="8" y="6" width="1" height="3" fill="#12aeb4" />
+
+    <rect x="9" y="5" width="3" height="3" fill="#9156c9" />
+    <rect x="9" y="8" width="3" height="2" fill="#653692" />
+    <rect x="10" y="5" width="1" height="1" fill="#d8b5ff" />
+    <rect x="9" y="6" width="1" height="1" fill="#e9d2ff" />
+    <rect x="10" y="7" width="1" height="1" fill="#b878ee" />
+</svg>

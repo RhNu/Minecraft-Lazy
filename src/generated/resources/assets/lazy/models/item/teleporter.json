@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "lazy:item/teleporter"
+    "layer0": "lazy:item/icon/teleporter"
   }
 }

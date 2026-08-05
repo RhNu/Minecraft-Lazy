@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    shape-rendering="crispEdges">
+    <!-- Battery: clean silhouette with a compact vertical charge window. -->
+    <rect x="6" y="1" width="4" height="1" fill="#161b25" />
+    <rect x="5" y="2" width="6" height="2" fill="#161b25" />
+    <rect x="6" y="2" width="4" height="1" fill="#7d8890" />
+    <rect x="6" y="3" width="4" height="1" fill="#3b454d" />
+
+    <path fill="#161b25" d="M5 3h6v1h1v10h-1v1H5v-1H4V4h1z" />
+    <rect x="5" y="4" width="6" height="10" fill="#344048" />
+    <rect x="5" y="4" width="6" height="1" fill="#728087" />
+    <rect x="5" y="5" width="1" height="9" fill="#59666d" />
+    <rect x="10" y="5" width="1" height="9" fill="#232d34" />
+    <rect x="6" y="13" width="4" height="1" fill="#1f2830" />
+
+    <rect x="6" y="5" width="4" height="7" fill="#102a35" />
+    <rect x="6" y="5" width="4" height="1" fill="#183d49" />
+    <rect x="6" y="6" width="1" height="6" fill="#1b4b56" />
+    <rect x="9" y="6" width="1" height="6" fill="#0b222d" />
+    <rect x="7" y="6" width="2" height="1" fill="#a8fff3" />
+    <rect x="7" y="7" width="2" height="2" fill="#39d5d9" />
+    <rect x="7" y="9" width="2" height="2" fill="#1e9fba" />
+    <rect x="7" y="11" width="2" height="1" fill="#266d9f" />
+</svg>
