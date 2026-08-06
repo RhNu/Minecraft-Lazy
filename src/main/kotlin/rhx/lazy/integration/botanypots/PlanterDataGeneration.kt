@@ -20,7 +20,6 @@ import net.minecraft.world.level.storage.loot.predicates.ExplosionCondition
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
-import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.conditions.ModLoadedCondition
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.JsonCodecProvider
