@@ -1,86 +1,86 @@
 {
-  "parent": "minecraft:block/block",
-  "elements": [
-    {
-      "faces": {
-        "down": {
-          "cullface": "down",
-          "texture": "#bottom"
+    "parent": "minecraft:block/block",
+    "elements": [
+        {
+            "faces": {
+                "down": {
+                    "cullface": "down",
+                    "texture": "#bottom"
+                },
+                "east": {
+                    "cullface": "east",
+                    "texture": "#side"
+                },
+                "north": {
+                    "cullface": "north",
+                    "texture": "#bottom"
+                },
+                "south": {
+                    "cullface": "south",
+                    "texture": "#side"
+                },
+                "up": {
+                    "cullface": "up",
+                    "texture": "#top"
+                },
+                "west": {
+                    "cullface": "west",
+                    "texture": "#side"
+                }
+            },
+            "from": [
+                0,
+                0,
+                0
+            ],
+            "to": [
+                16,
+                16,
+                16
+            ]
         },
-        "east": {
-          "cullface": "east",
-          "texture": "#side"
-        },
-        "north": {
-          "cullface": "north",
-          "texture": "#bottom"
-        },
-        "south": {
-          "cullface": "south",
-          "texture": "#side"
-        },
-        "up": {
-          "cullface": "up",
-          "texture": "#top"
-        },
-        "west": {
-          "cullface": "west",
-          "texture": "#side"
+        {
+            "faces": {
+                "north": {
+                    "cullface": "north",
+                    "texture": "#overlay",
+                    "uv": [
+                        0.0,
+                        0.0,
+                        16.0,
+                        16.0
+                    ]
+                },
+                "up": {
+                    "cullface": "up",
+                    "texture": "#top_overlay",
+                    "uv": [
+                        0.0,
+                        0.0,
+                        16.0,
+                        16.0
+                    ]
+                }
+            },
+            "from": [
+                0,
+                0,
+                -0.01
+            ],
+            "to": [
+                16,
+                16.01,
+                16
+            ]
         }
-      },
-      "from": [
-        0,
-        0,
-        0
-      ],
-      "to": [
-        16,
-        16,
-        16
-      ]
-    },
-    {
-      "faces": {
-        "north": {
-          "cullface": "north",
-          "texture": "#overlay",
-          "uv": [
-            0.0,
-            0.0,
-            16.0,
-            16.0
-          ]
-        },
-        "up": {
-          "cullface": "up",
-          "texture": "#top_overlay",
-          "uv": [
-            0.0,
-            0.0,
-            16.0,
-            16.0
-          ]
-        }
-      },
-      "from": [
-        0,
-        0,
-        -0.01
-      ],
-      "to": [
-        16,
-        16.01,
-        16
-      ]
+    ],
+    "render_type": "minecraft:cutout",
+    "textures": {
+        "bottom": "lazy:block/machine/bottom",
+        "overlay": "lazy:block/overlay/planter",
+        "particle": "#side",
+        "side": "lazy:block/machine/side",
+        "top": "lazy:block/machine/top",
+        "top_overlay": "lazy:block/overlay/planter_top"
     }
-  ],
-  "render_type": "minecraft:cutout",
-  "textures": {
-    "bottom": "lazy:block/machine/bottom",
-    "overlay": "lazy:block/overlay/planter",
-    "particle": "#side",
-    "side": "lazy:block/machine/side",
-    "top": "lazy:block/machine/top",
-    "top_overlay": "lazy:block/overlay/planter_top"
-  }
 }

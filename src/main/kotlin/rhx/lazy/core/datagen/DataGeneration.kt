@@ -19,6 +19,7 @@ import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
+import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.Tags
 import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider
 import net.neoforged.neoforge.common.data.ExistingFileHelper
