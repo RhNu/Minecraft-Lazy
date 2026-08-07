@@ -57,75 +57,58 @@ internal object BufferUI {
                     },
                 )
 
-                label(
-                    {
-                        cls = { +"lazy-buffer__summary" }
-                    },
-                ) {
-                    bind(
-                        componentBinding {
-                            Component.translatable(
-                                "gui.lazy.buffer.summary",
-                                model.totalItemCount,
-                                BufferBlockEntity.TOTAL_ITEM_CAPACITY,
-                                model.totalFluidAmount,
-                                BufferBlockEntity.TOTAL_FLUID_CAPACITY,
-                            )
-                        },
-                    )
-                }
-
-                label(
-                    {
-                        text = Component.translatable("gui.lazy.buffer.items")
-                        cls = { +"lazy-buffer__section-title" }
-                    },
-                )
-
                 row(
                     {
-                        cls = { +"lazy-buffer__items" }
+                        cls = { +"lazy-buffer__storage" }
                     },
                 ) {
-                    repeat(BufferBlockEntity.ITEM_SLOT_COUNT) { slot ->
-                        itemSlot(
-                            {
-                                cls = { +"lazy-buffer__item-slot" }
-                            },
-                        ) {
-                            bind(
-                                itemStackBinding { model.itemStack(slot) },
-                            )
-                            withTooltips()
-                            asXeiRecipeIngredient(IngredientIO.NONE)
+                    column(
+                        {
+                            cls = { +"lazy-buffer__items" }
+                        },
+                    ) {
+                        repeat(ITEM_ROW_COUNT) { rowIndex ->
+                            row(
+                                {
+                                    cls = { +"lazy-buffer__item-row" }
+                                },
+                            ) {
+                                repeat(ITEM_SLOTS_PER_ROW) { columnIndex ->
+                                    val slot = rowIndex * ITEM_SLOTS_PER_ROW + columnIndex
+                                    itemSlot(
+                                        {
+                                            cls = { +"lazy-buffer__item-slot" }
+                                        },
+                                    ) {
+                                        bind(
+                                            itemStackBinding { model.itemStack(slot) },
+                                        )
+                                        withTooltips()
+                                        asXeiRecipeIngredient(IngredientIO.NONE)
+                                    }
+                                }
+                            }
                         }
                     }
-                }
 
-                label(
-                    {
-                        text = Component.translatable("gui.lazy.buffer.fluids")
-                        cls = { +"lazy-buffer__section-title" }
-                    },
-                )
-
-                row(
-                    {
-                        cls = { +"lazy-buffer__fluids" }
-                    },
-                ) {
-                    repeat(BufferBlockEntity.FLUID_TANK_COUNT) { tank ->
-                        fluidSlot(
-                            {
-                                capacity = BufferBlockEntity.FLUID_TANK_CAPACITY
-                                allowClickFilled = false
-                                allowClickDrained = false
-                                bind(model.fluidHandler, tank)
-                                cls = { +"lazy-buffer__fluid" }
-                            },
-                        ) {
-                            withTooltips()
-                            asXeiRecipeIngredient(IngredientIO.NONE)
+                    row(
+                        {
+                            cls = { +"lazy-buffer__fluids" }
+                        },
+                    ) {
+                        repeat(BufferBlockEntity.FLUID_TANK_COUNT) { tank ->
+                            fluidSlot(
+                                {
+                                    capacity = BufferBlockEntity.FLUID_TANK_CAPACITY
+                                    allowClickFilled = false
+                                    allowClickDrained = false
+                                    bind(model.fluidHandler, tank)
+                                    cls = { +"lazy-buffer__fluid" }
+                                },
+                            ) {
+                                withTooltips()
+                                asXeiRecipeIngredient(IngredientIO.NONE)
+                            }
                         }
                     }
                 }
@@ -254,12 +237,6 @@ internal object BufferUI {
                     BufferRegistries.blockEntity.get(),
                 )
 
-        val totalItemCount: Int
-            get() = blockEntity?.totalItemCount ?: 0
-
-        val totalFluidAmount: Int
-            get() = blockEntity?.totalFluidAmount ?: 0
-
         val fluidHandler: IFluidHandler
             get() = blockEntity?.fluidHandler ?: EmptyFluidHandler
 
@@ -281,11 +258,6 @@ internal object BufferUI {
             return block.stillValid(holder)
         }
     }
-
-    private fun componentBinding(value: () -> Component) =
-        DataBindingBuilder
-            .componentS2C { value() }
-            .build()
 
     private fun itemStackBinding(value: () -> ItemStack) =
         DataBindingBuilder
@@ -327,4 +299,6 @@ internal object BufferUI {
     }
 
     private const val LEFT_MOUSE_BUTTON = 0
+    private const val ITEM_ROW_COUNT = 2
+    private const val ITEM_SLOTS_PER_ROW = BufferBlockEntity.ITEM_SLOT_COUNT / ITEM_ROW_COUNT
 }
