@@ -43,17 +43,38 @@ internal object IoPanelUI {
                     IoRoute.NETWORK in supportedRoutes
                 }
 
+        lateinit var rootElement: UIElement
         val routeButtons = mutableMapOf<IoRoute, UIElement>()
         val providerButtons = mutableMapOf<net.minecraft.resources.ResourceLocation, UIElement>()
         val dialog =
             Dialog()
-                .setAutoClose(true)
+                .setAutoClose(false)
                 .setClickOutsideClose(false)
                 .darkenBackground()
                 .apply {
                     style { dialogStyle -> dialogStyle.zIndex(1) }
                     width(TaffyDimension.maxContent())
                 }
+        dialog.titleBar.setDisplay(false)
+        dialog.buttonContainer.setDisplay(false)
+
+        fun restoreMenuCloseKeys() {
+            rootElement.getModularUI()?.apply {
+                shouldCloseOnEsc(true)
+                shouldCloseOnKeyInventory(true)
+            }
+        }
+
+        fun closeDialog() {
+            dialog.setDisplay(false)
+            restoreMenuCloseKeys()
+        }
+        dialog.addEventListener("keyDown") { event ->
+            if (event.keyCode == KEY_E || event.keyCode == KEY_ESCAPE) {
+                closeDialog()
+                event.stopPropagation()
+            }
+        }
         val panel =
             element(
                 {
@@ -134,7 +155,14 @@ internal object IoPanelUI {
                     noText()
                     cls = { +"lazy-io__trigger" }
                     style = { tooltips(Component.translatable("gui.lazy.io.open")) }
-                    onClick = { dialog.setDisplay(true) }
+                    onClick = {
+                        rootElement.getModularUI()?.apply {
+                            shouldCloseOnEsc(false)
+                            shouldCloseOnKeyInventory(false)
+                        }
+                        dialog.setDisplay(true)
+                        dialog.focus()
+                    }
                 },
             ).element
             .apply {
@@ -142,6 +170,7 @@ internal object IoPanelUI {
             }
 
         return { root ->
+            rootElement = root
             root.addChild(dialog)
             routeButtons.forEach { (route, button) ->
                 bindSelected(root, button) { model.controller?.route == route }
@@ -262,5 +291,7 @@ internal object IoPanelUI {
         }
 
     private const val LEFT_MOUSE_BUTTON = 0
+    private const val KEY_E = 69
+    private const val KEY_ESCAPE = 256
     private const val SELECTED_BUTTON_CLASS = "lazy-io__button--selected"
 }
