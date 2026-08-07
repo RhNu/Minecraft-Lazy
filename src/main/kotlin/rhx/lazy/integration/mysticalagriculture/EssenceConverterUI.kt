@@ -169,7 +169,7 @@ internal object EssenceConverterUI {
                                 {
                                     noText()
                                     active = false
-                                    cls = { +"lazy-essence-converter__icon-button" }
+                                    cls = { +"lazy-io__trigger" }
                                     style = { tooltips(Component.translatable("gui.lazy.essence_converter.clear")) }
                                     onClick = { confirmationLayer.setVisible(true) }
                                 },

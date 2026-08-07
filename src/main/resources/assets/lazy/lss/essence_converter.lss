@@ -45,10 +45,11 @@
 }
 
 .lazy-essence-converter__actions {
-  width: 62;
+  width: 36;
   height: 18;
   gap-column: 4;
-  margin-left: 82;
+  margin-left: 108;
+  justify-content: flex-start;
   align-items: center;
 }
 

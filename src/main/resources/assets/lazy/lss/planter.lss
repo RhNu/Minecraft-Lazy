@@ -45,9 +45,9 @@
   width: 54;
   height: 16;
   gap-column: 3;
-  justify-content: center;
-  margin-left: 9;
-  margin-top: 16;
+  justify-content: flex-start;
+  margin-left: 12;
+  margin-top: 20;
 }
 
 .lazy-planter__icon-button {
