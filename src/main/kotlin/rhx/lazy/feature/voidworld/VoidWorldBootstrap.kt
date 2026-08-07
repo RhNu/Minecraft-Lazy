@@ -42,7 +42,7 @@ internal object VoidWorldBootstrap {
         context.register(
             VoidWorldKeys.voidDimensionType,
             DimensionType(
-                OptionalLong.of(6000L),
+                OptionalLong.empty(),
                 true,
                 false,
                 false,
