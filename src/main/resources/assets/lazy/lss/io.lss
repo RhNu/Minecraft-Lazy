@@ -42,7 +42,12 @@
   pressed-background: built-in(ui-mc:RECT_BORDER);
 }
 
-.lazy-io__providers {
+.lazy-io__network-popup {
+  padding-all: 2;
+  base-background: built-in(ui-mc:RECT_BORDER);
+}
+
+.lazy-io__network-popup-options {
   height: 20;
   gap-column: 3;
   justify-content: center;

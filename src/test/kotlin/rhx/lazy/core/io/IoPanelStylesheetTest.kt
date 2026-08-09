@@ -15,6 +15,7 @@ class IoPanelStylesheetTest {
         val stylesheet = Stylesheet.parse(text)
         assertTrue(stylesheet.rules.isNotEmpty())
         assertTrue(text.contains(".lazy-io__panel"))
+        assertTrue(text.contains(".lazy-io__network-popup"))
         assertTrue(text.contains(".lazy-io__button--selected"))
         assertTrue(text.contains("base-background: built-in(ui-mc:RECT_BORDER)"))
         assertFalse(text.contains("text-wrap: wrap"))

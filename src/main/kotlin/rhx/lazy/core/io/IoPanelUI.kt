@@ -46,6 +46,7 @@ internal object IoPanelUI {
         lateinit var rootElement: UIElement
         val routeButtons = mutableMapOf<IoRoute, UIElement>()
         val providerButtons = mutableMapOf<net.minecraft.resources.ResourceLocation, UIElement>()
+        var networkPopup: UIElement? = null
         val dialog =
             Dialog()
                 .setAutoClose(false)
@@ -66,6 +67,7 @@ internal object IoPanelUI {
         }
 
         fun closeDialog() {
+            networkPopup?.setDisplay(false)
             dialog.setDisplay(false)
             restoreMenuCloseKeys()
         }
@@ -104,11 +106,14 @@ internal object IoPanelUI {
                                             noText()
                                             cls = { +"lazy-io__route-button" }
                                             style = { tooltips(routeTooltip(route)) }
+                                            onClick = {
+                                                networkPopup?.let { popup ->
+                                                    popup.setDisplay(route == IoRoute.NETWORK && !popup.isDisplayed)
+                                                }
+                                            }
                                             onServerClick = { event ->
                                                 if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                                    if (route == IoRoute.NETWORK) {
-                                                        providers.firstOrNull()?.let { selectNetwork(model, it.id) }
-                                                    } else {
+                                                    if (route != IoRoute.NETWORK) {
                                                         selectRoute(model, route)
                                                     }
                                                 }
@@ -120,29 +125,39 @@ internal object IoPanelUI {
                             }
                     }
                     if (providers.isNotEmpty()) {
-                        row(
-                            {
-                                cls = { +"lazy-io__providers" }
-                            },
-                        ) {
-                            providers.forEach { provider ->
-                                providerButtons[provider.id] =
-                                    button(
-                                        {
-                                            noText()
-                                            cls = { +"lazy-io__provider-button" }
-                                            style = { tooltips(providerTooltip(provider, controller)) }
-                                            onServerClick = { event ->
-                                                if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                                    selectNetwork(model, provider.id)
-                                                }
+                        networkPopup =
+                            element(
+                                {
+                                    cls = { +"lazy-io__network-popup" }
+                                },
+                            ) {
+                                row(
+                                    {
+                                        cls = { +"lazy-io__network-popup-options" }
+                                    },
+                                ) {
+                                    providers.forEach { provider ->
+                                        providerButtons[provider.id] =
+                                            button(
+                                                {
+                                                    noText()
+                                                    cls = { +"lazy-io__provider-button" }
+                                                    style = { tooltips(providerTooltip(provider, controller)) }
+                                                    onClick = { networkPopup?.setDisplay(false) }
+                                                    onServerClick = { event ->
+                                                        if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                                            selectNetwork(model, provider.id)
+                                                        }
+                                                    }
+                                                },
+                                            ).element.apply {
+                                                addPreIcon(ItemStackTexture(provider.icon()))
                                             }
-                                        },
-                                    ).element.apply {
-                                        addPreIcon(ItemStackTexture(provider.icon()))
                                     }
+                                }
+                            }.element.apply {
+                                setDisplay(false)
                             }
-                        }
                     }
                 }
             }
@@ -156,6 +171,7 @@ internal object IoPanelUI {
                     cls = { +"lazy-io__trigger" }
                     style = { tooltips(Component.translatable("gui.lazy.io.open")) }
                     onClick = {
+                        networkPopup?.setDisplay(false)
                         rootElement.getModularUI()?.apply {
                             shouldCloseOnEsc(false)
                             shouldCloseOnKeyInventory(false)
