@@ -170,7 +170,7 @@ internal class PlanterBlockEntity(
         super.loadAdditional(tag, registries)
         inputs.resize(INPUT_SLOT_COUNT)
         inputs.indices.forEach { slot ->
-            inputs[slot] = normalizeSingle(inputs[slot])
+            inputs[slot] = normalizeInput(slot, inputs[slot])
         }
         outputRouter.normalizeAfterLoad()
         recipeResolver.invalidate()
@@ -190,7 +190,7 @@ internal class PlanterBlockEntity(
         tag: CompoundTag,
         lookupProvider: HolderLookup.Provider,
     ) {
-        renderSeed = normalizeSingle(ItemStack.parseOptional(lookupProvider, tag.getCompound(RENDER_SEED_TAG)))
+        renderSeed = normalizeInput(SEED_SLOT, ItemStack.parseOptional(lookupProvider, tag.getCompound(RENDER_SEED_TAG)))
     }
 
     override fun onDataPacket(
@@ -208,8 +208,9 @@ internal class PlanterBlockEntity(
         pot: BotanyPotBlock,
     ) {
         val rolls = Helpers.determineRollCount(totalYield(crop, soil, pot), level.random)
+        val potCount = inputs[POT_SLOT].count.coerceAtLeast(1)
         repeat(rolls) {
-            crop.onHarvest(recipeContext, level, outputRouter::enqueue)
+            crop.onHarvest(recipeContext, level) { stack -> outputRouter.enqueue(stack, potCount) }
         }
         routeStoredItems()
         growthTicks = 0f
@@ -286,7 +287,7 @@ internal class PlanterBlockEntity(
         stack: ItemStack,
     ) {
         validateInputSlot(slot)
-        val normalized = normalizeSingle(stack)
+        val normalized = normalizeInput(slot, stack)
         if (ItemStack.matches(inputs[slot], normalized)) return
         inputs[slot] = normalized
         growthTicks = 0f
@@ -329,9 +330,26 @@ internal class PlanterBlockEntity(
             simulate: Boolean,
         ): ItemStack {
             validateInputSlot(slot)
-            if (!inputs[slot].isEmpty || !isItemValid(slot, stack)) return stack
-            if (!simulate) setInput(slot, stack)
-            return if (stack.count == 1) ItemStack.EMPTY else stack.copyWithCount(stack.count - 1)
+            if (!isItemValid(slot, stack)) return stack
+
+            val stored = inputs[slot]
+            if (!stored.isEmpty && (slot != POT_SLOT || !ItemStack.isSameItemSameComponents(stored, stack))) {
+                return stack
+            }
+
+            val limit = minOf(getSlotLimit(slot), stack.maxStackSize.coerceAtLeast(1))
+            val inserted = minOf(stack.count, limit - stored.count)
+            if (inserted <= 0) return stack
+            if (!simulate) {
+                val updated =
+                    if (stored.isEmpty) {
+                        stack.copyWithCount(inserted)
+                    } else {
+                        stored.copyWithCount(stored.count + inserted)
+                    }
+                setInput(slot, updated)
+            }
+            return if (inserted == stack.count) ItemStack.EMPTY else stack.copyWithCount(stack.count - inserted)
         }
 
         override fun extractItem(
@@ -342,14 +360,18 @@ internal class PlanterBlockEntity(
             validateInputSlot(slot)
             val stored = inputs[slot]
             if (amount <= 0 || stored.isEmpty) return ItemStack.EMPTY
-            val result = stored.copy()
-            if (!simulate) setInput(slot, ItemStack.EMPTY)
+            val extracted = minOf(amount, stored.count)
+            val result = stored.copyWithCount(extracted)
+            if (!simulate) {
+                val remaining = stored.count - extracted
+                setInput(slot, if (remaining == 0) ItemStack.EMPTY else stored.copyWithCount(remaining))
+            }
             return result
         }
 
         override fun getSlotLimit(slot: Int): Int {
             validateInputSlot(slot)
-            return 1
+            return if (slot == POT_SLOT) POT_SLOT_LIMIT else 1
         }
 
         override fun isItemValid(
@@ -364,10 +386,24 @@ internal class PlanterBlockEntity(
             slot: Int,
             stack: ItemStack,
         ) {
-            if (stack.isEmpty || isValidInput(slot, stack)) {
-                setInput(slot, stack)
-            }
+            validateInputSlot(slot)
+            if (!stack.isEmpty && !isValidInput(slot, stack)) return
+            setInput(slot, stack)
         }
+    }
+
+    private fun normalizeInput(
+        slot: Int,
+        stack: ItemStack,
+    ): ItemStack {
+        if (stack.isEmpty) return ItemStack.EMPTY
+        val limit =
+            if (slot == POT_SLOT) {
+                minOf(POT_SLOT_LIMIT, stack.maxStackSize.coerceAtLeast(1))
+            } else {
+                1
+            }
+        return stack.copyWithCount(minOf(stack.count.coerceAtLeast(1), limit))
     }
 
     companion object {
@@ -377,6 +413,7 @@ internal class PlanterBlockEntity(
         const val INPUT_SLOT_COUNT = 3
         const val OUTPUT_SLOT_COUNT = PlanterOutputRouter.OUTPUT_SLOT_COUNT
 
+        private const val POT_SLOT_LIMIT = 64
         private const val INPUTS_FIELD = "inputs"
         private const val OUTPUTS_FIELD = "outputs"
         private const val PENDING_DROPS_FIELD = "pendingDrops"
@@ -389,8 +426,6 @@ internal class PlanterBlockEntity(
                 throw IndexOutOfBoundsException("Input slot $slot is out of range for planter")
             }
         }
-
-        private fun normalizeSingle(stack: ItemStack): ItemStack = if (stack.isEmpty) ItemStack.EMPTY else stack.copyWithCount(1)
     }
 }
 

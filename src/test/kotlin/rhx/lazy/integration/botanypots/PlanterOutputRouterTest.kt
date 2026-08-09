@@ -22,6 +22,20 @@ import kotlin.test.assertTrue
 
 class PlanterOutputRouterTest {
     @Test
+    fun `enqueue multiplies one harvest result by the inserted pot count`() {
+        val pending = mutableListOf<ItemStack>()
+        val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
+        val router = createRouter(pending = pending, outputs = outputs)
+
+        router.enqueue(ItemStack(Items.DIAMOND, 3), multiplier = 64)
+        router.route(null, IoRoute.PASSIVE, null)
+
+        assertTrue(pending.isEmpty())
+        assertEquals(192, outputs.sumOf(ItemStack::getCount))
+        assertEquals(3, outputs.count { !it.isEmpty })
+    }
+
+    @Test
     fun `passive route moves pending products into internal output slots`() {
         val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
         val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }

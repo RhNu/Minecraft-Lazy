@@ -57,9 +57,12 @@ internal class PlanterOutputRouter(
 
     internal fun routeNetwork(target: NetworkTargetRef): IoPushResult = pushToNetwork(target)
 
-    fun enqueue(stack: ItemStack) {
-        if (stack.isEmpty) return
-        pendingDrops += splitToLegalStacks(stack)
+    fun enqueue(
+        stack: ItemStack,
+        multiplier: Int = 1,
+    ) {
+        if (stack.isEmpty || multiplier <= 0) return
+        pendingDrops += splitToLegalStacks(stack, multiplier)
         markPendingDirty()
     }
 
@@ -385,12 +388,15 @@ internal class PlanterOutputRouter(
                 )
             }
 
-        private fun splitToLegalStacks(stack: ItemStack): List<ItemStack> {
-            var remaining = stack.count
+        private fun splitToLegalStacks(
+            stack: ItemStack,
+            multiplier: Int = 1,
+        ): List<ItemStack> {
+            var remaining = stack.count.toLong() * multiplier.coerceAtLeast(0).toLong()
             val split = mutableListOf<ItemStack>()
             val maxSize = stack.maxStackSize.coerceAtLeast(1)
-            while (remaining > 0) {
-                val amount = min(remaining, maxSize)
+            while (remaining > 0L) {
+                val amount = min(remaining, maxSize.toLong()).toInt()
                 split += stack.copyWithCount(amount)
                 remaining -= amount
             }
