@@ -69,6 +69,7 @@ internal object IoPanelUI {
         fun closeDialog() {
             networkPopup?.setDisplay(false)
             dialog.setDisplay(false)
+            rootElement.getModularUI()?.clearFocus()
             restoreMenuCloseKeys()
         }
         dialog.addEventListener("keyDown") { event ->
