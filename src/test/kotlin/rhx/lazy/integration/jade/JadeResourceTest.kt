@@ -18,6 +18,18 @@ class JadeResourceTest {
         assertEquals("输出模式：%s", chinese["jade.lazy.energy_source.output_mode"].asString)
         assertEquals("Growth: %s%%", english["jade.lazy.planter.growth"].asString)
         assertEquals("生长进度：%s%%", chinese["jade.lazy.planter.growth"].asString)
+        assertEquals("Total pot bonus: ×%s", english["jade.lazy.planter.pot_bonus"].asString)
+        assertEquals("盆栽总加成：×%s", chinese["jade.lazy.planter.pot_bonus"].asString)
+        assertEquals("Output mode: %s", english["jade.lazy.planter.output_mode"].asString)
+        assertEquals("输出模式：%s", chinese["jade.lazy.planter.output_mode"].asString)
+        assertEquals("Passive", english["jade.lazy.planter.mode.passive"].asString)
+        assertEquals("被动", chinese["jade.lazy.planter.mode.passive"].asString)
+        assertEquals("Downward output", english["jade.lazy.planter.mode.downward"].asString)
+        assertEquals("向下输出", chinese["jade.lazy.planter.mode.downward"].asString)
+        assertEquals("Output to %s", english["jade.lazy.planter.mode.network"].asString)
+        assertEquals("输出到%s", chinese["jade.lazy.planter.mode.network"].asString)
+        assertTrue(!english.has("jade.lazy.planter.pending"))
+        assertTrue(!english.has("jade.lazy.planter.outputs"))
     }
 
     @Test

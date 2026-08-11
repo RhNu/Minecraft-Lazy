@@ -88,6 +88,13 @@ internal class PlanterBlockEntity(
     val hasPendingDrops: Boolean
         get() = outputRouter.hasPendingDrops
 
+    /**
+     * The stacked pot count is the planter's output multiplier. Expose the effective value so
+     * integrations do not need to reach into the input inventory directly.
+     */
+    val totalPotBonus: Int
+        get() = inputs[POT_SLOT].count.coerceAtLeast(0)
+
     val seedForRendering: ItemStack
         get() = renderSeed
 

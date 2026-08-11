@@ -17,17 +17,24 @@ internal object JadePlanterIntegration {
     }
 }
 
+internal enum class PlanterJadeOutputMode {
+    PASSIVE,
+    DOWNWARD,
+    NETWORK,
+}
+
 internal data class PlanterJadeData(
     val progressPercent: Int,
-    val pendingProducts: Boolean,
-    val downwardOutput: Boolean,
-    val networkOutput: Boolean,
+    val totalPotBonus: Int,
+    val outputMode: PlanterJadeOutputMode,
+    val networkProviderId: String,
 )
 
 internal object PlanterJadeDataProvider : StreamServerDataProvider<BlockAccessor, PlanterJadeData> {
     override fun streamData(accessor: BlockAccessor): PlanterJadeData? {
         val blockEntity = accessor.blockEntity as? PlanterBlockEntity ?: return null
         val requiredGrowthTicks = blockEntity.requiredGrowthTicks()
+        val outputMode = blockEntity.ioController.route.toPlanterJadeOutputMode()
         return PlanterJadeData(
             progressPercent =
                 if (requiredGrowthTicks > 0) {
@@ -35,9 +42,17 @@ internal object PlanterJadeDataProvider : StreamServerDataProvider<BlockAccessor
                 } else {
                     NO_RECIPE_PROGRESS
                 },
-            pendingProducts = blockEntity.hasPendingDrops,
-            downwardOutput = blockEntity.isDownwardOutputEnabled,
-            networkOutput = blockEntity.ioController.route == IoRoute.NETWORK,
+            totalPotBonus = blockEntity.totalPotBonus,
+            outputMode = outputMode,
+            networkProviderId =
+                if (outputMode == PlanterJadeOutputMode.NETWORK) {
+                    blockEntity.ioController.target
+                        ?.providerId
+                        ?.toString()
+                        .orEmpty()
+                } else {
+                    ""
+                },
         )
     }
 
@@ -49,24 +64,36 @@ internal object PlanterJadeDataProvider : StreamServerDataProvider<BlockAccessor
     internal const val NO_RECIPE_PROGRESS = -1
 }
 
+private fun IoRoute.toPlanterJadeOutputMode(): PlanterJadeOutputMode =
+    when (this) {
+        IoRoute.PASSIVE -> PlanterJadeOutputMode.PASSIVE
+        IoRoute.DOWNWARD -> PlanterJadeOutputMode.DOWNWARD
+        IoRoute.NETWORK -> PlanterJadeOutputMode.NETWORK
+        IoRoute.ADJACENT -> PlanterJadeOutputMode.PASSIVE
+    }
+
 private object PlanterJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, PlanterJadeData> {
     override fun encode(
         buffer: RegistryFriendlyByteBuf,
         value: PlanterJadeData,
     ) {
         buffer.writeVarInt(value.progressPercent + PROGRESS_OFFSET)
-        buffer.writeBoolean(value.pendingProducts)
-        buffer.writeBoolean(value.downwardOutput)
-        buffer.writeBoolean(value.networkOutput)
+        buffer.writeVarInt(value.totalPotBonus)
+        buffer.writeVarInt(value.outputMode.ordinal)
+        buffer.writeUtf(value.networkProviderId)
     }
 
-    override fun decode(buffer: RegistryFriendlyByteBuf): PlanterJadeData =
-        PlanterJadeData(
-            progressPercent = buffer.readVarInt() - PROGRESS_OFFSET,
-            pendingProducts = buffer.readBoolean(),
-            downwardOutput = buffer.readBoolean(),
-            networkOutput = buffer.readBoolean(),
+    override fun decode(buffer: RegistryFriendlyByteBuf): PlanterJadeData {
+        val progressPercent = buffer.readVarInt() - PROGRESS_OFFSET
+        val totalPotBonus = buffer.readVarInt()
+        val outputMode = PlanterJadeOutputMode.entries.getOrNull(buffer.readVarInt()) ?: PlanterJadeOutputMode.PASSIVE
+        return PlanterJadeData(
+            progressPercent = progressPercent,
+            totalPotBonus = totalPotBonus,
+            outputMode = outputMode,
+            networkProviderId = buffer.readUtf(),
         )
+    }
 
     private const val PROGRESS_OFFSET = 1
 }

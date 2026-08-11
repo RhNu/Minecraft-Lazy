@@ -312,11 +312,11 @@ internal object DataGeneration {
             add("jade.lazy.repairer.item", "Item: %s")
             add("jade.lazy.repairer.durability", "Durability: %s / %s")
             add("jade.lazy.planter.growth", "Growth: %s%%")
-            add("jade.lazy.planter.pending", "Growth paused: waiting products")
-            add(
-                "jade.lazy.planter.outputs",
-                "Outputs: down %s · network %s",
-            )
+            add("jade.lazy.planter.pot_bonus", "Total pot bonus: ×%s")
+            add("jade.lazy.planter.output_mode", "Output mode: %s")
+            add("jade.lazy.planter.mode.passive", "Passive")
+            add("jade.lazy.planter.mode.downward", "Downward output")
+            add("jade.lazy.planter.mode.network", "Output to %s")
             add("message.lazy.energy_battery.transfer", "Energy transferred: %s FE")
             add("message.lazy.rise.not_found", "No open-sky block found above")
             add("message.lazy.rise.player_only", "This command can only be used by players")
@@ -470,11 +470,11 @@ internal object DataGeneration {
             add("jade.lazy.repairer.item", "物品：%s")
             add("jade.lazy.repairer.durability", "耐久：%s / %s")
             add("jade.lazy.planter.growth", "生长进度：%s%%")
-            add("jade.lazy.planter.pending", "生长暂停：等待产物分发")
-            add(
-                "jade.lazy.planter.outputs",
-                "输出：向下 %s · 网络 %s",
-            )
+            add("jade.lazy.planter.pot_bonus", "盆栽总加成：×%s")
+            add("jade.lazy.planter.output_mode", "输出模式：%s")
+            add("jade.lazy.planter.mode.passive", "被动")
+            add("jade.lazy.planter.mode.downward", "向下输出")
+            add("jade.lazy.planter.mode.network", "输出到%s")
             add("message.lazy.energy_battery.transfer", "已传输能量：%s FE")
             add("message.lazy.rise.not_found", "未找到上方可见天空的位置")
             add("message.lazy.rise.player_only", "该命令只能由玩家执行")
