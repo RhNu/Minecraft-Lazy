@@ -85,8 +85,7 @@ internal class PlanterBlock :
         if (!level.isClientSide && state.block !== newState.block) {
             level
                 .blockEntityOrNull(pos, PlanterRegistries.blockEntity.get())
-                ?.takeAllForDrop()
-                ?.forEach { stack ->
+                ?.takeAllForDrop { stack ->
                     if (!stack.isEmpty) {
                         popResource(level, pos, stack)
                     }

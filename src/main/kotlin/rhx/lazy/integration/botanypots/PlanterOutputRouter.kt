@@ -16,12 +16,13 @@ import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTransferResult
+import rhx.lazy.core.storage.LongItemStack
 import kotlin.math.min
 
 internal class PlanterOutputRouter(
     private val blockPos: BlockPos,
     private val outputs: MutableList<ItemStack>,
-    private val pendingDrops: MutableList<ItemStack>,
+    private val pendingDrops: MutableList<LongItemStack>,
     private val markOutputsDirty: () -> Unit,
     private val markPendingDirty: () -> Unit,
 ) {
@@ -34,65 +35,60 @@ internal class PlanterOutputRouter(
         level: ServerLevel?,
         route: IoRoute,
         target: NetworkTargetRef?,
-    ): IoPushResult {
-        movePendingToOutputs()
-        return when (route) {
-            IoRoute.PASSIVE -> IoPushResult.Success
+    ): IoPushResult =
+        when (route) {
+            IoRoute.PASSIVE -> {
+                movePendingToOutputs()
+                IoPushResult.Success
+            }
+
             IoRoute.DOWNWARD -> {
                 val serverLevel = level ?: return IoPushResult.Retry
-                var hadPending: Boolean
-                var pushed: Boolean
-                do {
-                    hadPending = pendingDrops.isNotEmpty()
-                    pushed = pushOutputsDown(serverLevel)
-                    if (pushed) movePendingToOutputs()
-                } while (pushed && hadPending)
+                movePendingToOutputs()
+                pushOutputsDown(serverLevel)
                 IoPushResult.Success
             }
 
             IoRoute.NETWORK -> pushToNetwork(target)
             IoRoute.ADJACENT -> IoPushResult.Success
         }
-    }
 
     internal fun routeNetwork(target: NetworkTargetRef): IoPushResult = pushToNetwork(target)
 
-    fun enqueue(
-        stack: ItemStack,
-        multiplier: Int = 1,
-    ) {
-        if (stack.isEmpty || multiplier <= 0) return
-        pendingDrops += splitToLegalStacks(stack, multiplier)
-        markPendingDirty()
+    fun enqueue(stack: ItemStack) {
+        if (addPending(stack, stack.count.toLong())) markPendingDirty()
+    }
+
+    fun enqueueBatch(produce: ((ItemStack) -> Unit) -> Unit) {
+        var changed = false
+        produce { stack ->
+            changed = addPending(stack, stack.count.toLong()) || changed
+        }
+        if (changed) markPendingDirty()
     }
 
     fun pendingTooltipTag(registries: HolderLookup.Provider?): CompoundTag {
         val tag = CompoundTag()
         if (registries == null) return tag
-        val groups = pendingGroups()
         val entries = ListTag()
-        groups.take(MAX_TOOLTIP_GROUPS).forEach { group ->
+        pendingDrops.take(MAX_TOOLTIP_GROUPS).forEach { pending ->
             val entry = CompoundTag()
-            entry.put(PENDING_STACK_TAG, group.template.save(registries))
-            entry.putLong(PENDING_COUNT_TAG, group.count)
+            entry.put(PENDING_STACK_TAG, pending.template.save(registries))
+            entry.putLong(PENDING_COUNT_TAG, pending.count)
             entries.add(entry)
         }
         tag.put(PENDING_ENTRIES_TAG, entries)
-        tag.putInt(PENDING_REMAINING_TYPES_TAG, (groups.size - MAX_TOOLTIP_GROUPS).coerceAtLeast(0))
+        tag.putInt(PENDING_REMAINING_TYPES_TAG, (pendingDrops.size - MAX_TOOLTIP_GROUPS).coerceAtLeast(0))
         return tag
     }
 
-    fun takeAllForDrop(): List<ItemStack> {
-        val drops =
-            buildList {
-                outputs.filterNot(ItemStack::isEmpty).forEach { add(it.copy()) }
-                pendingDrops.filterNot(ItemStack::isEmpty).forEach { add(it.copy()) }
-            }
+    fun takeAllForDrop(drop: (ItemStack) -> Unit) {
+        outputs.filterNot(ItemStack::isEmpty).forEach { drop(it.copy()) }
+        pendingDrops.forEach { pending -> pending.toItemStacks().forEach(drop) }
         repeat(outputs.size) { outputs[it] = ItemStack.EMPTY }
         pendingDrops.clear()
         markOutputsDirty()
         markPendingDirty()
-        return drops
     }
 
     fun normalizeAfterLoad() {
@@ -100,9 +96,23 @@ internal class PlanterOutputRouter(
         outputs.indices.forEach { slot ->
             outputs[slot] = normalizeOutput(outputs[slot])
         }
-        val normalizedPending = pendingDrops.filterNot(ItemStack::isEmpty).flatMap(::splitToLegalStacks)
+        val loaded = pendingDrops.toList()
         pendingDrops.clear()
-        pendingDrops.addAll(normalizedPending)
+        loaded.forEach { pending -> addPending(pending.template, pending.count) }
+    }
+
+    private fun addPending(
+        stack: ItemStack,
+        amount: Long,
+    ): Boolean {
+        if (stack.isEmpty || amount <= 0L) return false
+        val index = pendingDrops.indexOfFirst { it.matches(stack) }
+        if (index >= 0) {
+            pendingDrops[index] = pendingDrops[index].plus(amount)
+        } else {
+            pendingDrops += LongItemStack(stack, amount)
+        }
+        return true
     }
 
     private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
@@ -110,144 +120,119 @@ internal class PlanterOutputRouter(
         var pendingChanged = false
         var outputsChanged = false
 
-        fun handle(stack: ItemStack): NetworkTransferResult =
+        fun handle(
+            template: ItemStack,
+            amount: Long,
+        ): NetworkTransferResult =
             NetworkOutputRouter.insert(
                 networkTarget,
-                NetworkPayload.Items(stack.copyWithCount(1), stack.count.toLong()),
+                NetworkPayload.Items(template.copyWithCount(1), amount),
                 false,
             )
+
+        fun finish(result: IoPushResult): IoPushResult {
+            if (pendingChanged) markPendingDirty()
+            if (outputsChanged) markOutputsDirty()
+            return result
+        }
 
         var pendingIndex = 0
         while (pendingIndex < pendingDrops.size) {
             val original = pendingDrops[pendingIndex]
-            when (val result = handle(original)) {
+            when (val result = handle(original.template, original.count)) {
                 is NetworkTransferResult.Success -> {
-                    val remainder = original.copyWithCount(result.remainder.coerceIn(0L, original.count.toLong()).toInt())
-                    if (!ItemStack.matches(original, remainder)) pendingChanged = true
-                    if (remainder.isEmpty) {
+                    val remainder = result.remainder.coerceIn(0L, original.count)
+                    if (remainder != original.count) pendingChanged = true
+                    if (remainder == 0L) {
                         pendingDrops.removeAt(pendingIndex)
                     } else {
-                        pendingDrops[pendingIndex] = remainder
+                        pendingDrops[pendingIndex] = original.withCount(remainder)
                         pendingIndex++
                     }
                 }
 
-                NetworkTransferResult.TargetMissing -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.TargetMissing
-                }
+                NetworkTransferResult.TargetMissing,
+                NetworkTransferResult.InvalidTarget,
+                -> return finish(IoPushResult.TargetMissing)
 
-                NetworkTransferResult.InvalidTarget -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.TargetMissing
-                }
-
-                NetworkTransferResult.OutcomeUnknown -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.OutcomeUnknown
-                }
-
-                NetworkTransferResult.TemporarilyUnavailable -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.Retry
-                }
+                NetworkTransferResult.OutcomeUnknown -> return finish(IoPushResult.OutcomeUnknown)
+                NetworkTransferResult.TemporarilyUnavailable -> return finish(IoPushResult.Retry)
             }
         }
 
         for (slot in outputs.indices) {
             val original = outputs[slot]
             if (original.isEmpty) continue
-            when (val result = handle(original)) {
+            when (val result = handle(original, original.count.toLong())) {
                 is NetworkTransferResult.Success -> {
-                    val remainder = original.copyWithCount(result.remainder.coerceIn(0L, original.count.toLong()).toInt())
-                    if (!ItemStack.matches(original, remainder)) {
-                        outputs[slot] = remainder
+                    val remainder = result.remainder.coerceIn(0L, original.count.toLong()).toInt()
+                    if (remainder != original.count) {
+                        outputs[slot] = if (remainder == 0) ItemStack.EMPTY else original.copyWithCount(remainder)
                         outputsChanged = true
                     }
                 }
 
-                NetworkTransferResult.TargetMissing -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.TargetMissing
-                }
+                NetworkTransferResult.TargetMissing,
+                NetworkTransferResult.InvalidTarget,
+                -> return finish(IoPushResult.TargetMissing)
 
-                NetworkTransferResult.InvalidTarget -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.TargetMissing
-                }
+                NetworkTransferResult.OutcomeUnknown -> return finish(IoPushResult.OutcomeUnknown)
+                NetworkTransferResult.TemporarilyUnavailable -> return finish(IoPushResult.Retry)
+            }
+        }
+        return finish(IoPushResult.Success)
+    }
 
-                NetworkTransferResult.OutcomeUnknown -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.OutcomeUnknown
-                }
-
-                NetworkTransferResult.TemporarilyUnavailable -> {
-                    if (pendingChanged) markPendingDirty()
-                    if (outputsChanged) markOutputsDirty()
-                    return IoPushResult.Retry
-                }
+    private fun movePendingToOutputs() {
+        var pendingChanged = false
+        var outputsChanged = false
+        var index = 0
+        while (index < pendingDrops.size) {
+            val original = pendingDrops[index]
+            val remainder = insertIntoOutputs(original.template, original.count)
+            if (remainder != original.count) {
+                outputsChanged = true
+                pendingChanged = true
+            }
+            if (remainder == 0L) {
+                pendingDrops.removeAt(index)
+            } else {
+                pendingDrops[index] = original.withCount(remainder)
+                index++
             }
         }
         if (pendingChanged) markPendingDirty()
         if (outputsChanged) markOutputsDirty()
-        return IoPushResult.Success
     }
 
-    private fun movePendingToOutputs() {
-        var changedPending = false
-        var changedOutputs = false
-        var index = 0
-        while (index < pendingDrops.size) {
-            val original = pendingDrops[index]
-            val remainder = insertIntoOutputs(original)
-            if (!ItemStack.matches(original, remainder)) {
-                changedOutputs = true
-                changedPending = true
-            }
-            if (remainder.isEmpty) {
-                pendingDrops.removeAt(index)
-            } else {
-                pendingDrops[index] = remainder
-                index++
-            }
-        }
-        if (changedPending) markPendingDirty()
-        if (changedOutputs) markOutputsDirty()
-    }
+    private fun insertIntoOutputs(
+        template: ItemStack,
+        amount: Long,
+    ): Long {
+        var remaining = amount
+        val maxStackSize = min(NORMAL_SLOT_LIMIT, template.maxStackSize.coerceAtLeast(1))
 
-    private fun insertIntoOutputs(stack: ItemStack): ItemStack {
-        var remaining = stack.copy()
-        val matching =
-            outputs.indices.filter { slot ->
-                val stored = outputs[slot]
-                !stored.isEmpty && ItemStack.isSameItemSameComponents(stored, remaining)
-            }
-        val empty = outputs.indices.filter { outputs[it].isEmpty }
-        for (slot in matching + empty) {
-            if (remaining.isEmpty) break
+        fun insertInto(slot: Int) {
+            if (remaining <= 0L) return
             val stored = outputs[slot]
-            val capacity = min(NORMAL_SLOT_LIMIT, remaining.maxStackSize.coerceAtLeast(1)) - stored.count
-            if (capacity <= 0) continue
-            val inserted = min(capacity, remaining.count)
+            val capacity = maxStackSize - stored.count
+            if (capacity <= 0) return
+            val inserted = min(remaining, capacity.toLong()).toInt()
             outputs[slot] =
                 if (stored.isEmpty) {
-                    remaining.copyWithCount(inserted)
+                    template.copyWithCount(inserted)
                 } else {
                     stored.copyWithCount(stored.count + inserted)
                 }
-            remaining =
-                if (inserted == remaining.count) {
-                    ItemStack.EMPTY
-                } else {
-                    remaining.copyWithCount(remaining.count - inserted)
-                }
+            remaining -= inserted.toLong()
+        }
+
+        outputs.indices.forEach { slot ->
+            val stored = outputs[slot]
+            if (!stored.isEmpty && ItemStack.isSameItemSameComponents(stored, template)) insertInto(slot)
+        }
+        outputs.indices.forEach { slot ->
+            if (outputs[slot].isEmpty) insertInto(slot)
         }
         return remaining
     }
@@ -271,19 +256,6 @@ internal class PlanterOutputRouter(
         }
         if (changed) markOutputsDirty()
         return changed
-    }
-
-    private fun pendingGroups(): List<PendingGroup> {
-        val groups = mutableListOf<PendingGroup>()
-        pendingDrops.forEach { stack ->
-            val group = groups.firstOrNull { ItemStack.isSameItemSameComponents(it.template, stack) }
-            if (group == null) {
-                groups += PendingGroup(stack.copyWithCount(1), stack.count.toLong())
-            } else {
-                group.count += stack.count.toLong()
-            }
-        }
-        return groups
     }
 
     private inner class OutputHandler : IItemHandlerModifiable {
@@ -316,12 +288,7 @@ internal class PlanterOutputRouter(
             val result = stored.copyWithCount(extracted)
             if (!simulate) {
                 val remaining = stored.count - extracted
-                outputs[slot] =
-                    if (remaining == 0) {
-                        ItemStack.EMPTY
-                    } else {
-                        stored.copyWithCount(remaining)
-                    }
+                outputs[slot] = if (remaining == 0) ItemStack.EMPTY else stored.copyWithCount(remaining)
                 markOutputsDirty()
             }
             return result
@@ -354,11 +321,6 @@ internal class PlanterOutputRouter(
         }
     }
 
-    private data class PendingGroup(
-        val template: ItemStack,
-        var count: Long,
-    )
-
     companion object {
         const val OUTPUT_SLOT_COUNT = 12
 
@@ -387,21 +349,6 @@ internal class PlanterOutputRouter(
                     ),
                 )
             }
-
-        private fun splitToLegalStacks(
-            stack: ItemStack,
-            multiplier: Int = 1,
-        ): List<ItemStack> {
-            var remaining = stack.count.toLong() * multiplier.coerceAtLeast(0).toLong()
-            val split = mutableListOf<ItemStack>()
-            val maxSize = stack.maxStackSize.coerceAtLeast(1)
-            while (remaining > 0L) {
-                val amount = min(remaining, maxSize.toLong()).toInt()
-                split += stack.copyWithCount(amount)
-                remaining -= amount
-            }
-            return split
-        }
     }
 }
 

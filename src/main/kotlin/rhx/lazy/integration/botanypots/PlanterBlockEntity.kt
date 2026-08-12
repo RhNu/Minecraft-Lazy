@@ -7,11 +7,14 @@ import net.darkhax.botanypots.common.api.data.recipes.soil.Soil
 import net.darkhax.botanypots.common.impl.BotanyPotsMod
 import net.darkhax.botanypots.common.impl.Helpers
 import net.darkhax.botanypots.common.impl.block.BotanyPotBlock
+import net.darkhax.botanypots.common.impl.block.PotType
 import net.minecraft.commands.CommandSource
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
+import net.minecraft.nbt.Tag
 import net.minecraft.network.Connection
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
@@ -32,6 +35,7 @@ import rhx.lazy.core.io.IoRoute
 import rhx.lazy.core.io.IoRouteAdapter
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.storage.LongItemStack
 
 internal class PlanterBlockEntity(
     pos: BlockPos,
@@ -45,9 +49,7 @@ internal class PlanterBlockEntity(
     @field:LazyManaged
     private val outputs = MutableList(OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
 
-    @field:Persisted
-    @field:LazyManaged
-    private val pendingDrops = mutableListOf<ItemStack>()
+    private val pendingDrops = mutableListOf<LongItemStack>()
 
     @field:Persisted
     @field:LazyManaged
@@ -63,7 +65,7 @@ internal class PlanterBlockEntity(
             outputs = outputs,
             pendingDrops = pendingDrops,
             markOutputsDirty = { markDirty(OUTPUTS_FIELD) },
-            markPendingDirty = { markDirty(PENDING_DROPS_FIELD) },
+            markPendingDirty = { setChanged() },
         )
 
     private val ioAdapter = PlanterIoRouteAdapter()
@@ -87,13 +89,6 @@ internal class PlanterBlockEntity(
 
     val hasPendingDrops: Boolean
         get() = outputRouter.hasPendingDrops
-
-    /**
-     * The stacked pot count is the planter's output multiplier. Expose the effective value so
-     * integrations do not need to reach into the input inventory directly.
-     */
-    val totalPotBonus: Int
-        get() = inputs[POT_SLOT].count.coerceAtLeast(0)
 
     val seedForRendering: ItemStack
         get() = renderSeed
@@ -143,21 +138,26 @@ internal class PlanterBlockEntity(
         return requiredGrowthTicks(crop, soil, pot)
     }
 
+    /** Expected Botany Pots harvest rolls per growth cycle across all inserted pots. */
+    fun outputEfficiency(): Float {
+        val level = level ?: return NO_OUTPUT_EFFICIENCY
+        val pot = insertedPotBlock() ?: return NO_OUTPUT_EFFICIENCY
+        val soil = activeSoil ?: recipeResolver.resolveSoil(level) ?: return NO_OUTPUT_EFFICIENCY
+        val crop = activeCrop ?: recipeResolver.resolveCrop(level) ?: return NO_OUTPUT_EFFICIENCY
+        return totalYield(crop, soil, pot) * inputs[POT_SLOT].count.coerceAtLeast(1)
+    }
+
     fun pendingTooltipTag(): CompoundTag = outputRouter.pendingTooltipTag(level?.registryAccess())
 
-    fun takeAllForDrop(): List<ItemStack> {
-        val drops =
-            buildList {
-                inputs.filterNot(ItemStack::isEmpty).forEach { add(it.copy()) }
-                addAll(outputRouter.takeAllForDrop())
-            }
+    fun takeAllForDrop(drop: (ItemStack) -> Unit) {
+        inputs.filterNot(ItemStack::isEmpty).forEach { drop(it.copy()) }
+        outputRouter.takeAllForDrop(drop)
         repeat(inputs.size) { inputs[it] = ItemStack.EMPTY }
         growthTicks = 0f
         recipeResolver.invalidate()
         markDirty(INPUTS_FIELD)
         markDirty(GROWTH_TICKS_FIELD)
         syncRenderSeed()
-        return drops
     }
 
     fun runFunction(functionId: ResourceLocation) {
@@ -170,6 +170,21 @@ internal class PlanterBlockEntity(
         )
     }
 
+    override fun saveAdditional(
+        tag: CompoundTag,
+        registries: HolderLookup.Provider,
+    ) {
+        super.saveAdditional(tag, registries)
+        if (pendingDrops.isNotEmpty()) {
+            tag.put(
+                PENDING_DROPS_TAG,
+                ListTag().apply {
+                    pendingDrops.forEach { add(it.save(registries)) }
+                },
+            )
+        }
+    }
+
     override fun loadAdditional(
         tag: CompoundTag,
         registries: HolderLookup.Provider,
@@ -178,6 +193,10 @@ internal class PlanterBlockEntity(
         inputs.resize(INPUT_SLOT_COUNT)
         inputs.indices.forEach { slot ->
             inputs[slot] = normalizeInput(slot, inputs[slot])
+        }
+        pendingDrops.clear()
+        tag.getList(PENDING_DROPS_TAG, Tag.TAG_COMPOUND.toInt()).forEach { raw ->
+            LongItemStack.parse(registries, raw as CompoundTag)?.let(pendingDrops::add)
         }
         outputRouter.normalizeAfterLoad()
         recipeResolver.invalidate()
@@ -214,10 +233,14 @@ internal class PlanterBlockEntity(
         soil: Soil,
         pot: BotanyPotBlock,
     ) {
-        val rolls = Helpers.determineRollCount(totalYield(crop, soil, pot), level.random)
         val potCount = inputs[POT_SLOT].count.coerceAtLeast(1)
-        repeat(rolls) {
-            crop.onHarvest(recipeContext, level) { stack -> outputRouter.enqueue(stack, potCount) }
+        val yield = totalYield(crop, soil, pot)
+        outputRouter.enqueueBatch { enqueue ->
+            repeat(potCount) {
+                repeat(Helpers.determineRollCount(yield, level.random)) {
+                    crop.onHarvest(recipeContext, level) { stack -> enqueue(stack) }
+                }
+            }
         }
         routeStoredItems()
         growthTicks = 0f
@@ -225,10 +248,7 @@ internal class PlanterBlockEntity(
         level.gameEvent(GameEvent.BLOCK_CHANGE, blockPos, GameEvent.Context.of(blockState))
     }
 
-    private fun insertedPotBlock(): BotanyPotBlock? {
-        val blockItem = inputs[POT_SLOT].item as? BlockItem ?: return null
-        return blockItem.block as? BotanyPotBlock
-    }
+    private fun insertedPotBlock(): BotanyPotBlock? = inputs[POT_SLOT].usableBotanyPotBlock()
 
     private fun requiredGrowthTicks(
         crop: Crop,
@@ -319,7 +339,7 @@ internal class PlanterBlockEntity(
     ): Boolean {
         if (stack.isEmpty) return false
         return when (slot) {
-            POT_SLOT -> (stack.item as? BlockItem)?.block is BotanyPotBlock
+            POT_SLOT -> stack.usableBotanyPotBlock() != null
             SOIL_SLOT -> level?.let { recipeResolver.isValidSoil(it, stack) } == true
             SEED_SLOT -> level?.let { recipeResolver.isValidCrop(it, stack) } == true
             else -> false
@@ -423,10 +443,11 @@ internal class PlanterBlockEntity(
         private const val POT_SLOT_LIMIT = 64
         private const val INPUTS_FIELD = "inputs"
         private const val OUTPUTS_FIELD = "outputs"
-        private const val PENDING_DROPS_FIELD = "pendingDrops"
         private const val GROWTH_TICKS_FIELD = "growthTicks"
         private const val RENDER_SEED_TAG = "render_seed"
+        private const val PENDING_DROPS_TAG = "lazyPendingDrops"
         private const val FUNCTION_PERMISSION_LEVEL = 2
+        private const val NO_OUTPUT_EFFICIENCY = -1f
 
         private fun validateInputSlot(slot: Int) {
             if (slot !in 0 until INPUT_SLOT_COUNT) {
@@ -434,6 +455,12 @@ internal class PlanterBlockEntity(
             }
         }
     }
+}
+
+internal fun ItemStack.usableBotanyPotBlock(): BotanyPotBlock? {
+    val blockItem = item as? BlockItem ?: return null
+    val pot = blockItem.block as? BotanyPotBlock ?: return null
+    return pot.takeUnless { it.type == PotType.WAXED }
 }
 
 private fun MutableList<ItemStack>.resize(size: Int) {

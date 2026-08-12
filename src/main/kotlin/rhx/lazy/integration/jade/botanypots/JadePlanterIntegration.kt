@@ -25,7 +25,7 @@ internal enum class PlanterJadeOutputMode {
 
 internal data class PlanterJadeData(
     val progressPercent: Int,
-    val totalPotBonus: Int,
+    val outputEfficiency: Float,
     val outputMode: PlanterJadeOutputMode,
     val networkProviderId: String,
 )
@@ -42,7 +42,7 @@ internal object PlanterJadeDataProvider : StreamServerDataProvider<BlockAccessor
                 } else {
                     NO_RECIPE_PROGRESS
                 },
-            totalPotBonus = blockEntity.totalPotBonus,
+            outputEfficiency = blockEntity.outputEfficiency(),
             outputMode = outputMode,
             networkProviderId =
                 if (outputMode == PlanterJadeOutputMode.NETWORK) {
@@ -78,18 +78,18 @@ private object PlanterJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, Plant
         value: PlanterJadeData,
     ) {
         buffer.writeVarInt(value.progressPercent + PROGRESS_OFFSET)
-        buffer.writeVarInt(value.totalPotBonus)
+        buffer.writeFloat(value.outputEfficiency)
         buffer.writeVarInt(value.outputMode.ordinal)
         buffer.writeUtf(value.networkProviderId)
     }
 
     override fun decode(buffer: RegistryFriendlyByteBuf): PlanterJadeData {
         val progressPercent = buffer.readVarInt() - PROGRESS_OFFSET
-        val totalPotBonus = buffer.readVarInt()
+        val outputEfficiency = buffer.readFloat()
         val outputMode = PlanterJadeOutputMode.entries.getOrNull(buffer.readVarInt()) ?: PlanterJadeOutputMode.PASSIVE
         return PlanterJadeData(
             progressPercent = progressPercent,
-            totalPotBonus = totalPotBonus,
+            outputEfficiency = outputEfficiency,
             outputMode = outputMode,
             networkProviderId = buffer.readUtf(),
         )

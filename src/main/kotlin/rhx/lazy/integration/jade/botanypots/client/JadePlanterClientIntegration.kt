@@ -12,6 +12,7 @@ import snownee.jade.api.IBlockComponentProvider
 import snownee.jade.api.ITooltip
 import snownee.jade.api.IWailaClientRegistration
 import snownee.jade.api.config.IPluginConfig
+import java.text.DecimalFormat
 
 internal object JadePlanterClientIntegration {
     fun register(registration: IWailaClientRegistration) {
@@ -29,12 +30,14 @@ private object PlanterJadeComponentProvider : IBlockComponentProvider {
         if (data.progressPercent >= 0) {
             tooltip.add(Component.translatable("jade.lazy.planter.growth", data.progressPercent))
         }
-        tooltip.add(
-            Component.translatable(
-                "jade.lazy.planter.pot_bonus",
-                data.totalPotBonus,
-            ),
-        )
+        if (data.outputEfficiency >= 0f) {
+            tooltip.add(
+                Component.translatable(
+                    "jade.lazy.planter.output_efficiency",
+                    outputEfficiencyFormat.format(data.outputEfficiency),
+                ),
+            )
+        }
         tooltip.add(
             Component.translatable(
                 "jade.lazy.planter.output_mode",
@@ -44,6 +47,8 @@ private object PlanterJadeComponentProvider : IBlockComponentProvider {
     }
 
     override fun getUid(): ResourceLocation = JadeProviderIds.planter
+
+    private val outputEfficiencyFormat = DecimalFormat("0.##")
 }
 
 private fun PlanterJadeOutputMode.asComponent(networkProviderId: String): Component =

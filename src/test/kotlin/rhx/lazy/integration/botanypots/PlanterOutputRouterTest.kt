@@ -15,6 +15,7 @@ import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
 import rhx.lazy.core.io.NetworkTransferResult
+import rhx.lazy.core.storage.LongItemStack
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,22 +23,26 @@ import kotlin.test.assertTrue
 
 class PlanterOutputRouterTest {
     @Test
-    fun `enqueue multiplies one harvest result by the inserted pot count`() {
-        val pending = mutableListOf<ItemStack>()
+    fun `enqueue aggregates independently harvested results`() {
+        val pending = mutableListOf<LongItemStack>()
         val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
-        val router = createRouter(pending = pending, outputs = outputs)
+        var dirtyCalls = 0
+        val router = createRouter(pending = pending, outputs = outputs, markPendingDirty = { dirtyCalls++ })
 
-        router.enqueue(ItemStack(Items.DIAMOND, 3), multiplier = 64)
+        router.enqueueBatch { enqueue ->
+            repeat(64) { enqueue(ItemStack(Items.DIAMOND, 3)) }
+        }
         router.route(null, IoRoute.PASSIVE, null)
 
         assertTrue(pending.isEmpty())
         assertEquals(192, outputs.sumOf(ItemStack::getCount))
         assertEquals(3, outputs.count { !it.isEmpty })
+        assertEquals(2, dirtyCalls)
     }
 
     @Test
     fun `passive route moves pending products into internal output slots`() {
-        val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
+        val pending = mutableListOf(LongItemStack(ItemStack(Items.DIAMOND), 20L))
         val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
         var outputDirtyCalls = 0
         var pendingDirtyCalls = 0
@@ -58,6 +63,18 @@ class PlanterOutputRouterTest {
     }
 
     @Test
+    fun `passive route materializes at most the real output slot capacity`() {
+        val pending = mutableListOf(LongItemStack(ItemStack(Items.DIAMOND), 10_000L))
+        val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
+        val router = createRouter(pending = pending, outputs = outputs)
+
+        router.route(null, IoRoute.PASSIVE, null)
+
+        assertEquals(768, outputs.sumOf(ItemStack::getCount))
+        assertEquals(9_232L, pending.single().count)
+    }
+
+    @Test
     fun `output handler restores a stack after a slot implementation temporarily clears it`() {
         val outputs = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY }
         val router = createRouter(outputs = outputs)
@@ -74,7 +91,7 @@ class PlanterOutputRouterTest {
     @Test
     fun `unchanged pending output does not mark persistence dirty`() {
         val storage = FakeNetworkStorage().apply { itemCapacity = 0 }
-        val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
+        val pending = mutableListOf(LongItemStack(ItemStack(Items.DIAMOND), 20L))
         var dirtyCalls = 0
         val router = createRouter(pending = pending, markPendingDirty = { dirtyCalls++ })
         val provider = registerProvider(storage)
@@ -82,13 +99,13 @@ class PlanterOutputRouterTest {
         routeNetwork(router, provider)
 
         assertEquals(0, dirtyCalls)
-        assertEquals(20, pending.single().count)
+        assertEquals(20L, pending.single().count)
     }
 
     @Test
     fun `partially forwarded pending output is marked dirty once`() {
         val storage = FakeNetworkStorage().apply { itemCapacity = 8 }
-        val pending = mutableListOf(ItemStack(Items.DIAMOND, 20))
+        val pending = mutableListOf(LongItemStack(ItemStack(Items.DIAMOND), 20L))
         var dirtyCalls = 0
         val router = createRouter(pending = pending, markPendingDirty = { dirtyCalls++ })
         val provider = registerProvider(storage)
@@ -96,12 +113,26 @@ class PlanterOutputRouterTest {
         routeNetwork(router, provider)
 
         assertEquals(1, dirtyCalls)
-        assertEquals(12, pending.single().count)
+        assertEquals(12L, pending.single().count)
         assertEquals(8, storage.storedItemAmount)
     }
 
+    @Test
+    fun `network route transfers counts beyond the ItemStack integer limit`() {
+        val amount = Int.MAX_VALUE.toLong() + 100L
+        val storage = FakeNetworkStorage()
+        val pending = mutableListOf(LongItemStack(ItemStack(Items.DIAMOND), amount))
+        val router = createRouter(pending = pending)
+        val provider = registerProvider(storage)
+
+        routeNetwork(router, provider)
+
+        assertTrue(pending.isEmpty())
+        assertEquals(amount, storage.storedItemAmount)
+    }
+
     private fun createRouter(
-        pending: MutableList<ItemStack> = mutableListOf(),
+        pending: MutableList<LongItemStack> = mutableListOf(),
         markOutputsDirty: () -> Unit = {},
         markPendingDirty: () -> Unit = {},
         outputs: MutableList<ItemStack> = MutableList(PlanterOutputRouter.OUTPUT_SLOT_COUNT) { ItemStack.EMPTY },
