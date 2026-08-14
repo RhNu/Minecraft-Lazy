@@ -18,6 +18,8 @@ class IoPanelStylesheetTest {
         assertTrue(text.contains(".lazy-io__tabs"))
         assertTrue(text.contains(".lazy-io__face--input"))
         assertTrue(text.contains(".lazy-io__network-list"))
+        assertTrue(text.contains(".lazy-io__network-status"))
+        assertTrue(text.contains(".lazy-io__network-action"))
         assertTrue(text.contains(".lazy-io__button--selected"))
         assertTrue(text.contains("base-background: built-in(ui-mc:RECT_BORDER)"))
         assertFalse(text.contains("text-wrap: wrap"))

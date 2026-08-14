@@ -1,32 +1,35 @@
 package rhx.lazy.feature.simulation
 
-import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
-import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
+import net.neoforged.neoforge.items.IItemHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
-import rhx.lazy.core.io.IoConfiguration
-import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
+import rhx.lazy.core.io.NetworkOffer
 import rhx.lazy.core.io.NetworkOutputProviders
-import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
-import rhx.lazy.core.io.NetworkTransferResult
+import rhx.lazy.core.io.offer
 import rhx.lazy.core.storage.LongItemStack
 import kotlin.math.min
 
+/**
+ * Buffers a simulation batch's oversized results and drains them into the machine's own slots, its
+ * neighbours or a network target, depending on which push [rhx.lazy.core.io.IoController] asks for.
+ */
 internal class SimulationOutputRouter(
-    private val blockPos: BlockPos,
     val items: MutableList<ItemStack>,
     val fluids: MutableList<FluidStack>,
     val pendingItems: MutableList<LongItemStack>,
     val pendingFluids: MutableList<LongFluidStack>,
+    private val neighborItems: NeighborCapabilities<IItemHandler>,
+    private val neighborFluids: NeighborCapabilities<IFluidHandler>,
     private val changed: () -> Unit,
 ) {
     val itemHandler: IItemHandlerModifiable = SimulationOutputItemHandler(items, changed)
@@ -51,11 +54,7 @@ internal class SimulationOutputRouter(
                 pendingItems[index] = current.withCount(current.count + accepted)
                 remaining -= accepted
             }
-        while (remaining > 0L) {
-            val chunk = min(remaining, Long.MAX_VALUE)
-            pendingItems += LongItemStack(stack, chunk)
-            remaining -= chunk
-        }
+        if (remaining > 0L) pendingItems += LongItemStack(stack, remaining)
         changed()
     }
 
@@ -74,28 +73,8 @@ internal class SimulationOutputRouter(
                 pendingFluids[index] = current.withAmount(current.amount + accepted)
                 remaining -= accepted
             }
-        while (remaining > 0L) {
-            val chunk = min(remaining, Long.MAX_VALUE)
-            pendingFluids += LongFluidStack(stack, chunk)
-            remaining -= chunk
-        }
+        if (remaining > 0L) pendingFluids += LongFluidStack(stack, remaining)
         changed()
-    }
-
-    fun route(
-        level: ServerLevel?,
-        configuration: IoConfiguration,
-        outputDirections: Set<Direction>,
-    ): IoPushResult {
-        when (configuration.mode) {
-            IoMode.NETWORK -> return pushNetwork(configuration.networkTarget)
-            IoMode.PASSIVE -> movePendingLocal()
-            IoMode.FACE -> {
-                movePendingLocal()
-                level?.let { pushToFaces(it, outputDirections) }
-            }
-        }
-        return IoPushResult.Success
     }
 
     fun normalize() {
@@ -103,23 +82,35 @@ internal class SimulationOutputRouter(
         fluids.resize(FLUID_TANKS) { FluidStack.EMPTY }
     }
 
-    private fun movePendingLocal() {
+    /** Drains the oversized backlog into the machine's own slots; safe to run every tick. */
+    fun movePendingLocal() {
+        val didItemsChange = drainPendingItems()
+        val didFluidsChange = drainPendingFluids()
+        if (didItemsChange || didFluidsChange) changed()
+    }
+
+    private fun drainPendingItems(): Boolean {
         var didChange = false
-        val itemIterator = pendingItems.listIterator()
-        while (itemIterator.hasNext()) {
-            val value = itemIterator.next()
+        val iterator = pendingItems.listIterator()
+        while (iterator.hasNext()) {
+            val value = iterator.next()
             val remainder = insertItemLocal(value.template, value.count)
             if (remainder != value.count) didChange = true
-            if (remainder == 0L) itemIterator.remove() else itemIterator.set(value.withCount(remainder))
+            if (remainder == 0L) iterator.remove() else iterator.set(value.withCount(remainder))
         }
-        val fluidIterator = pendingFluids.listIterator()
-        while (fluidIterator.hasNext()) {
-            val value = fluidIterator.next()
+        return didChange
+    }
+
+    private fun drainPendingFluids(): Boolean {
+        var didChange = false
+        val iterator = pendingFluids.listIterator()
+        while (iterator.hasNext()) {
+            val value = iterator.next()
             val remainder = insertFluidLocal(value.template, value.amount)
             if (remainder != value.amount) didChange = true
-            if (remainder == 0L) fluidIterator.remove() else fluidIterator.set(value.withAmount(remainder))
+            if (remainder == 0L) iterator.remove() else iterator.set(value.withAmount(remainder))
         }
-        if (didChange) changed()
+        return didChange
     }
 
     private fun insertItemLocal(
@@ -159,13 +150,13 @@ internal class SimulationOutputRouter(
         return remaining
     }
 
-    private fun pushToFaces(
+    fun pushToFaces(
         level: ServerLevel,
         directions: Set<Direction>,
-    ) {
+    ): IoPushResult {
         var didChange = false
         directions.forEach { direction ->
-            level.getCapability(Capabilities.ItemHandler.BLOCK, blockPos.relative(direction), direction.opposite)?.let { target ->
+            neighborItems[level, direction]?.let { target ->
                 items.indices.forEach { slot ->
                     val original = items[slot]
                     if (original.isEmpty) return@forEach
@@ -178,7 +169,7 @@ internal class SimulationOutputRouter(
             }
         }
         directions.forEach { direction ->
-            level.getCapability(Capabilities.FluidHandler.BLOCK, blockPos.relative(direction), direction.opposite)?.let { target ->
+            neighborFluids[level, direction]?.let { target ->
                 fluids.indices.forEach { tank ->
                     val original = fluids[tank]
                     if (original.isEmpty) return@forEach
@@ -192,11 +183,15 @@ internal class SimulationOutputRouter(
             }
         }
         if (didChange) changed()
+        return IoPushResult.Success
     }
 
-    private fun pushNetwork(target: NetworkTargetRef?): IoPushResult {
-        val ref = target ?: return IoPushResult.TargetMissing
-        val provider = NetworkOutputProviders.get(ref.providerId) ?: return IoPushResult.Retry
+    /**
+     * Sends everything the target's provider can accept; whatever it cannot handle falls back to the
+     * machine's own slots so a fluid-blind network never stalls the item backlog and vice versa.
+     */
+    fun pushToNetwork(target: NetworkTargetRef): IoPushResult {
+        val provider = NetworkOutputProviders.get(target.providerId) ?: return IoPushResult.Retry
         var retry = false
         var didChange = false
 
@@ -209,91 +204,70 @@ internal class SimulationOutputRouter(
             val iterator = pendingItems.listIterator()
             while (iterator.hasNext()) {
                 val original = iterator.next()
-                when (val result = NetworkOutputRouter.insert(ref, NetworkPayload.Items(original.template, original.count), false)) {
-                    is NetworkTransferResult.Success -> {
-                        val remainder = result.remainder.coerceIn(0L, original.count)
-                        if (remainder != original.count) didChange = true
-                        if (remainder == 0L) {
-                            iterator.remove()
-                        } else {
-                            iterator.set(original.withCount(remainder))
-                        }
+                when (val offer = target.offer(NetworkPayload.Items(original.template, original.count), original.count)) {
+                    is NetworkOffer.Accepted -> {
+                        val left = original.count - offer.accepted
+                        if (offer.accepted > 0L) didChange = true
+                        if (left == 0L) iterator.remove() else iterator.set(original.withCount(left))
                     }
-                    NetworkTransferResult.TargetMissing, NetworkTransferResult.InvalidTarget -> return finish(IoPushResult.TargetMissing)
-                    NetworkTransferResult.OutcomeUnknown -> return finish(IoPushResult.OutcomeUnknown)
-                    NetworkTransferResult.TemporarilyUnavailable -> retry = true
+                    is NetworkOffer.Rejected ->
+                        if (offer.push == IoPushResult.Retry) retry = true else return finish(offer.push)
                 }
             }
             items.indices.forEach { slot ->
                 val stack = items[slot]
                 if (stack.isEmpty) return@forEach
-                when (val result = NetworkOutputRouter.insert(ref, NetworkPayload.Items(stack, stack.count.toLong()), false)) {
-                    is NetworkTransferResult.Success -> {
-                        val remainder = result.remainder.coerceIn(0L, stack.count.toLong()).toInt()
-                        if (remainder != stack.count) {
-                            items[slot] = if (remainder == 0) ItemStack.EMPTY else stack.copyWithCount(remainder)
+                when (val offer = target.offer(NetworkPayload.Items(stack, stack.count.toLong()), stack.count.toLong())) {
+                    is NetworkOffer.Accepted -> {
+                        if (offer.accepted > 0L) {
+                            val left = stack.count - offer.accepted.toInt()
+                            items[slot] = if (left <= 0) ItemStack.EMPTY else stack.copyWithCount(left)
                             didChange = true
                         }
                     }
-                    NetworkTransferResult.TemporarilyUnavailable -> retry = true
-                    NetworkTransferResult.TargetMissing, NetworkTransferResult.InvalidTarget -> return finish(IoPushResult.TargetMissing)
-                    NetworkTransferResult.OutcomeUnknown -> return finish(IoPushResult.OutcomeUnknown)
+                    is NetworkOffer.Rejected ->
+                        if (offer.push == IoPushResult.Retry) retry = true else return finish(offer.push)
                 }
             }
-        } else {
-            movePendingItemsLocal()
+        } else if (drainPendingItems()) {
+            didChange = true
         }
+
         if (NetworkInsertCapabilities.FLUID in provider.capabilities) {
             val iterator = pendingFluids.listIterator()
             while (iterator.hasNext()) {
                 val original = iterator.next()
                 val chunk = min(Int.MAX_VALUE.toLong(), original.amount).toInt()
-                when (val result = NetworkOutputRouter.insert(ref, NetworkPayload.Fluid(original.template.copyWithAmount(chunk)), false)) {
-                    is NetworkTransferResult.Success -> {
-                        val sent = chunk.toLong() - result.remainder.coerceIn(0L, chunk.toLong())
-                        val left = original.amount - sent
-                        if (sent > 0L) didChange = true
+                val payload = NetworkPayload.Fluid(original.template.copyWithAmount(chunk))
+                when (val offer = target.offer(payload, chunk.toLong())) {
+                    is NetworkOffer.Accepted -> {
+                        val left = original.amount - offer.accepted
+                        if (offer.accepted > 0L) didChange = true
                         if (left == 0L) iterator.remove() else iterator.set(original.withAmount(left))
                     }
-                    NetworkTransferResult.TargetMissing, NetworkTransferResult.InvalidTarget -> return finish(IoPushResult.TargetMissing)
-                    NetworkTransferResult.OutcomeUnknown -> return finish(IoPushResult.OutcomeUnknown)
-                    NetworkTransferResult.TemporarilyUnavailable -> retry = true
+                    is NetworkOffer.Rejected ->
+                        if (offer.push == IoPushResult.Retry) retry = true else return finish(offer.push)
                 }
             }
             fluids.indices.forEach { tank ->
                 val stack = fluids[tank]
                 if (stack.isEmpty) return@forEach
-                when (val result = NetworkOutputRouter.insert(ref, NetworkPayload.Fluid(stack), false)) {
-                    is NetworkTransferResult.Success -> {
-                        val remainder = result.remainder.coerceIn(0L, stack.amount.toLong()).toInt()
-                        if (remainder != stack.amount) {
-                            fluids[tank] = if (remainder == 0) FluidStack.EMPTY else stack.copyWithAmount(remainder)
+                when (val offer = target.offer(NetworkPayload.Fluid(stack), stack.amount.toLong())) {
+                    is NetworkOffer.Accepted -> {
+                        if (offer.accepted > 0L) {
+                            val left = stack.amount - offer.accepted.toInt()
+                            fluids[tank] = if (left <= 0) FluidStack.EMPTY else stack.copyWithAmount(left)
                             didChange = true
                         }
                     }
-                    NetworkTransferResult.TemporarilyUnavailable -> retry = true
-                    NetworkTransferResult.TargetMissing, NetworkTransferResult.InvalidTarget -> return finish(IoPushResult.TargetMissing)
-                    NetworkTransferResult.OutcomeUnknown -> return finish(IoPushResult.OutcomeUnknown)
+                    is NetworkOffer.Rejected ->
+                        if (offer.push == IoPushResult.Retry) retry = true else return finish(offer.push)
                 }
             }
-        } else {
-            movePendingFluidsLocal()
+        } else if (drainPendingFluids()) {
+            didChange = true
         }
         return finish(if (retry) IoPushResult.Retry else IoPushResult.Success)
-    }
-
-    private fun movePendingItemsLocal() {
-        val fluidsCopy = pendingFluids.toList()
-        pendingFluids.clear()
-        movePendingLocal()
-        pendingFluids += fluidsCopy
-    }
-
-    private fun movePendingFluidsLocal() {
-        val itemsCopy = pendingItems.toList()
-        pendingItems.clear()
-        movePendingLocal()
-        pendingItems += itemsCopy
     }
 
     companion object {

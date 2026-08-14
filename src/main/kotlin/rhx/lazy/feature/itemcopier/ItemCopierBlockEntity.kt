@@ -9,20 +9,15 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache
-import net.neoforged.neoforge.capabilities.Capabilities
-import net.neoforged.neoforge.items.IItemHandler
 import rhx.lazy.core.io.IoAdapter
-import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
-import rhx.lazy.core.io.NetworkTransferResult
-import java.util.EnumMap
+import rhx.lazy.core.io.toPushResult
 
 internal class ItemCopierBlockEntity(
     pos: BlockPos,
@@ -38,13 +33,10 @@ internal class ItemCopierBlockEntity(
 
     private var ticksUntilPush = 0
 
-    private val neighborItemCaches =
-        EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction?>>(Direction::class.java)
-
-    private val ioAdapter = ItemCopierIoAdapter()
+    private val neighborItems = NeighborCapabilities.items(blockPos) { !isRemoved }
 
     init {
-        installIoAdapter(ioAdapter)
+        installIoAdapter(ItemCopierIoAdapter())
     }
 
     fun getTemplate(): ItemStack = if (template.isEmpty) ItemStack.EMPTY else template.copy()
@@ -99,12 +91,12 @@ internal class ItemCopierBlockEntity(
         super.loadAdditional(tag, registries)
         template = if (template.isEmpty) ItemStack.EMPTY else template.copyWithCount(1)
         pushIntervalTicks = getGear().intervalTicks
-        neighborItemCaches.clear()
+        neighborItems.invalidate()
         requestImmediatePush()
     }
 
     override fun setRemoved() {
-        neighborItemCaches.clear()
+        neighborItems.invalidate()
         super.setRemoved()
     }
 
@@ -112,63 +104,25 @@ internal class ItemCopierBlockEntity(
         ticksUntilPush = 0
     }
 
-    private fun cacheFor(
-        level: ServerLevel,
-        direction: Direction,
-    ): BlockCapabilityCache<IItemHandler, Direction?> =
-        neighborItemCaches.getOrPut(direction) {
-            BlockCapabilityCache.create<IItemHandler, Direction?>(
-                Capabilities.ItemHandler.BLOCK,
-                level,
-                blockPos.relative(direction),
-                direction.opposite,
-                { !isRemoved },
-                {},
-            )
-        }
-
     private inner class ItemCopierIoAdapter : IoAdapter {
         override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
+        override val acceptsInput = false
 
-        override fun push(configuration: IoConfiguration): IoPushResult {
-            if (configuration.mode == IoMode.PASSIVE) return IoPushResult.Success
-            if (configuration.mode == IoMode.FACE && ioController.outputDirections().isEmpty()) return IoPushResult.Success
-            if (!advanceSchedule()) return IoPushResult.Success
-            return when (configuration.mode) {
-                IoMode.FACE -> {
-                    val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
-                    ItemCopierPusher.pushToHandlers(
-                        template,
-                        ioController.outputDirections().map { direction -> cacheFor(serverLevel, direction).getCapability() },
-                    )
-                    IoPushResult.Success
-                }
+        override fun readyToPush(): Boolean = !template.isEmpty && advanceSchedule()
 
-                IoMode.NETWORK -> pushToNetwork(configuration.networkTarget)
-                IoMode.PASSIVE -> IoPushResult.Success
-            }
+        override fun pushToFaces(directions: Set<Direction>): IoPushResult {
+            val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
+            ItemCopierPusher.pushToHandlers(template, directions.map { neighborItems[serverLevel, it] })
+            return IoPushResult.Success
         }
 
-        private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
-            val networkTarget = target ?: return IoPushResult.TargetMissing
-            val result =
-                NetworkOutputRouter.insert(
-                    networkTarget,
-                    NetworkPayload.Items(template.copyWithCount(1), template.maxStackSize.toLong()),
-                    false,
-                )
-            return when (result) {
-                is NetworkTransferResult.Success -> IoPushResult.Success
-                NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
-                NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
-                NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
-                NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
-            }
-        }
+        override fun pushToNetwork(target: NetworkTargetRef): IoPushResult =
+            NetworkOutputRouter
+                .insert(target, NetworkPayload.Items(template.copyWithCount(1), template.maxStackSize.toLong()), false)
+                .toPushResult()
     }
 
     companion object {
-        internal const val MANAGED_DATA_KEY = "managed"
         internal const val TEMPLATE_FIELD = "template"
         internal const val PUSH_INTERVAL_FIELD = "pushIntervalTicks"
     }

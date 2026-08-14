@@ -1,12 +1,15 @@
 package rhx.lazy.core.io
 
+import net.minecraft.core.BlockPos
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.component.CustomData
+import net.minecraft.world.level.Level
 import rhx.lazy.core.displayActionBar
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -45,17 +48,21 @@ internal object ConfigurationCardSources {
         externalSources += source
     }
 
-    fun allCards(player: ServerPlayer): List<ItemStack> {
-        val inventoryCards =
-            buildList {
-                add(player.offhandItem)
-                addAll(player.inventory.items)
-            }.filter(ConfigurationCardRegistries::isCard)
-        return inventoryCards + externalSources.flatMap { it.findCards(player) }.filter(ConfigurationCardRegistries::isCard)
-    }
+    /** Every card the player carries. Order is not significant; callers that need the held card read it directly. */
+    fun allCards(player: ServerPlayer): List<ItemStack> =
+        buildList {
+            add(player.offhandItem)
+            addAll(player.inventory.items)
+            externalSources.forEach { source -> addAll(source.findCards(player)) }
+        }.filter(ConfigurationCardRegistries::isCard)
 
+    /** Blank cards never participate: they carry no intent and would otherwise make every pair ambiguous. */
     fun selectConfiguration(player: ServerPlayer): ConfigurationCardSelection {
-        val configurations = allCards(player).map(ConfigurationCardData::get).distinct()
+        val configurations =
+            allCards(player)
+                .map(ConfigurationCardData::get)
+                .filterNot(IoConfiguration::isDefault)
+                .distinct()
         return when (configurations.size) {
             0 -> ConfigurationCardSelection.Missing
             1 -> ConfigurationCardSelection.Selected(configurations.single())
@@ -74,15 +81,35 @@ internal sealed interface ConfigurationCardSelection {
     data object Ambiguous : ConfigurationCardSelection
 }
 
-internal fun applyConfigurationCardOnPlacement(
-    player: Player?,
-    blockEntity: IoManagedBlockEntity,
+/**
+ * Copies a carried card onto a freshly placed machine.
+ *
+ * A machine that restored a configuration of its own — because it was broken and replaced while
+ * configured — keeps it; the card only seeds machines that start from defaults.
+ */
+internal fun Level.applyConfigurationCardOnPlacement(
+    pos: BlockPos,
+    placer: Player?,
 ) {
-    val serverPlayer = player as? ServerPlayer ?: return
+    if (isClientSide) return
+    val serverPlayer = placer as? ServerPlayer ?: return
+    val blockEntity = getBlockEntity(pos) as? IoManagedBlockEntity ?: return
+    if (!blockEntity.storedIoConfiguration().isDefault) return
     when (val selection = ConfigurationCardSources.selectConfiguration(serverPlayer)) {
-        is ConfigurationCardSelection.Selected -> blockEntity.ioController.applyConfiguration(selection.configuration)
+        is ConfigurationCardSelection.Selected ->
+            if (!blockEntity.ioController.applyConfiguration(selection.configuration)) {
+                serverPlayer.displayActionBar("message.lazy.configuration_card.incompatible")
+            }
         ConfigurationCardSelection.Missing -> Unit
-        ConfigurationCardSelection.Ambiguous ->
-            serverPlayer.displayActionBar("message.lazy.configuration_card.ambiguous")
+        ConfigurationCardSelection.Ambiguous -> serverPlayer.displayActionBar("message.lazy.configuration_card.ambiguous")
     }
 }
+
+/**
+ * Gives a held configuration card priority over a machine's own screen.
+ *
+ * IO blocks call this first in `useItemOn`; a non-null result skips their normal handling so the
+ * card's [ConfigurationCardItem.useOn] runs instead.
+ */
+internal fun ioCardInteraction(stack: ItemStack): ItemInteractionResult? =
+    if (ConfigurationCardRegistries.isCard(stack)) ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION else null

@@ -23,4 +23,9 @@ internal abstract class ManagedBlockEntity(
     override fun getSyncStorage(): IManagedStorage = managedStorage
 
     override fun getRootStorage(): IManagedStorage = managedStorage
+
+    companion object {
+        /** Root tag LDLib writes `@Persisted` fields under; block items read stored state from it. */
+        const val MANAGED_DATA_KEY = "managed"
+    }
 }

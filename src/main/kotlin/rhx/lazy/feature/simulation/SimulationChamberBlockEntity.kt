@@ -3,6 +3,7 @@ package rhx.lazy.feature.simulation
 import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
@@ -15,18 +16,19 @@ import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.MobSpawnType
-import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.event.EventHooks
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
+import rhx.lazy.core.ManagedBlockEntity.Companion.MANAGED_DATA_KEY
 import rhx.lazy.core.io.IoAdapter
-import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
+import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.storage.LongItemStack
 import kotlin.math.min
 
@@ -54,8 +56,10 @@ internal class SimulationChamberBlockEntity(
     private val pendingFluids = mutableListOf<LongFluidStack>()
     private var batch: SimulationBatch? = null
     private var legacyBatch: LegacyBatch? = null
+    private val neighborItems = NeighborCapabilities.items(blockPos) { !isRemoved }
+    private val neighborFluids = NeighborCapabilities.fluids(blockPos) { !isRemoved }
     private val outputRouter =
-        SimulationOutputRouter(blockPos, outputs, fluids, pendingItems, pendingFluids) {
+        SimulationOutputRouter(outputs, fluids, pendingItems, pendingFluids, neighborItems, neighborFluids) {
             setChanged()
         }
 
@@ -104,15 +108,6 @@ internal class SimulationChamberBlockEntity(
 
     fun hasContents(): Boolean = inputs.any { !it.isEmpty } || outputRouter.hasOutputs || batch != null || legacyBatch != null
 
-    fun saveToItemWithoutNetwork(
-        stack: ItemStack,
-        registries: HolderLookup.Provider,
-    ) {
-        val tag = saveWithoutMetadata(registries)
-        stripIoConfiguration(tag)
-        BlockItem.setBlockEntityData(stack, type, tag)
-    }
-
     override fun saveAdditional(
         tag: CompoundTag,
         registries: HolderLookup.Provider,
@@ -134,6 +129,8 @@ internal class SimulationChamberBlockEntity(
     ) {
         super.loadAdditional(tag, registries)
         inputs.resize(INPUT_SLOTS) { ItemStack.EMPTY }
+        neighborItems.invalidate()
+        neighborFluids.invalidate()
         outputRouter.normalize()
         pendingItems.clear()
         tag.getList(PENDING_ITEMS, Tag.TAG_COMPOUND.toInt()).forEach { raw ->
@@ -150,6 +147,12 @@ internal class SimulationChamberBlockEntity(
                 null
             }
         legacyBatch = if (batch == null) LegacyBatch.parse(tag, registries) else null
+    }
+
+    override fun setRemoved() {
+        neighborItems.invalidate()
+        neighborFluids.invalidate()
+        super.setRemoved()
     }
 
     private fun migrateLegacyBatch(level: ServerLevel) {
@@ -329,10 +332,16 @@ internal class SimulationChamberBlockEntity(
 
     private inner class OutputIoAdapter : IoAdapter {
         override val capabilities = setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID)
-        override val ticksWhenPassive = true
+        override val maintainsWhenIdle = true
 
-        override fun push(configuration: IoConfiguration): IoPushResult =
-            outputRouter.route(level as? ServerLevel, configuration, ioController.outputDirections())
+        override fun maintain() = outputRouter.movePendingLocal()
+
+        override fun pushToFaces(directions: Set<Direction>): IoPushResult {
+            val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
+            return outputRouter.pushToFaces(serverLevel, directions)
+        }
+
+        override fun pushToNetwork(target: NetworkTargetRef): IoPushResult = outputRouter.pushToNetwork(target)
     }
 
     companion object {
@@ -344,7 +353,6 @@ internal class SimulationChamberBlockEntity(
         private const val BATCH_TAG = "lazySimulationBatch"
         private const val PENDING_ITEMS = "lazyPendingItems"
         private const val PENDING_FLUIDS = "lazyPendingFluids"
-        private const val MANAGED_DATA_KEY = "managed"
         private const val LEGACY_KIND_FIELD = "batchKind"
         private const val LEGACY_ID_FIELD = "batchId"
         private const val LEGACY_ENTITY_FIELD = "batchEntity"

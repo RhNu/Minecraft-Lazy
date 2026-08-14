@@ -7,6 +7,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import rhx.lazy.core.ManagedBlockEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -91,7 +92,7 @@ class ItemCopierBlockEntityTest {
         val managed =
             blockEntityData
                 .copyTag()
-                .getCompound(ItemCopierBlockEntity.MANAGED_DATA_KEY)
+                .getCompound(ManagedBlockEntity.MANAGED_DATA_KEY)
         val serializedTemplate =
             ItemStack.parseOptional(
                 registries,

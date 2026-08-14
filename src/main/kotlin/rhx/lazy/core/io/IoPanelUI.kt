@@ -8,11 +8,14 @@ import com.lowdragmc.lowdraglib2.gui.ui.column
 import com.lowdragmc.lowdraglib2.gui.ui.element
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Label
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement
 import com.lowdragmc.lowdraglib2.gui.ui.elements.button
 import com.lowdragmc.lowdraglib2.gui.ui.elements.label
 import com.lowdragmc.lowdraglib2.gui.ui.row
 import dev.vfyjxf.taffy.style.TaffyDimension
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -30,11 +33,11 @@ internal interface IoPanelModel {
 internal object IoPanelUI {
     val stylesheet = lazyId("lss/io.lss")
 
+    /** Adds a toolbar button that opens the panel in a modal dialog. */
     fun addIoControl(
         parent: UIContainer<*, *>,
         model: IoPanelModel,
     ): (UIElement) -> Unit {
-        lateinit var rootElement: UIElement
         val panel = createPanel(model)
         val dialog =
             Dialog()
@@ -50,17 +53,17 @@ internal object IoPanelUI {
         dialog.addContent(panel.element)
         dialog.setDisplay(false)
 
-        fun closeDialog() {
-            dialog.setDisplay(false)
-            rootElement.getModularUI()?.apply {
-                clearFocus()
-                shouldCloseOnEsc(true)
-                shouldCloseOnKeyInventory(true)
+        fun setModalCapture(active: Boolean) {
+            dialog.getModularUI()?.apply {
+                if (!active) clearFocus()
+                shouldCloseOnEsc(!active)
+                shouldCloseOnKeyInventory(!active)
             }
         }
         dialog.addEventListener("keyDown") { event ->
             if (event.keyCode == KEY_E || event.keyCode == KEY_ESCAPE) {
-                closeDialog()
+                dialog.setDisplay(false)
+                setModalCapture(false)
                 event.stopPropagation()
             }
         }
@@ -72,10 +75,7 @@ internal object IoPanelUI {
                     cls = { +"lazy-io__trigger" }
                     style = { tooltips(Component.translatable("gui.lazy.io.open")) }
                     onClick = {
-                        rootElement.getModularUI()?.apply {
-                            shouldCloseOnEsc(false)
-                            shouldCloseOnKeyInventory(false)
-                        }
+                        setModalCapture(true)
                         dialog.setDisplay(true)
                         dialog.focus()
                     }
@@ -84,12 +84,12 @@ internal object IoPanelUI {
             .apply { addPreIcon(ItemStackTexture(ItemStack(Items.COMPARATOR))) }
 
         return { root ->
-            rootElement = root
             root.addChild(dialog)
             panel.install(root)
         }
     }
 
+    /** Embeds the panel directly, for screens whose only content is the IO configuration. */
     fun addIoPanel(
         parent: UIContainer<*, *>,
         model: IoPanelModel,
@@ -103,8 +103,11 @@ internal object IoPanelUI {
         val tabButtons = mutableMapOf<IoMode, UIElement>()
         val contentElements = mutableMapOf<IoMode, UIElement>()
         val sideButtons = mutableMapOf<RelativeSide, UIElement>()
-        val providerButtons = mutableMapOf<net.minecraft.resources.ResourceLocation, UIElement>()
+        val providerButtons = mutableMapOf<ResourceLocation, UIElement>()
         lateinit var ejectButton: UIElement
+        lateinit var statusLabel: Label
+        lateinit var resumeButton: UIElement
+        lateinit var disconnectButton: UIElement
         val providers = NetworkOutputProviders.all()
 
         val panelRoot =
@@ -217,6 +220,45 @@ internal object IoPanelUI {
                                     ).element.apply { addPreIcon(ItemStackTexture(provider.icon())) }
                             }
                         }
+                        statusLabel =
+                            label(
+                                {
+                                    text = Component.empty()
+                                    cls = { +"lazy-io__network-status" }
+                                },
+                            ).element
+                        row(
+                            {
+                                cls = { +"lazy-io__network-actions" }
+                            },
+                        ) {
+                            resumeButton =
+                                button(
+                                    {
+                                        text = Component.translatable("gui.lazy.io.network.resume")
+                                        cls = { +"lazy-io__network-action" }
+                                        style = { tooltips(Component.translatable("gui.lazy.io.network.resume.tooltip")) }
+                                        onServerClick = { event ->
+                                            if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                                model.editor?.resumeNetwork()
+                                            }
+                                        }
+                                    },
+                                ).element
+                            disconnectButton =
+                                button(
+                                    {
+                                        text = Component.translatable("gui.lazy.io.network.disconnect")
+                                        cls = { +"lazy-io__network-action" }
+                                        style = { tooltips(Component.translatable("gui.lazy.io.network.disconnect.tooltip")) }
+                                        onServerClick = { event ->
+                                            if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                                model.editor?.clearNetworkTarget()
+                                            }
+                                        }
+                                    },
+                                ).element
+                        }
                     }.element
             }
 
@@ -231,6 +273,9 @@ internal object IoPanelUI {
                 bindSideMode(root, button, side) { model.editor?.configuration?.side(side) ?: SideIoMode.NONE }
             }
             bindSelected(root, ejectButton) { model.editor?.configuration?.autoEject == true }
+            bindText(root, statusLabel) { networkStatus(model.editor) }
+            bindDisplay(root, resumeButton) { model.editor?.networkPaused == true }
+            bindDisplay(root, disconnectButton) { model.editor?.configuration?.networkTarget != null }
             providerButtons.forEach { (providerId, button) ->
                 bindSelected(root, button) {
                     val configuration = model.editor?.configuration
@@ -340,6 +385,18 @@ internal object IoPanelUI {
         root.addChild(value)
     }
 
+    private fun bindText(
+        root: UIElement,
+        element: TextElement,
+        text: () -> Component,
+    ) {
+        val value = BindableValue<Component>(Component.empty())
+        value.setDisplay(false)
+        value.registerValueListener { component -> element.setText(component) }
+        value.bind(DataBindingBuilder.componentS2C(text).build())
+        root.addChild(value)
+    }
+
     private fun selectNetwork(
         model: IoPanelModel,
         provider: NetworkOutputProvider,
@@ -362,6 +419,13 @@ internal object IoPanelUI {
         }
     }
 
+    private fun networkStatus(editor: IoConfigurationEditor?): Component {
+        val configuration = editor?.configuration ?: return Component.empty()
+        if (editor.networkPaused) return Component.translatable("gui.lazy.io.network_paused")
+        val target = configuration.networkTarget ?: return Component.translatable("gui.lazy.io.network.unbound")
+        return Component.translatable("gui.lazy.io.network.bound", configuration.networkTargetName())
+    }
+
     private fun providerTooltip(
         provider: NetworkOutputProvider,
         editor: IoConfigurationEditor?,
@@ -374,10 +438,6 @@ internal object IoPanelUI {
                 if (editor?.capabilities?.none { it in provider.capabilities } == true) {
                     append("\n")
                     append(Component.translatable("gui.lazy.io.provider.incompatible"))
-                }
-                if (editor?.networkPaused == true) {
-                    append("\n")
-                    append(Component.translatable("gui.lazy.io.network_paused"))
                 }
             }
 

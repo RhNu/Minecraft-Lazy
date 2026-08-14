@@ -298,7 +298,6 @@ internal object BufferUI {
         ): FluidStack = FluidStack.EMPTY
     }
 
-    private const val LEFT_MOUSE_BUTTON = 0
     private const val ITEM_ROW_COUNT = 2
     private const val ITEM_SLOTS_PER_ROW = BufferBlockEntity.ITEM_SLOT_COUNT / ITEM_ROW_COUNT
 }

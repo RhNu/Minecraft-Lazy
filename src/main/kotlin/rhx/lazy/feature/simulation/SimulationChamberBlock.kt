@@ -5,7 +5,9 @@ import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -25,8 +27,8 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.phys.BlockHitResult
 import rhx.lazy.core.blockEntityOrNull
-import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.applyConfigurationCardOnPlacement
+import rhx.lazy.core.io.ioCardInteraction
 import rhx.lazy.core.serverTicker
 import rhx.lazy.core.sidedUseResult
 
@@ -68,9 +70,7 @@ internal class SimulationChamberBlock :
         stack: ItemStack,
     ) {
         super.setPlacedBy(level, pos, state, placer, stack)
-        if (!level.isClientSide) {
-            (level.getBlockEntity(pos) as? IoManagedBlockEntity)?.let { applyConfigurationCardOnPlacement(placer as? Player, it) }
-        }
+        level.applyConfigurationCardOnPlacement(pos, placer as? Player)
     }
 
     override fun onRemove(
@@ -83,7 +83,9 @@ internal class SimulationChamberBlock :
         if (!level.isClientSide && state.block !== newState.block) {
             level.blockEntityOrNull(pos, SimulationRegistries.blockEntity.get())?.let { blockEntity ->
                 val drop = ItemStack(SimulationRegistries.item.get())
-                if (blockEntity.hasContents()) blockEntity.saveToItemWithoutNetwork(drop, level.registryAccess())
+                if (blockEntity.hasContents() || !blockEntity.ioController.configuration.isDefault) {
+                    blockEntity.saveToItem(drop, level.registryAccess())
+                }
                 popResource(level, pos, drop)
             }
         }
@@ -104,6 +106,16 @@ internal class SimulationChamberBlock :
                 BlockUIMenuType.openUI(player as ServerPlayer, pos)
             },
         )
+
+    override fun useItemOn(
+        stack: ItemStack,
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hitResult: BlockHitResult,
+    ): ItemInteractionResult = ioCardInteraction(stack) ?: ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
 
     override fun createUI(holder: BlockUIMenuType.BlockUIHolder): ModularUI = SimulationChamberUI.create(holder)
 

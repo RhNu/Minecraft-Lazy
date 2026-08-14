@@ -27,8 +27,8 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.phys.BlockHitResult
 import rhx.lazy.core.blockEntityOrNull
-import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.applyConfigurationCardOnPlacement
+import rhx.lazy.core.io.ioCardInteraction
 import rhx.lazy.core.sidedItemUseResult
 import rhx.lazy.core.sidedUseResult
 
@@ -75,9 +75,7 @@ internal class EssenceConverterBlock :
         stack: ItemStack,
     ) {
         super.setPlacedBy(level, pos, state, placer, stack)
-        if (!level.isClientSide) {
-            (level.getBlockEntity(pos) as? IoManagedBlockEntity)?.let { applyConfigurationCardOnPlacement(placer as? Player, it) }
-        }
+        level.applyConfigurationCardOnPlacement(pos, placer as? Player)
     }
 
     override fun <T : BlockEntity> getTicker(
@@ -102,8 +100,8 @@ internal class EssenceConverterBlock :
             val blockEntity = level.blockEntityOrNull(pos, EssenceConverterRegistries.blockEntity.get())
             if (blockEntity != null) {
                 val dropped = ItemStack(EssenceConverterRegistries.item.get())
-                if (blockEntity.hasContents()) {
-                    blockEntity.saveContentsToItem(dropped, level.registryAccess())
+                if (blockEntity.hasContents() || !blockEntity.ioController.configuration.isDefault) {
+                    blockEntity.saveToItem(dropped, level.registryAccess())
                 }
                 popResource(level, pos, dropped)
             }
@@ -127,7 +125,7 @@ internal class EssenceConverterBlock :
         player: Player,
         hand: InteractionHand,
         hitResult: BlockHitResult,
-    ): ItemInteractionResult = level.sidedItemUseResult(openUi(level, pos, player))
+    ): ItemInteractionResult = ioCardInteraction(stack) ?: level.sidedItemUseResult(openUi(level, pos, player))
 
     override fun createUI(holder: BlockUIMenuType.BlockUIHolder): ModularUI = EssenceConverterUI.create(holder)
 

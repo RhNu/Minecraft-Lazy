@@ -19,24 +19,21 @@ internal abstract class IoManagedBlockEntity(
 
     val ioController = IoController(this)
 
-    protected fun installIoAdapter(adapter: IoAdapter): IoController {
+    protected fun installIoAdapter(adapter: IoAdapter) {
         ioController.install(adapter)
-        return ioController
     }
 
-    protected fun stripIoConfiguration(tag: CompoundTag) {
-        tag.remove(IO_CONFIGURATION_TAG)
-        tag.remove(IO_NETWORK_PAUSED_TAG)
-    }
-
-    internal fun storedIoConfiguration(): IoConfiguration = ioConfiguration.copy(networkTarget = ioConfiguration.networkTarget?.copy())
+    /**
+     * The live configuration. Callers must treat it — and the opaque network target inside it — as
+     * read-only; [updateIoConfiguration] is the only way to change it.
+     */
+    internal fun storedIoConfiguration(): IoConfiguration = ioConfiguration
 
     internal fun storedIoNetworkPaused(): Boolean = ioNetworkPaused
 
     internal fun updateIoConfiguration(configuration: IoConfiguration) {
-        val copied = configuration.copy(networkTarget = configuration.networkTarget?.copy())
-        if (ioConfiguration == copied) return
-        ioConfiguration = copied
+        if (ioConfiguration == configuration) return
+        ioConfiguration = configuration
         setChanged()
         invalidateCapabilities()
     }
@@ -52,7 +49,7 @@ internal abstract class IoManagedBlockEntity(
         registries: HolderLookup.Provider,
     ) {
         super.saveAdditional(tag, registries)
-        tag.put(IO_CONFIGURATION_TAG, ioConfiguration.save())
+        if (!ioConfiguration.isDefault) tag.put(IO_CONFIGURATION_TAG, ioConfiguration.save())
         if (ioNetworkPaused) tag.putBoolean(IO_NETWORK_PAUSED_TAG, true)
     }
 
@@ -67,8 +64,9 @@ internal abstract class IoManagedBlockEntity(
             } else {
                 IoConfiguration.DEFAULT
             }
-        ioNetworkPaused = tag.getBoolean(IO_NETWORK_PAUSED_TAG)
-        ioController.normalize()
+        ioNetworkPaused = ioConfiguration.mode == IoMode.NETWORK && tag.getBoolean(IO_NETWORK_PAUSED_TAG)
+        ioController.resetBackoff()
+        invalidateCapabilities()
     }
 
     private companion object {
@@ -80,6 +78,11 @@ internal abstract class IoManagedBlockEntity(
 internal interface IoConfigurationEditor {
     val configuration: IoConfiguration
     val capabilities: Set<NetworkInsertCapability>
+
+    /** False for machines that can only emit, so the panel hides the input face states. */
+    val acceptsInput: Boolean
+        get() = true
+
     val networkPaused: Boolean
         get() = false
 
@@ -90,6 +93,10 @@ internal interface IoConfigurationEditor {
     fun toggleAutoEject()
 
     fun setNetworkTarget(target: NetworkTargetRef): Boolean
+
+    fun clearNetworkTarget()
+
+    fun resumeNetwork() = Unit
 }
 
 internal class IoController(
@@ -113,31 +120,24 @@ internal class IoController(
     override val capabilities: Set<NetworkInsertCapability>
         get() = adapter?.capabilities ?: emptySet()
 
+    override val acceptsInput: Boolean
+        get() = adapter?.acceptsInput != false
+
     internal fun install(newAdapter: IoAdapter) {
         adapter = newAdapter
-        normalize()
     }
 
-    internal fun normalize() {
-        val current = configuration
-        val normalizedSides = RelativeSide.entries.associateWith(current::side)
-        if (current.sides != normalizedSides) {
-            update(current.copy(sides = normalizedSides))
-        }
-        if (current.mode != IoMode.NETWORK) {
-            blockEntity.updateIoNetworkPaused(false)
-        }
+    internal fun resetBackoff() {
+        retryTicks = 0
     }
 
     override fun setMode(mode: IoMode) {
         update(configuration.copy(mode = mode))
-        blockEntity.updateIoNetworkPaused(false)
-        retryTicks = 0
     }
 
     override fun cycleSide(side: RelativeSide) {
         val current = configuration
-        update(current.withSide(side, current.side(side).next()))
+        update(current.withSide(side, current.side(side).next(acceptsInput)))
     }
 
     override fun toggleAutoEject() {
@@ -146,60 +146,86 @@ internal class IoController(
     }
 
     override fun setNetworkTarget(target: NetworkTargetRef): Boolean {
-        val currentAdapter = adapter ?: return false
-        if (!currentAdapter.supportsNetworkTarget(target)) return false
-        update(configuration.copy(mode = IoMode.NETWORK, networkTarget = target.copy()))
-        blockEntity.updateIoNetworkPaused(false)
-        retryTicks = 0
+        if (adapter?.supportsNetworkTarget(target) != true) return false
+        update(configuration.copy(mode = IoMode.NETWORK, networkTarget = target.deepCopy()))
         return true
     }
 
-    fun applyConfiguration(configuration: IoConfiguration): Boolean {
-        val target = configuration.networkTarget
-        if (configuration.mode == IoMode.NETWORK && target != null) {
-            val provider = NetworkOutputProviders.get(target.providerId)
-            if (provider != null && !checkNotNull(adapter).supportsNetworkTarget(target)) return false
-        }
-        update(configuration)
+    override fun clearNetworkTarget() {
+        update(configuration.copy(mode = IoMode.PASSIVE, networkTarget = null))
+    }
+
+    override fun resumeNetwork() {
         blockEntity.updateIoNetworkPaused(false)
         retryTicks = 0
+    }
+
+    /**
+     * Copies a full template onto this machine. A network target whose provider is currently absent
+     * is preserved so the binding survives a temporarily missing mod; one the machine can never use
+     * is rejected outright.
+     */
+    fun applyConfiguration(configuration: IoConfiguration): Boolean {
+        val target = configuration.networkTarget
+        if (configuration.mode == IoMode.NETWORK && target != null && NetworkOutputProviders.get(target.providerId) != null) {
+            if (adapter?.supportsNetworkTarget(target) != true) return false
+        }
+        update(configuration.deepCopy())
         return true
     }
 
     fun sideMode(direction: Direction?): SideIoMode {
         if (direction == null) return SideIoMode.BOTH
-        return when (configuration.mode) {
+        val current = configuration
+        return when (current.mode) {
             IoMode.PASSIVE -> SideIoMode.BOTH
-            IoMode.FACE -> configuration.side(RelativeSide.fromWorldDirection(blockEntity.blockState, direction))
+            IoMode.FACE -> current.side(RelativeSide.fromWorldDirection(blockEntity.blockState, direction))
             IoMode.NETWORK -> SideIoMode.INPUT
         }
     }
 
-    fun outputDirections(): Set<Direction> =
-        if (configuration.mode != IoMode.FACE || !configuration.autoEject) {
-            emptySet()
-        } else {
-            RelativeSide.entries
-                .filter { configuration.side(it).allowsOutput }
-                .mapTo(linkedSetOf()) { it.toWorldDirection(blockEntity.blockState) }
-        }
+    fun outputDirections(): Set<Direction> {
+        val current = configuration
+        if (current.mode != IoMode.FACE || !current.autoEject) return emptySet()
+        return RelativeSide.entries
+            .filter { current.side(it).allowsOutput }
+            .mapTo(linkedSetOf()) { it.toWorldDirection(blockEntity.blockState) }
+    }
 
     fun tick() {
         val currentAdapter = adapter ?: return
         val current = configuration
-        if (current.mode == IoMode.PASSIVE && !currentAdapter.ticksWhenPassive) return
+        when (current.mode) {
+            IoMode.PASSIVE -> if (currentAdapter.maintainsWhenIdle) currentAdapter.maintain()
+            IoMode.FACE -> {
+                if (currentAdapter.maintainsWhenIdle) currentAdapter.maintain()
+                val directions = outputDirections()
+                if (directions.isEmpty()) return
+                if (!readyToPush(currentAdapter)) return
+                handle(currentAdapter.pushToFaces(directions))
+            }
+            IoMode.NETWORK -> {
+                val target = current.networkTarget ?: return
+                if (networkPaused) return
+                if (!readyToPush(currentAdapter)) return
+                handle(currentAdapter.pushToNetwork(target))
+            }
+        }
+    }
+
+    private fun readyToPush(adapter: IoAdapter): Boolean {
         if (retryTicks > 0) {
             retryTicks--
-            return
+            return false
         }
-        if (current.mode == IoMode.NETWORK && (current.networkTarget == null || networkPaused)) return
+        return adapter.readyToPush()
+    }
 
-        when (currentAdapter.push(current)) {
+    private fun handle(result: IoPushResult) {
+        when (result) {
             IoPushResult.Success -> retryTicks = 0
             IoPushResult.Retry -> retryTicks = NETWORK_RETRY_INTERVAL - 1
-            IoPushResult.TargetMissing -> {
-                setMode(IoMode.PASSIVE)
-            }
+            IoPushResult.TargetMissing -> clearNetworkTarget()
             IoPushResult.OutcomeUnknown -> {
                 blockEntity.updateIoNetworkPaused(true)
                 retryTicks = 0
@@ -209,6 +235,8 @@ internal class IoController(
 
     private fun update(configuration: IoConfiguration) {
         blockEntity.updateIoConfiguration(configuration)
+        blockEntity.updateIoNetworkPaused(false)
+        retryTicks = 0
     }
 
     private companion object {

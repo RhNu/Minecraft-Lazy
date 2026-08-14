@@ -5,29 +5,23 @@ import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
-import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.component.CustomData
 import net.minecraft.world.level.block.state.BlockState
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache
-import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.IItemHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper
 import rhx.lazy.core.io.IoAdapter
-import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkOutputRouter
+import rhx.lazy.core.io.NetworkOffer
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
-import rhx.lazy.core.io.NetworkTransferResult
-import java.util.EnumMap
+import rhx.lazy.core.io.offer
 
 internal class EssenceConverterBlockEntity(
     pos: BlockPos,
@@ -50,14 +44,11 @@ internal class EssenceConverterBlockEntity(
     val outputHandler: IItemHandlerModifiable = OutputHandler()
     val combinedHandler: IItemHandlerModifiable = CombinedInvWrapper(inputHandler, outputHandler)
 
-    private val neighborCaches =
-        EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction?>>(Direction::class.java)
+    private val neighborItems = NeighborCapabilities.items(blockPos) { !isRemoved }
     private var stateRepairPendingPersistence = false
 
-    private val ioAdapter = EssenceIoAdapter()
-
     init {
-        installIoAdapter(ioAdapter)
+        installIoAdapter(EssenceIoAdapter())
     }
 
     val targetTier: EssenceTier?
@@ -96,28 +87,17 @@ internal class EssenceConverterBlockEntity(
         ioController.tick()
     }
 
-    fun saveContentsToItem(
-        stack: ItemStack,
-        registries: HolderLookup.Provider,
-    ) {
-        saveToItem(stack, registries)
-        val data = stack.get(DataComponents.BLOCK_ENTITY_DATA) ?: return
-        val root = data.copyTag()
-        stripIoConfiguration(root)
-        stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(root))
-    }
-
     override fun loadAdditional(
         tag: CompoundTag,
         registries: HolderLookup.Provider,
     ) {
         super.loadAdditional(tag, registries)
-        neighborCaches.clear()
+        neighborItems.invalidate()
         stateRepairPendingPersistence = normalizeState(markChanges = false)
     }
 
     override fun setRemoved() {
-        neighborCaches.clear()
+        neighborItems.invalidate()
         super.setRemoved()
     }
 
@@ -152,58 +132,6 @@ internal class EssenceConverterBlockEntity(
         if (remainderChanged) markDirty(STORED_REMAINDER_FIELD)
     }
 
-    private fun pushToFaces(directions: Set<Direction>): IoPushResult {
-        if (directions.isEmpty()) return IoPushResult.Success
-        val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
-        val tier = targetTier ?: return IoPushResult.Success
-        directions.forEach { direction ->
-            val target = neighborCache(serverLevel, direction).getCapability() ?: return@forEach
-            val offered = storedOutput.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            if (offered <= 0) return@forEach
-            val stack = tier.createStack(offered)
-            if (stack.isEmpty) return@forEach
-            val inserted = EssenceOutputPusher.pushMaximum(target, stack)
-            if (inserted > 0) applyLedger(currentLedger().removeOutput(inserted.toLong()))
-        }
-        return IoPushResult.Success
-    }
-
-    private fun pushToNetwork(target: NetworkTargetRef?): IoPushResult {
-        val networkTarget = target ?: return IoPushResult.TargetMissing
-        val tier = targetTier ?: return IoPushResult.Success
-        val template = tier.createStack()
-        if (template.isEmpty || storedOutput <= 0L) return IoPushResult.Success
-        val result = NetworkOutputRouter.insert(networkTarget, NetworkPayload.Items(template, storedOutput), false)
-        return when (result) {
-            is NetworkTransferResult.Success -> {
-                val remainder = result.remainder.coerceIn(0L, storedOutput)
-                val inserted = storedOutput - remainder
-                if (inserted > 0L) applyLedger(currentLedger().removeOutput(inserted))
-                IoPushResult.Success
-            }
-
-            NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
-            NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
-            NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
-            NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
-        }
-    }
-
-    private fun neighborCache(
-        level: ServerLevel,
-        direction: Direction,
-    ): BlockCapabilityCache<IItemHandler, Direction?> =
-        neighborCaches.getOrPut(direction) {
-            BlockCapabilityCache.create<IItemHandler, Direction?>(
-                Capabilities.ItemHandler.BLOCK,
-                level,
-                blockPos.relative(direction),
-                direction.opposite,
-                { !isRemoved },
-                {},
-            )
-        }
-
     private fun persistStateRepairs() {
         if (!stateRepairPendingPersistence) return
         stateRepairPendingPersistence = false
@@ -215,12 +143,33 @@ internal class EssenceConverterBlockEntity(
     private inner class EssenceIoAdapter : IoAdapter {
         override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
 
-        override fun push(configuration: IoConfiguration): IoPushResult =
-            when (configuration.mode) {
-                IoMode.FACE -> pushToFaces(ioController.outputDirections())
-                IoMode.NETWORK -> pushToNetwork(configuration.networkTarget)
-                else -> IoPushResult.Success
+        override fun pushToFaces(directions: Set<Direction>): IoPushResult {
+            val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
+            val tier = targetTier ?: return IoPushResult.Success
+            directions.forEach { direction ->
+                val target = neighborItems[serverLevel, direction] ?: return@forEach
+                val offered = storedOutput.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                if (offered <= 0) return@forEach
+                val stack = tier.createStack(offered)
+                if (stack.isEmpty) return@forEach
+                val inserted = EssenceOutputPusher.pushMaximum(target, stack)
+                if (inserted > 0) applyLedger(currentLedger().removeOutput(inserted.toLong()))
             }
+            return IoPushResult.Success
+        }
+
+        override fun pushToNetwork(target: NetworkTargetRef): IoPushResult {
+            val tier = targetTier ?: return IoPushResult.Success
+            val template = tier.createStack()
+            if (template.isEmpty || storedOutput <= 0L) return IoPushResult.Success
+            return when (val offer = target.offer(NetworkPayload.Items(template, storedOutput), storedOutput)) {
+                is NetworkOffer.Accepted -> {
+                    if (offer.accepted > 0L) applyLedger(currentLedger().removeOutput(offer.accepted))
+                    IoPushResult.Success
+                }
+                is NetworkOffer.Rejected -> offer.push
+            }
+        }
     }
 
     private inner class InputHandler : IItemHandlerModifiable {
@@ -336,7 +285,6 @@ internal class EssenceConverterBlockEntity(
     }
 
     companion object {
-        internal const val MANAGED_DATA_KEY = "managed"
         internal const val TARGET_TIER_FIELD = "targetTierName"
         internal const val STORED_OUTPUT_FIELD = "storedOutput"
         internal const val STORED_REMAINDER_FIELD = "storedRemainder"

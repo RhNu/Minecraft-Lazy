@@ -64,8 +64,12 @@ internal object ConfigurationCardUI {
         override fun setNetworkTarget(target: NetworkTargetRef): Boolean {
             val provider = NetworkOutputProviders.get(target.providerId) ?: return false
             if (!provider.isTargetValid(target)) return false
-            update(configuration.copy(mode = IoMode.NETWORK, networkTarget = target.copy()))
+            update(configuration.copy(mode = IoMode.NETWORK, networkTarget = target.deepCopy()))
             return true
+        }
+
+        override fun clearNetworkTarget() {
+            update(configuration.copy(mode = IoMode.PASSIVE, networkTarget = null))
         }
 
         private fun update(configuration: IoConfiguration) {

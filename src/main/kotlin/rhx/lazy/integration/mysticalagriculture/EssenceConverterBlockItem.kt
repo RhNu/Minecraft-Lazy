@@ -8,6 +8,7 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.block.Block
+import rhx.lazy.core.ManagedBlockEntity
 
 internal class EssenceConverterBlockItem(
     block: Block,
@@ -21,7 +22,7 @@ internal class EssenceConverterBlockItem(
     ) {
         val data = stack.get(DataComponents.BLOCK_ENTITY_DATA)
         if (data != null && !data.isEmpty) {
-            val managed = data.copyTag().getCompound(EssenceConverterBlockEntity.MANAGED_DATA_KEY)
+            val managed = data.copyTag().getCompound(ManagedBlockEntity.MANAGED_DATA_KEY)
             val tier =
                 EssenceTier.fromSerializedName(
                     managed.getString(EssenceConverterBlockEntity.TARGET_TIER_FIELD),

@@ -21,13 +21,15 @@ internal data class AeStoragePayload(
 internal object AeStoragePayloadAdapters {
     private val adapters = linkedMapOf<NetworkInsertCapability, AeStoragePayloadAdapter>()
 
-    val capabilities: Set<NetworkInsertCapability>
-        get() = adapters.keys.toSet()
+    /** Snapshot rebuilt on registration; the router reads this on every push. */
+    var capabilities: Set<NetworkInsertCapability> = emptySet()
+        private set
 
     fun register(adapter: AeStoragePayloadAdapter) {
         check(adapters.putIfAbsent(adapter.capability, adapter) == null) {
             "An AE storage adapter is already registered for ${adapter.capability.id}"
         }
+        capabilities = adapters.keys.toSet()
     }
 
     fun convert(payload: NetworkPayload): AeStoragePayload? = adapters[payload.capability]?.convert(payload)

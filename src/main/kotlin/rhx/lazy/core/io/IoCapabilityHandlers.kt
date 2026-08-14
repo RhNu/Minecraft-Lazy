@@ -1,9 +1,72 @@
 package rhx.lazy.core.io
 
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.entity.BlockEntityType
+import net.neoforged.neoforge.capabilities.Capabilities
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
+import net.neoforged.neoforge.energy.IEnergyStorage
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandler
+
+/**
+ * Single entry point for exposing a machine's handlers through the side configuration.
+ *
+ * Machines declare only which handler serves inbound and outbound traffic; the gating, the null
+ * result for unusable sides and the live [SideIoMode] lookup live here.
+ */
+internal object IoCapabilityRegistration {
+    fun <T : IoManagedBlockEntity> items(
+        event: RegisterCapabilitiesEvent,
+        type: BlockEntityType<T>,
+        input: (T) -> IItemHandler?,
+        output: (T) -> IItemHandler?,
+    ) {
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, type) { blockEntity, side ->
+            val inputHandler = input(blockEntity)
+            val outputHandler = output(blockEntity)
+            if (!isUsable(blockEntity.ioController.sideMode(side), inputHandler != null, outputHandler != null)) {
+                null
+            } else {
+                IoItemHandler(inputHandler, outputHandler) { blockEntity.ioController.sideMode(side) }
+            }
+        }
+    }
+
+    fun <T : IoManagedBlockEntity> fluids(
+        event: RegisterCapabilitiesEvent,
+        type: BlockEntityType<T>,
+        input: (T) -> IFluidHandler?,
+        output: (T) -> IFluidHandler?,
+    ) {
+        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, type) { blockEntity, side ->
+            val inputHandler = input(blockEntity)
+            val outputHandler = output(blockEntity)
+            if (!isUsable(blockEntity.ioController.sideMode(side), inputHandler != null, outputHandler != null)) {
+                null
+            } else {
+                IoFluidHandler(inputHandler, outputHandler) { blockEntity.ioController.sideMode(side) }
+            }
+        }
+    }
+
+    /** Energy has no per-slot structure, so the storage is exposed whole on any output-capable side. */
+    fun <T : IoManagedBlockEntity> energyOutput(
+        event: RegisterCapabilitiesEvent,
+        type: BlockEntityType<T>,
+        storage: (T) -> IEnergyStorage?,
+    ) {
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, type) { blockEntity, side ->
+            storage(blockEntity).takeIf { blockEntity.ioController.sideMode(side).allowsOutput }
+        }
+    }
+
+    private fun isUsable(
+        sideMode: SideIoMode,
+        hasInput: Boolean,
+        hasOutput: Boolean,
+    ): Boolean = (sideMode.allowsInput && hasInput) || (sideMode.allowsOutput && hasOutput)
+}
 
 internal class IoItemHandler(
     private val input: IItemHandler?,

@@ -8,9 +8,8 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
-import rhx.lazy.core.io.IoConfiguration
-import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputProvider
 import rhx.lazy.core.io.NetworkOutputProviders
@@ -30,7 +29,7 @@ class SimulationOutputRouterTest {
         val fixture = Fixture()
         fixture.router.enqueue(ItemStack(Items.DIAMOND), 1_100)
 
-        fixture.router.route(null, IoConfiguration.DEFAULT, emptySet())
+        fixture.router.movePendingLocal()
 
         assertEquals(1_024, fixture.items.sumOf(ItemStack::getCount))
         assertEquals(76, fixture.pendingItems.single().count)
@@ -42,7 +41,7 @@ class SimulationOutputRouterTest {
         val fixture = Fixture()
         fixture.router.enqueue(FluidStack(Fluids.WATER, 1), 300_000)
 
-        fixture.router.route(null, IoConfiguration.DEFAULT, emptySet())
+        fixture.router.movePendingLocal()
 
         assertEquals(300_000, fixture.fluids.single { !it.isEmpty }.amount)
         assertTrue(fixture.pendingFluids.isEmpty())
@@ -53,7 +52,7 @@ class SimulationOutputRouterTest {
         val fixture = Fixture()
         fixture.router.enqueue(ItemStack(Items.DIAMOND), 130)
 
-        fixture.router.route(null, IoConfiguration.DEFAULT, emptySet())
+        fixture.router.movePendingLocal()
 
         assertFalse(fixture.router.hasPending)
         assertTrue(fixture.router.hasOutputs)
@@ -66,7 +65,7 @@ class SimulationOutputRouterTest {
         fixture.router.enqueue(FluidStack(Fluids.WATER, 1), 1_000)
         fixture.router.enqueue(FluidStack(Fluids.LAVA, 1), 2_000)
 
-        fixture.router.route(null, IoConfiguration.DEFAULT, emptySet())
+        fixture.router.movePendingLocal()
 
         assertEquals(listOf(1_000, 2_000), fixture.fluids.filterNot(FluidStack::isEmpty).map(FluidStack::getAmount))
         assertTrue(fixture.pendingFluids.isEmpty())
@@ -78,14 +77,7 @@ class SimulationOutputRouterTest {
         val provider = TestProvider("idle") { NetworkTransferResult.Success(0) }
         NetworkOutputProviders.register(provider)
 
-        assertEquals(
-            IoPushResult.Success,
-            fixture.router.route(
-                null,
-                IoConfiguration(mode = IoMode.NETWORK, networkTarget = provider.target()),
-                emptySet(),
-            ),
-        )
+        assertEquals(IoPushResult.Success, fixture.router.pushToNetwork(provider.target()))
         assertFalse(fixture.changed)
     }
 
@@ -107,14 +99,7 @@ class SimulationOutputRouterTest {
         fixture.router.enqueue(ItemStack(Items.EMERALD), 10)
         fixture.changed = false
 
-        assertEquals(
-            IoPushResult.TargetMissing,
-            fixture.router.route(
-                null,
-                IoConfiguration(mode = IoMode.NETWORK, networkTarget = provider.target()),
-                emptySet(),
-            ),
-        )
+        assertEquals(IoPushResult.TargetMissing, fixture.router.pushToNetwork(provider.target()))
         assertTrue(fixture.changed)
         assertEquals(9, fixture.pendingItems.first().count)
     }
@@ -138,7 +123,14 @@ class SimulationOutputRouterTest {
         val pendingFluids = mutableListOf<LongFluidStack>()
         var changed = false
         val router =
-            SimulationOutputRouter(BlockPos.ZERO, items, fluids, pendingItems, pendingFluids) {
+            SimulationOutputRouter(
+                items,
+                fluids,
+                pendingItems,
+                pendingFluids,
+                NeighborCapabilities.items(BlockPos.ZERO) { true },
+                NeighborCapabilities.fluids(BlockPos.ZERO) { true },
+            ) {
                 changed = true
             }
     }

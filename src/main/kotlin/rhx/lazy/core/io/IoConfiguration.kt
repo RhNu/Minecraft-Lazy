@@ -27,7 +27,14 @@ internal enum class SideIoMode {
     val allowsOutput: Boolean
         get() = this == OUTPUT || this == BOTH
 
-    fun next(): SideIoMode = entries[(ordinal + 1) % entries.size]
+    /** Machines that never accept an inbound transfer skip the input-capable states while cycling. */
+    fun next(allowInput: Boolean = true): SideIoMode {
+        var candidate = entries[(ordinal + 1) % entries.size]
+        while (!allowInput && candidate.allowsInput) {
+            candidate = entries[(candidate.ordinal + 1) % entries.size]
+        }
+        return candidate
+    }
 }
 
 internal enum class RelativeSide {
@@ -39,43 +46,65 @@ internal enum class RelativeSide {
     BACK,
     ;
 
-    fun toWorldDirection(state: BlockState): Direction {
-        val front =
-            if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
-                state.getValue(BlockStateProperties.HORIZONTAL_FACING)
-            } else {
-                Direction.NORTH
-            }
-        return when (this) {
+    fun toWorldDirection(state: BlockState): Direction =
+        when (this) {
             TOP -> Direction.UP
             BOTTOM -> Direction.DOWN
-            FRONT -> front
-            BACK -> front.opposite
-            LEFT -> front.counterClockWise
-            RIGHT -> front.clockWise
+            FRONT -> frontOf(state)
+            BACK -> frontOf(state).opposite
+            LEFT -> frontOf(state).counterClockWise
+            RIGHT -> frontOf(state).clockWise
         }
-    }
 
     companion object {
         fun fromWorldDirection(
             state: BlockState,
             direction: Direction,
-        ): RelativeSide = entries.first { it.toWorldDirection(state) == direction }
+        ): RelativeSide {
+            if (direction == Direction.UP) return TOP
+            if (direction == Direction.DOWN) return BOTTOM
+            val front = frontOf(state)
+            return when (direction) {
+                front -> FRONT
+                front.opposite -> BACK
+                front.counterClockWise -> LEFT
+                else -> RIGHT
+            }
+        }
+
+        private fun frontOf(state: BlockState): Direction =
+            if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
+                state.getValue(BlockStateProperties.HORIZONTAL_FACING)
+            } else {
+                Direction.NORTH
+            }
     }
 }
 
+/**
+ * Immutable IO settings shared by every machine and by the configuration card.
+ *
+ * Instances are treated as values: [networkTarget] and its opaque payload must never be mutated in
+ * place. Deep copies are taken only where a tag crosses in or out of the model ([save], [load],
+ * [IoController.setNetworkTarget]).
+ */
 internal data class IoConfiguration(
     val mode: IoMode = IoMode.PASSIVE,
     val sides: Map<RelativeSide, SideIoMode> = DEFAULT_SIDES,
     val autoEject: Boolean = false,
     val networkTarget: NetworkTargetRef? = null,
 ) {
+    val isDefault: Boolean
+        get() = this == DEFAULT
+
     fun side(side: RelativeSide): SideIoMode = sides[side] ?: SideIoMode.NONE
 
     fun withSide(
         side: RelativeSide,
         sideMode: SideIoMode,
     ): IoConfiguration = copy(sides = sides + (side to sideMode))
+
+    fun deepCopy(): IoConfiguration = copy(networkTarget = networkTarget?.deepCopy())
 
     fun save(): CompoundTag =
         CompoundTag().apply {

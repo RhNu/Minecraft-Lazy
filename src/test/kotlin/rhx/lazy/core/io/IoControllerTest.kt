@@ -13,6 +13,7 @@ import rhx.lazy.feature.energy.EnergySourceBlockEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class IoControllerTest {
@@ -98,6 +99,31 @@ class IoControllerTest {
     }
 
     @Test
+    fun `disconnecting clears the target and returns to passive`() {
+        val provider = RecordingProvider("disconnect")
+        NetworkOutputProviders.register(provider)
+        val source = newSource()
+        assertTrue(source.ioController.setNetworkTarget(provider.target("bound")))
+
+        source.ioController.clearNetworkTarget()
+
+        assertEquals(IoMode.PASSIVE, source.ioController.mode)
+        assertNull(source.ioController.target)
+    }
+
+    @Test
+    fun `output only machines skip the input face states`() {
+        val source = newSource()
+        source.ioController.setMode(IoMode.FACE)
+
+        source.ioController.cycleSide(RelativeSide.TOP)
+        assertEquals(SideIoMode.OUTPUT, source.ioController.configuration.side(RelativeSide.TOP))
+
+        source.ioController.cycleSide(RelativeSide.TOP)
+        assertEquals(SideIoMode.NONE, source.ioController.configuration.side(RelativeSide.TOP))
+    }
+
+    @Test
     fun `temporarily missing provider preserves a saved network target`() {
         val source = newSource()
         val target =
@@ -159,11 +185,10 @@ class IoControllerTest {
             installIoAdapter(
                 object : IoAdapter {
                     override val capabilities: Set<NetworkInsertCapability> = emptySet()
-                    override val ticksWhenPassive = true
+                    override val maintainsWhenIdle = true
 
-                    override fun push(configuration: IoConfiguration): IoPushResult {
+                    override fun maintain() {
                         maintenanceTicks++
-                        return IoPushResult.Success
                     }
                 },
             )

@@ -5,6 +5,7 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import rhx.lazy.MOD_ID
+import rhx.lazy.core.io.IoCapabilityRegistration
 
 @EventBusSubscriber(modid = MOD_ID)
 internal object EnergyCapabilities {
@@ -17,11 +18,6 @@ internal object EnergyCapabilities {
             { _, _ -> energyBatteryStorage },
             EnergyRegistries.batteryItem.get(),
         )
-        event.registerBlockEntity(
-            Capabilities.EnergyStorage.BLOCK,
-            EnergyRegistries.sourceBlockEntity.get(),
-        ) { blockEntity, side ->
-            blockEntity.energyStorage.takeIf { blockEntity.ioController.sideMode(side).allowsOutput }
-        }
+        IoCapabilityRegistration.energyOutput(event, EnergyRegistries.sourceBlockEntity.get()) { it.energyStorage }
     }
 }

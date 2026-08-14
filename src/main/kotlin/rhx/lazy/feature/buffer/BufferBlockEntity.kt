@@ -9,23 +9,19 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache
-import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
-import net.neoforged.neoforge.items.IItemHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import rhx.lazy.core.io.IoAdapter
-import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
+import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkOutputRouter
+import rhx.lazy.core.io.NetworkOffer
 import rhx.lazy.core.io.NetworkPayload
-import rhx.lazy.core.io.NetworkTransferResult
-import java.util.EnumMap
+import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.io.offer
 import kotlin.math.min
 
 internal class BufferBlockEntity(
@@ -55,15 +51,11 @@ internal class BufferBlockEntity(
     val itemHandler: IItemHandlerModifiable = BufferItemHandler()
     val fluidHandler: IFluidHandler = BufferFluidHandler()
 
-    private val neighborItemCaches =
-        EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction?>>(Direction::class.java)
-    private val neighborFluidCaches =
-        EnumMap<Direction, BlockCapabilityCache<IFluidHandler, Direction?>>(Direction::class.java)
-
-    private val ioAdapter = BufferIoAdapter()
+    private val neighborItems = NeighborCapabilities.items(blockPos) { !isRemoved }
+    private val neighborFluids = NeighborCapabilities.fluids(blockPos) { !isRemoved }
 
     init {
-        installIoAdapter(ioAdapter)
+        installIoAdapter(BufferIoAdapter())
     }
 
     val totalItemCount: Int
@@ -111,8 +103,8 @@ internal class BufferBlockEntity(
     }
 
     override fun setRemoved() {
-        neighborItemCaches.clear()
-        neighborFluidCaches.clear()
+        neighborItems.invalidate()
+        neighborFluids.invalidate()
         super.setRemoved()
     }
 
@@ -373,20 +365,12 @@ internal class BufferBlockEntity(
         override val capabilities =
             setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID)
 
-        override fun push(configuration: IoConfiguration): IoPushResult =
-            when (configuration.mode) {
-                IoMode.FACE -> pushToFaces(ioController.outputDirections())
-                IoMode.NETWORK -> pushToNetwork(configuration.networkTarget)
-                else -> IoPushResult.Success
-            }
-
-        private fun pushToFaces(directions: Set<Direction>): IoPushResult {
-            if (directions.isEmpty()) return IoPushResult.Success
+        override fun pushToFaces(directions: Set<Direction>): IoPushResult {
             val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
             var itemsChanged = false
             var fluidsChanged = false
             directions.forEach { direction ->
-                val itemTarget = itemCache(serverLevel, direction).getCapability() ?: return@forEach
+                val itemTarget = neighborItems[serverLevel, direction] ?: return@forEach
                 itemTemplates.indices.forEach { slot ->
                     val template = itemTemplates[slot]
                     val stored = itemCounts[slot]
@@ -394,131 +378,89 @@ internal class BufferBlockEntity(
                     val remainder = ItemHandlerHelper.insertItemStacked(itemTarget, template.copyWithCount(stored), false)
                     val remaining = remainder.count.coerceIn(0, stored)
                     if (remaining != stored) {
-                        itemCounts[slot] = remaining
-                        if (remaining == 0) itemTemplates[slot] = ItemStack.EMPTY
+                        takeItems(slot, remaining)
                         itemsChanged = true
                     }
                 }
             }
             directions.forEach { direction ->
-                val fluidTarget = fluidCache(serverLevel, direction).getCapability() ?: return@forEach
+                val fluidTarget = neighborFluids[serverLevel, direction] ?: return@forEach
                 fluids.indices.forEach { tank ->
                     val stored = fluids[tank]
                     if (stored.isEmpty || stored.amount <= 0) return@forEach
                     val accepted = fluidTarget.fill(stored.copy(), IFluidHandler.FluidAction.EXECUTE)
                     if (accepted > 0) {
-                        val remaining = stored.amount - accepted
-                        fluids[tank] = if (remaining == 0) FluidStack.EMPTY else stored.copyWithAmount(remaining)
+                        takeFluid(tank, stored.amount - accepted)
                         fluidsChanged = true
                     }
                 }
             }
-            if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
-            if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
+            notifyPushed(itemsChanged, fluidsChanged)
             return IoPushResult.Success
         }
 
-        private fun pushToNetwork(target: rhx.lazy.core.io.NetworkTargetRef?): IoPushResult {
-            val networkTarget = target ?: return IoPushResult.TargetMissing
+        override fun pushToNetwork(target: NetworkTargetRef): IoPushResult {
             var itemsChanged = false
             var fluidsChanged = false
 
-            fun resultOrSuccess(result: NetworkTransferResult): IoPushResult =
-                when (result) {
-                    is NetworkTransferResult.Success -> IoPushResult.Success
-                    NetworkTransferResult.TargetMissing -> IoPushResult.TargetMissing
-                    NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
-                    NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
-                    NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
-                }
+            fun finish(result: IoPushResult): IoPushResult {
+                notifyPushed(itemsChanged, fluidsChanged)
+                return result
+            }
 
             itemTemplates.indices.forEach { slot ->
                 val template = itemTemplates[slot]
                 val stored = itemCounts[slot]
                 if (template.isEmpty || stored <= 0) return@forEach
-                val result = insertItems(networkTarget, template, stored.toLong())
-                when (result) {
-                    is NetworkTransferResult.Success -> {
-                        val remaining = result.remainder.coerceIn(0L, stored.toLong()).toInt()
-                        if (remaining != stored) {
-                            itemCounts[slot] = remaining
-                            if (remaining == 0) itemTemplates[slot] = ItemStack.EMPTY
+                when (val offer = target.offer(NetworkPayload.Items(template, stored.toLong()), stored.toLong())) {
+                    is NetworkOffer.Accepted -> {
+                        if (offer.accepted > 0L) {
+                            takeItems(slot, stored - offer.accepted.toInt())
                             itemsChanged = true
                         }
                     }
-
-                    else -> {
-                        if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
-                        if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
-                        return resultOrSuccess(result)
-                    }
+                    is NetworkOffer.Rejected -> return finish(offer.push)
                 }
             }
             fluids.indices.forEach { tank ->
                 val stored = fluids[tank]
                 if (stored.isEmpty || stored.amount <= 0) return@forEach
-                val result = insertFluid(networkTarget, stored)
-                when (result) {
-                    is NetworkTransferResult.Success -> {
-                        val remaining = result.remainder.coerceIn(0L, stored.amount.toLong()).toInt()
-                        if (remaining != stored.amount) {
-                            fluids[tank] = if (remaining == 0) FluidStack.EMPTY else stored.copyWithAmount(remaining)
+                when (val offer = target.offer(NetworkPayload.Fluid(stored), stored.amount.toLong())) {
+                    is NetworkOffer.Accepted -> {
+                        if (offer.accepted > 0L) {
+                            takeFluid(tank, stored.amount - offer.accepted.toInt())
                             fluidsChanged = true
                         }
                     }
-
-                    else -> {
-                        if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
-                        if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
-                        return resultOrSuccess(result)
-                    }
+                    is NetworkOffer.Rejected -> return finish(offer.push)
                 }
             }
-            if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
-            if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
-            return IoPushResult.Success
+            return finish(IoPushResult.Success)
         }
+    }
 
-        private fun insertItems(
-            target: rhx.lazy.core.io.NetworkTargetRef,
-            template: ItemStack,
-            amount: Long,
-        ): NetworkTransferResult = NetworkOutputRouter.insert(target, NetworkPayload.Items(template, amount), false)
+    private fun takeItems(
+        slot: Int,
+        remaining: Int,
+    ) {
+        itemCounts[slot] = remaining
+        if (remaining == 0) itemTemplates[slot] = ItemStack.EMPTY
+    }
 
-        private fun insertFluid(
-            target: rhx.lazy.core.io.NetworkTargetRef,
-            stack: FluidStack,
-        ): NetworkTransferResult = NetworkOutputRouter.insert(target, NetworkPayload.Fluid(stack), false)
+    private fun takeFluid(
+        tank: Int,
+        remaining: Int,
+    ) {
+        val stored = fluids[tank]
+        fluids[tank] = if (remaining <= 0) FluidStack.EMPTY else stored.copyWithAmount(remaining)
+    }
 
-        private fun itemCache(
-            level: ServerLevel,
-            direction: Direction,
-        ): BlockCapabilityCache<IItemHandler, Direction?> =
-            neighborItemCaches.getOrPut(direction) {
-                BlockCapabilityCache.create<IItemHandler, Direction?>(
-                    Capabilities.ItemHandler.BLOCK,
-                    level,
-                    blockPos.relative(direction),
-                    direction.opposite,
-                    { !isRemoved },
-                    {},
-                )
-            }
-
-        private fun fluidCache(
-            level: ServerLevel,
-            direction: Direction,
-        ): BlockCapabilityCache<IFluidHandler, Direction?> =
-            neighborFluidCaches.getOrPut(direction) {
-                BlockCapabilityCache.create<IFluidHandler, Direction?>(
-                    Capabilities.FluidHandler.BLOCK,
-                    level,
-                    blockPos.relative(direction),
-                    direction.opposite,
-                    { !isRemoved },
-                    {},
-                )
-            }
+    private fun notifyPushed(
+        itemsChanged: Boolean,
+        fluidsChanged: Boolean,
+    ) {
+        if (itemsChanged) contentsChanged(ITEM_TEMPLATES_FIELD, ITEM_COUNTS_FIELD)
+        if (fluidsChanged) contentsChanged(FLUIDS_FIELD)
     }
 
     companion object {
@@ -529,7 +471,6 @@ internal class BufferBlockEntity(
         const val TOTAL_ITEM_CAPACITY = ITEM_SLOT_COUNT * ITEM_SLOT_CAPACITY
         const val TOTAL_FLUID_CAPACITY = FLUID_TANK_COUNT * FLUID_TANK_CAPACITY
 
-        internal const val MANAGED_DATA_KEY = "managed"
         internal const val ITEM_TOTAL_FIELD = "itemTotal"
         internal const val FLUID_TOTAL_FIELD = "fluidTotal"
         private const val ITEM_TEMPLATES_FIELD = "itemTemplates"

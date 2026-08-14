@@ -140,6 +140,31 @@
   text-shadow: false;
 }
 
+.lazy-io__network-status {
+  width: 144;
+  horizontal-align: center;
+  text-color: #404040;
+  text-shadow: false;
+}
+
+.lazy-io__network-actions {
+  width: 144;
+  height: 16;
+  gap-column: 2;
+  justify-content: center;
+}
+
+.lazy-io__network-action {
+  width: 71;
+  height: 16;
+  padding-horizontal: 3;
+  base-background: built-in(ui-mc:RECT_3);
+  hover-background: built-in(ui-mc:RECT_3) color(#dddddd);
+  pressed-background: built-in(ui-mc:RECT_BORDER);
+  text-color: #404040;
+  text-shadow: false;
+}
+
 .lazy-io__button--selected {
   base-background: built-in(ui-mc:RECT_BORDER);
   hover-background: built-in(ui-mc:RECT_BORDER);
