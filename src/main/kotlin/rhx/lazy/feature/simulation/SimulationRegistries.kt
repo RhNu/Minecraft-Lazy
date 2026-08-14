@@ -57,10 +57,17 @@ internal object SimulationRegistries : RegistryModule {
         recipeTypes.register("item_simulation", Supplier { RecipeType.simple<ItemSimulationRecipe>(ITEM_RECIPE_ID) })
     val entityRecipeType =
         recipeTypes.register("entity_simulation", Supplier { RecipeType.simple<EntitySimulationRecipe>(ENTITY_RECIPE_ID) })
+    val itemInjectionRecipeType =
+        recipeTypes.register(
+            "item_simulation_injection",
+            Supplier { RecipeType.simple<ItemSimulationInjectionRecipe>(ITEM_INJECTION_RECIPE_ID) },
+        )
     val itemRecipeSerializer =
         recipeSerializers.register("item_simulation", Supplier { ItemSimulationRecipe.Serializer() })
     val entityRecipeSerializer =
         recipeSerializers.register("entity_simulation", Supplier { EntitySimulationRecipe.Serializer() })
+    val itemInjectionRecipeSerializer =
+        recipeSerializers.register("item_simulation_injection", Supplier { ItemSimulationInjectionRecipe.Serializer() })
 
     val entityTypeComponent =
         dataComponents.registerComponentType("data_model_entity") { builder ->
@@ -89,4 +96,5 @@ internal object SimulationRegistries : RegistryModule {
 
     private val ITEM_RECIPE_ID = lazyId("item_simulation")
     private val ENTITY_RECIPE_ID = lazyId("entity_simulation")
+    private val ITEM_INJECTION_RECIPE_ID = lazyId("item_simulation_injection")
 }

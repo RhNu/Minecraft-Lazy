@@ -24,8 +24,8 @@ internal sealed interface SimulationBatch {
                 is Item -> {
                     put(ITEM_OUTPUTS_TAG, encodeList(context, SimulationItemOutput.CODEC.codec(), batch.itemOutputs))
                     put(FLUID_OUTPUTS_TAG, encodeList(context, SimulationFluidOutput.CODEC.codec(), batch.fluidOutputs))
+                    put(BLOCK_LOOT_OUTPUTS_TAG, encodeList(context, SimulationBlockLootOutput.CODEC.codec(), batch.blockLootOutputs))
                 }
-                is Automatic -> put(AUTOMATIC_OUTPUT_TAG, batch.output.save(registries))
                 is Entity -> {
                     putString(ENTITY_TAG, batch.entityId.toString())
                     putBoolean(ROLL_LOOT_TAG, batch.rollLootTable)
@@ -40,23 +40,12 @@ internal sealed interface SimulationBatch {
     data class Item(
         val itemOutputs: List<SimulationItemOutput>,
         val fluidOutputs: List<SimulationFluidOutput>,
+        val blockLootOutputs: List<SimulationBlockLootOutput>,
         override val remaining: Long,
     ) : SimulationBatch {
         init {
             require(remaining > 0L)
-            require(itemOutputs.size + fluidOutputs.size <= MAX_OUTPUT_ENTRIES)
-        }
-
-        override fun withRemaining(remaining: Long): SimulationBatch = copy(remaining = remaining)
-    }
-
-    data class Automatic(
-        val output: ItemStack,
-        override val remaining: Long,
-    ) : SimulationBatch {
-        init {
-            require(!output.isEmpty)
-            require(remaining > 0L)
+            require(effectiveOutputCount(itemOutputs, fluidOutputs, blockLootOutputs) <= MAX_OUTPUT_ENTRIES)
         }
 
         override fun withRemaining(remaining: Long): SimulationBatch = copy(remaining = remaining)
@@ -82,7 +71,6 @@ internal sealed interface SimulationBatch {
         get() =
             when (this) {
                 is Item -> ITEM_KIND
-                is Automatic -> AUTOMATIC_KIND
                 is Entity -> ENTITY_KIND
             }
 
@@ -92,19 +80,13 @@ internal sealed interface SimulationBatch {
             rolls: Long,
         ): SimulationBatch =
             when (simulation) {
-                is ResolvedSimulation.ItemRecipe ->
+                is ResolvedSimulation.Item ->
                     Item(
-                        simulation.holder
-                            .value()
-                            .itemOutputs
-                            .map(::copy),
-                        simulation.holder
-                            .value()
-                            .fluidOutputs
-                            .map(::copy),
+                        simulation.itemOutputs.map(::copy),
+                        simulation.fluidOutputs.map(::copy),
+                        simulation.blockLootOutputs.map(::copy),
                         rolls,
                     )
-                is ResolvedSimulation.AutomaticMineral -> Automatic(simulation.output.copy(), rolls)
                 is ResolvedSimulation.EntityProfile -> {
                     val recipe = simulation.holder?.value()
                     Entity(
@@ -139,11 +121,18 @@ internal sealed interface SimulationBatch {
                                 SimulationFluidOutput.CODEC.codec(),
                                 tag.getList(FLUID_OUTPUTS_TAG, Tag.TAG_COMPOUND.toInt()),
                             ),
+                            decodeList(
+                                context,
+                                SimulationBlockLootOutput.CODEC.codec(),
+                                tag.getList(BLOCK_LOOT_OUTPUTS_TAG, Tag.TAG_COMPOUND.toInt()),
+                            ),
                             remaining,
                         )
                     AUTOMATIC_KIND -> {
                         val stack = ItemStack.parseOptional(registries, tag.getCompound(AUTOMATIC_OUTPUT_TAG))
-                        stack.takeUnless(ItemStack::isEmpty)?.let { Automatic(it, remaining) }
+                        stack
+                            .takeUnless(ItemStack::isEmpty)
+                            ?.let { Item(listOf(SimulationItemOutput(it)), emptyList(), emptyList(), remaining) }
                     }
                     ENTITY_KIND -> {
                         val entityId = ResourceLocation.tryParse(tag.getString(ENTITY_TAG)) ?: return null
@@ -173,6 +162,8 @@ internal sealed interface SimulationBatch {
 
         private fun copy(output: SimulationFluidOutput) = output.copy(stack = output.stack.copy())
 
+        private fun copy(output: SimulationBlockLootOutput) = output.copy(displayItems = output.displayItems.map(ItemStack::copy))
+
         private fun <T> encodeList(
             context: com.mojang.serialization.DynamicOps<Tag>,
             codec: Codec<T>,
@@ -195,9 +186,16 @@ internal sealed interface SimulationBatch {
         private const val LOOT_TABLE_TAG = "lootTable"
         private const val ITEM_OUTPUTS_TAG = "itemOutputs"
         private const val FLUID_OUTPUTS_TAG = "fluidOutputs"
+        private const val BLOCK_LOOT_OUTPUTS_TAG = "blockLootOutputs"
         private const val AUTOMATIC_OUTPUT_TAG = "automaticOutput"
         private const val ITEM_KIND = "item"
         private const val AUTOMATIC_KIND = "automatic"
         private const val ENTITY_KIND = "entity"
     }
 }
+
+internal fun effectiveOutputCount(
+    itemOutputs: List<SimulationItemOutput>,
+    fluidOutputs: List<SimulationFluidOutput>,
+    blockLootOutputs: List<SimulationBlockLootOutput>,
+): Int = itemOutputs.size + fluidOutputs.size + blockLootOutputs.sumOf { it.displayItems.size.coerceAtLeast(1) }

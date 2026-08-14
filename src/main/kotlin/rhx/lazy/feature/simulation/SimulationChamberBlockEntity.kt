@@ -164,12 +164,28 @@ internal class SimulationChamberBlockEntity(
                         level.recipeManager
                             .getAllRecipesFor(SimulationRegistries.itemRecipeType.get())
                             .firstOrNull { it.id() == id } ?: return markBatchDirty()
-                    SimulationBatch.from(ResolvedSimulation.ItemRecipe(holder), legacy.remaining)
+                    val recipe = holder.value()
+                    SimulationBatch.from(
+                        ResolvedSimulation.Item(
+                            holder.id(),
+                            recipe.durationTicks(),
+                            recipe.itemOutputs,
+                            recipe.fluidOutputs,
+                        ),
+                        legacy.remaining,
+                    )
                 }
                 LEGACY_AUTOMATIC_KIND ->
                     legacy.automaticOutput
                         .takeUnless(ItemStack::isEmpty)
-                        ?.let { SimulationBatch.Automatic(it, legacy.remaining) }
+                        ?.let {
+                            SimulationBatch.Item(
+                                listOf(SimulationItemOutput(it)),
+                                emptyList(),
+                                emptyList(),
+                                legacy.remaining,
+                            )
+                        }
                 LEGACY_ENTITY_KIND -> {
                     val entityId = ResourceLocation.tryParse(legacy.entityId) ?: return markBatchDirty()
                     val profile =
@@ -208,8 +224,16 @@ internal class SimulationChamberBlockEntity(
             ).toInt()
         val accumulator = SimulationOutputAccumulator()
         when (active) {
-            is SimulationBatch.Item -> rollOutputs(level.random, active.itemOutputs, active.fluidOutputs, budget, accumulator)
-            is SimulationBatch.Automatic -> accumulator.add(active.output, active.output.count.toLong() * budget)
+            is SimulationBatch.Item -> {
+                repeat(budget) {
+                    active.blockLootOutputs.forEach { output ->
+                        net.minecraft.world.level.block.Block
+                            .getDrops(output.state, level, blockPos, null, null, ItemStack.EMPTY)
+                            .forEach(accumulator::add)
+                    }
+                }
+                rollOutputs(level.random, active.itemOutputs, active.fluidOutputs, budget, accumulator)
+            }
             is SimulationBatch.Entity -> {
                 val type = BuiltInRegistries.ENTITY_TYPE.getOptional(active.entityId).orElse(null) ?: return cancelBatch()
                 if (type.`is`(SimulationTags.dataModelBlacklist)) return cancelBatch()

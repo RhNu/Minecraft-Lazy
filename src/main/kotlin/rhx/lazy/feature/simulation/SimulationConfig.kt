@@ -6,11 +6,13 @@ import me.fzzyhmstrs.fzzy_config.annotations.WithPerms
 import me.fzzyhmstrs.fzzy_config.api.ConfigApi
 import me.fzzyhmstrs.fzzy_config.api.RegisterType
 import me.fzzyhmstrs.fzzy_config.config.Config
+import me.fzzyhmstrs.fzzy_config.validation.collection.ValidatedList
 import me.fzzyhmstrs.fzzy_config.validation.misc.ValidatedBoolean
+import me.fzzyhmstrs.fzzy_config.validation.misc.ValidatedString
 import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedInt
 import rhx.lazy.core.lazyId
 
-@Version(1)
+@Version(2)
 @WithPerms(opLevel = 2)
 internal class SimulationConfig : Config(lazyId("simulation")) {
     @Comment("Default simulation duration in ticks when a recipe does not specify one.")
@@ -24,6 +26,13 @@ internal class SimulationConfig : Config(lazyId("simulation")) {
 
     @Comment("Duration in ticks for automatically inferred mineral simulations.")
     var automaticMineralDuration = ValidatedInt(1200, 1..72_000)
+
+    @Comment("Preferred item namespaces for automatic mineral outputs, from highest to lowest priority.")
+    var automaticMineralModPriority: ValidatedList<String> =
+        ValidatedList<String>(
+            listOf("kubejs", "minecraft", "alltheores", "create", "mekanism", "jaopca"),
+            ValidatedString(),
+        )
 
     var t1SpeedMultiplier = ValidatedInt(1, 1..1024)
     var t1OutputMultiplier = ValidatedInt(1, 1..1024)

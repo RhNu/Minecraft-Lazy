@@ -11,6 +11,7 @@ import rhx.lazy.feature.protection.DamageCapHandler
 import rhx.lazy.feature.repairer.RepairerConfigs
 import rhx.lazy.feature.simulation.DataModelInteractionHandler
 import rhx.lazy.feature.simulation.SimulationConfigs
+import rhx.lazy.feature.simulation.SimulationNetworking
 import rhx.lazy.feature.simulation.SimulationRecipeReloads
 import rhx.lazy.feature.teleporter.TeleporterConfigs
 import rhx.lazy.integration.LazyIntegrations
@@ -30,8 +31,10 @@ object Lazy {
             .enableMilkFluid()
         LazyRegistries.register(MOD_BUS)
         LazyIntegrations.initialize(MOD_BUS)
+        MOD_BUS.addListener(SimulationNetworking::register)
         NeoForge.EVENT_BUS.addListener(LazyCommands::register)
         NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onDatapackSync)
+        NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onServerTick)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, DataModelInteractionHandler::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onInvulnerabilityCheck)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onIncomingDamage)

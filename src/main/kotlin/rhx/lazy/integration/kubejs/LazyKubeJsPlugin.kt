@@ -23,7 +23,18 @@ internal class LazyKubeJsPlugin : KubeJSPlugin {
 
     override fun registerRecipeSchemas(registry: RecipeSchemaRegistry) {
         registry.register(id("item_simulation"), itemSchema())
+        registry.register(id("item_simulation_injection"), itemInjectionSchema())
         registry.register(id("entity_simulation"), entitySchema())
+    }
+
+    private fun itemInjectionSchema(): RecipeSchema {
+        val input = IngredientComponent.INGREDIENT.inputKey("input")
+        val itemOutputs = boundedOutputs(false).outputKey("item_outputs").optional(emptyList())
+        val fluidOutputs = boundedOutputs(true).outputKey("fluid_outputs").optional(emptyList())
+        return RecipeSchema(input, itemOutputs, fluidOutputs)
+            .constructor(input)
+            .addToListOpFunction("itemOutput", itemOutputs)
+            .addToListOpFunction("fluidOutput", fluidOutputs)
     }
 
     private fun itemSchema(): RecipeSchema {

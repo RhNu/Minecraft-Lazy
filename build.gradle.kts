@@ -244,6 +244,8 @@ dependencies {
     compileOnly("dev.latvian.mods:kubejs-neoforge:${property("kubejs_version")}")
     compileOnly("maven.modrinth:silent-gear:${property("silent_gear_version")}")
     compileOnly("maven.modrinth:silent-lib:${property("silent_lib_version")}")
+    compileOnly("maven.modrinth:cucumber:${property("cucumber_version")}")
+    compileOnly("maven.modrinth:mystical-agriculture:${property("mystical_agriculture_version")}")
     compileOnly(
         "maven.modrinth:beyonddimensions:${property("beyond_dimensions_version")}",
     )

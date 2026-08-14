@@ -14,6 +14,7 @@ import mezz.jei.api.registration.IRecipeCatalystRegistration
 import mezz.jei.api.registration.IRecipeCategoryRegistration
 import mezz.jei.api.registration.IRecipeRegistration
 import mezz.jei.api.registration.ISubtypeRegistration
+import mezz.jei.api.runtime.IJeiRuntime
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
@@ -21,7 +22,10 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.Ingredient
 import net.neoforged.neoforge.fluids.FluidStack
+import rhx.lazy.feature.simulation.AutomaticSimulationClientSnapshot
+import rhx.lazy.feature.simulation.AutomaticSimulationDisplay
 import rhx.lazy.feature.simulation.DataModelItem
+import rhx.lazy.feature.simulation.ResolvedSimulation
 import rhx.lazy.feature.simulation.SimulationFluidOutput
 import rhx.lazy.feature.simulation.SimulationItemOutput
 import rhx.lazy.feature.simulation.SimulationRecipeResolver
@@ -29,6 +33,21 @@ import rhx.lazy.feature.simulation.SimulationRegistries
 
 @JeiPlugin
 internal class SimulationJeiPlugin : IModPlugin {
+    private var runtime: IJeiRuntime? = null
+    private var activeAutomaticRecipes: List<ItemDisplay> = emptyList()
+    private var pendingAutomaticSnapshot: List<AutomaticSimulationDisplay>? = null
+
+    init {
+        AutomaticSimulationClientSnapshot.addListener { displays ->
+            val jeiRuntime = runtime
+            if (jeiRuntime == null) {
+                pendingAutomaticSnapshot = displays
+            } else {
+                replaceAutomaticRecipes(jeiRuntime, displays)
+            }
+        }
+    }
+
     override fun getPluginUid(): ResourceLocation = PLUGIN_ID
 
     override fun registerCategories(registration: IRecipeCategoryRegistration) {
@@ -38,28 +57,29 @@ internal class SimulationJeiPlugin : IModPlugin {
 
     override fun registerRecipes(registration: IRecipeRegistration) {
         val level = Minecraft.getInstance().level ?: return
-        val items =
+        val explicitItems =
             buildList {
                 level.recipeManager.getAllRecipesFor(SimulationRegistries.itemRecipeType.get()).forEach { holder ->
+                    val representative =
+                        holder
+                            .value()
+                            .input.items
+                            .firstOrNull() ?: return@forEach
+                    val resolved = SimulationRecipeResolver.resolve(level, representative) as? ResolvedSimulation.Item ?: return@forEach
+                    if (resolved.id != holder.id()) return@forEach
                     add(
                         ItemDisplay(
                             holder.value().input,
-                            holder.value().itemOutputs.map(ItemOutputDisplay::from),
-                            holder.value().fluidOutputs.map(FluidOutputDisplay::from),
-                        ),
-                    )
-                }
-                SimulationRecipeResolver.automaticMinerals(level).forEach { automatic ->
-                    add(
-                        ItemDisplay(
-                            Ingredient.of(automatic.input),
-                            listOf(ItemOutputDisplay(automatic.simulation.output, 1f, 1, 1)),
-                            emptyList(),
+                            resolved.itemOutputs.map(ItemOutputDisplay::from) +
+                                resolved.blockLootOutputs.flatMap { it.displayItems }.map(ItemOutputDisplay::lootTable),
+                            resolved.fluidOutputs.map(FluidOutputDisplay::from),
                         ),
                     )
                 }
             }
-        registration.addRecipes(ITEM_TYPE, items)
+        activeAutomaticRecipes = automaticDisplays(SimulationRecipeResolver.automaticSimulations(level))
+        pendingAutomaticSnapshot = null
+        registration.addRecipes(ITEM_TYPE, explicitItems + activeAutomaticRecipes)
 
         val entities =
             level.recipeManager
@@ -89,6 +109,38 @@ internal class SimulationJeiPlugin : IModPlugin {
     override fun registerRecipeCatalysts(registration: IRecipeCatalystRegistration) {
         registration.addRecipeCatalyst(SimulationRegistries.item.get(), ITEM_TYPE, ENTITY_TYPE)
     }
+
+    override fun onRuntimeAvailable(jeiRuntime: IJeiRuntime) {
+        runtime = jeiRuntime
+        pendingAutomaticSnapshot?.let { replaceAutomaticRecipes(jeiRuntime, it) }
+        pendingAutomaticSnapshot = null
+    }
+
+    override fun onRuntimeUnavailable() {
+        runtime = null
+    }
+
+    private fun replaceAutomaticRecipes(
+        jeiRuntime: IJeiRuntime,
+        displays: List<AutomaticSimulationDisplay>,
+    ) {
+        val replacement = automaticDisplays(displays)
+        jeiRuntime.recipeManager.hideRecipes(ITEM_TYPE, activeAutomaticRecipes)
+        jeiRuntime.recipeManager.addRecipes(ITEM_TYPE, replacement)
+        activeAutomaticRecipes = replacement
+    }
+
+    private fun automaticDisplays(displays: List<AutomaticSimulationDisplay>): List<ItemDisplay> =
+        displays.map { automatic ->
+            ItemDisplay(
+                Ingredient.of(automatic.input),
+                automatic.simulation.itemOutputs.map(ItemOutputDisplay::from) +
+                    automatic.simulation.blockLootOutputs
+                        .flatMap { it.displayItems }
+                        .map(ItemOutputDisplay::lootTable),
+                automatic.simulation.fluidOutputs.map(FluidOutputDisplay::from),
+            )
+        }
 
     override fun registerItemSubtypes(registration: ISubtypeRegistration) {
         registration.registerSubtypeInterpreter(

@@ -13,28 +13,16 @@ import rhx.lazy.core.lazyId
 internal object SimulationRecipeData {
     fun build(output: RecipeOutput) {
         item("bamboo", Items.BAMBOO, output, itemOutput(Items.BAMBOO, max = 3))
-        item("beetroot", Items.BEETROOT_SEEDS, output, itemOutput(Items.BEETROOT, max = 3))
         item("brown_mushroom", Items.BROWN_MUSHROOM, output, itemOutput(Items.BROWN_MUSHROOM))
         item("cactus", Items.CACTUS, output, itemOutput(Items.CACTUS))
-        item("carrot", Items.CARROT, output, itemOutput(Items.CARROT, max = 4))
         item("chorus", Items.CHORUS_FLOWER, output, itemOutput(Items.CHORUS_FRUIT, max = 3))
         item("cocoa", Items.COCOA_BEANS, output, itemOutput(Items.COCOA_BEANS, min = 2, max = 3))
         item("glow_berries", Items.GLOW_BERRIES, output, itemOutput(Items.GLOW_BERRIES))
         item("kelp", Items.KELP, output, itemOutput(Items.KELP))
-        item("melon", Items.MELON_SEEDS, output, itemOutput(Items.MELON_SLICE, min = 3, max = 7))
         item("nether_wart", Items.NETHER_WART, output, itemOutput(Items.NETHER_WART, min = 2, max = 4))
-        item(
-            "potato",
-            Items.POTATO,
-            output,
-            itemOutput(Items.POTATO, max = 4),
-            itemOutput(Items.POISONOUS_POTATO, chance = 0.02f),
-        )
-        item("pumpkin", Items.PUMPKIN_SEEDS, output, itemOutput(Items.PUMPKIN))
         item("red_mushroom", Items.RED_MUSHROOM, output, itemOutput(Items.RED_MUSHROOM))
         item("sugar_cane", Items.SUGAR_CANE, output, itemOutput(Items.SUGAR_CANE))
         item("sweet_berries", Items.SWEET_BERRIES, output, itemOutput(Items.SWEET_BERRIES, min = 2, max = 3))
-        item("wheat", Items.WHEAT_SEEDS, output, itemOutput(Items.WHEAT, max = 3))
 
         entity("blaze", output, Items.BLAZE_ROD)
         entity("bogged", output, Items.BONE, Items.ARROW)

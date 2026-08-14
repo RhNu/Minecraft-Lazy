@@ -3,12 +3,12 @@ package rhx.lazy.feature.simulation
 import net.minecraft.core.component.DataComponentPatch
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.tags.TagKey
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.RecipeHolder
 import net.minecraft.world.item.crafting.RecipeManager
 import net.minecraft.world.level.Level
+import rhx.lazy.Lazy
 import rhx.lazy.MOD_ID
 import java.util.WeakHashMap
 
@@ -16,17 +16,12 @@ internal sealed interface ResolvedSimulation {
     val id: ResourceLocation
     val duration: Int
 
-    data class ItemRecipe(
-        val holder: RecipeHolder<ItemSimulationRecipe>,
-    ) : ResolvedSimulation {
-        override val id: ResourceLocation = holder.id()
-        override val duration: Int = holder.value().durationTicks()
-    }
-
-    data class AutomaticMineral(
+    data class Item(
         override val id: ResourceLocation,
         override val duration: Int,
-        val output: ItemStack,
+        val itemOutputs: List<SimulationItemOutput>,
+        val fluidOutputs: List<SimulationFluidOutput>,
+        val blockLootOutputs: List<SimulationBlockLootOutput> = emptyList(),
     ) : ResolvedSimulation
 
     data class EntityProfile(
@@ -43,9 +38,9 @@ internal sealed interface ResolvedSimulation {
     }
 }
 
-internal data class AutomaticMineralDisplay(
+internal data class AutomaticSimulationDisplay(
     val input: ItemStack,
-    val simulation: ResolvedSimulation.AutomaticMineral,
+    val simulation: ResolvedSimulation.Item,
 )
 
 internal object SimulationRecipeResolver {
@@ -68,21 +63,24 @@ internal object SimulationRecipeResolver {
             )
         }
 
-        explicitItemRecipe(index, stack)?.let { return ResolvedSimulation.ItemRecipe(it) }
-        return resolveAutomaticMineral(index, stack)
+        explicitItemRecipe(index, stack)?.let { return applyInjections(index, stack, resolvedExplicit(it)) }
+        if (level.isClientSide) return AutomaticSimulationClientSnapshot.find(stack)
+        return automaticItemRecipe(level, index, stack)?.let { applyInjections(index, stack, it) }
     }
 
-    fun automaticMinerals(level: Level): List<AutomaticMineralDisplay> {
+    fun automaticSimulations(level: Level): List<AutomaticSimulationDisplay> {
+        if (level.isClientSide) return AutomaticSimulationClientSnapshot.all()
         val index = indexFor(level)
         refreshAutomaticSettings(index)
-        if (!index.automaticSettings.enabled) return emptyList()
         index.automaticDisplays?.let { return it }
         return BuiltInRegistries.ITEM
             .asSequence()
             .map(::ItemStack)
             .mapNotNull { input ->
-                val automatic = resolveAutomaticMineral(index, input) ?: return@mapNotNull null
-                if (explicitItemRecipe(index, input) == null) AutomaticMineralDisplay(input, automatic) else null
+                if (explicitItemRecipe(index, input) != null) return@mapNotNull null
+                val automatic = automaticItemRecipe(level, index, input) ?: return@mapNotNull null
+                val effective = applyInjections(index, input, automatic) ?: return@mapNotNull null
+                AutomaticSimulationDisplay(input, effective)
             }.toList()
             .also { index.automaticDisplays = it }
     }
@@ -102,6 +100,10 @@ internal object SimulationRecipeResolver {
                     .sortedWith(
                         compareByDescending<RecipeHolder<ItemSimulationRecipe>> { it.value().priority }.thenBy { it.id().toString() },
                     )
+            val injections =
+                manager
+                    .getAllRecipesFor(SimulationRegistries.itemInjectionRecipeType.get())
+                    .sortedBy { it.id().toString() }
             val entityRecipes =
                 manager
                     .getAllRecipesFor(SimulationRegistries.entityRecipeType.get())
@@ -113,7 +115,7 @@ internal object SimulationRecipeResolver {
                                     .thenBy { it.id().toString() },
                             ).first()
                     }
-            RecipeIndex(itemRecipes, entityRecipes, currentAutomaticSettings())
+            RecipeIndex(itemRecipes, injections, entityRecipes, currentAutomaticSettings())
         }
     }
 
@@ -123,84 +125,70 @@ internal object SimulationRecipeResolver {
     ): RecipeHolder<ItemSimulationRecipe>? {
         val key = TargetKey(stack)
         if (key in index.itemMatches) return index.itemMatches[key]
-        return index.itemRecipes.firstOrNull { it.value().input.test(stack) }.also { index.itemMatches[key] = it }
+        return selectExplicitSimulation(index.itemRecipes, stack).also { index.itemMatches[key] = it }
     }
 
-    private fun resolveAutomaticMineral(
+    private fun automaticItemRecipe(
+        level: Level,
         index: RecipeIndex,
         stack: ItemStack,
-    ): ResolvedSimulation.AutomaticMineral? {
+    ): ResolvedSimulation.Item? {
         refreshAutomaticSettings(index)
-        if (!index.automaticSettings.enabled) return null
         val key = TargetKey(stack)
         if (key in index.automaticMatches) return index.automaticMatches[key]
-        return resolveAutomaticMineralUncached(stack, index.automaticSettings.duration).also { index.automaticMatches[key] = it }
+        val candidates = AutomaticSimulationAdapters.resolve(level, stack)
+        if (candidates.isEmpty()) {
+            index.automaticMatches[key] = null
+            return null
+        }
+        val primary = candidates.first()
+        val resolved =
+            ResolvedSimulation
+                .Item(
+                    primary.id,
+                    primary.duration,
+                    candidates.flatMap(AutomaticSimulationCandidate::itemOutputs).map(::copy),
+                    candidates.flatMap(AutomaticSimulationCandidate::fluidOutputs).map(::copy),
+                    candidates.flatMap(AutomaticSimulationCandidate::blockLootOutputs).map(::copy),
+                ).takeIf(::validOutputCount)
+        index.automaticMatches[key] = resolved
+        return resolved
     }
 
-    private fun resolveAutomaticMineralUncached(
+    private fun applyInjections(
+        index: RecipeIndex,
         stack: ItemStack,
-        duration: Int,
-    ): ResolvedSimulation.AutomaticMineral? {
-        if (stack.`is`(SimulationTags.automaticMineralBlacklist)) return null
-        val itemId = BuiltInRegistries.ITEM.getKey(stack.item)
-        val tags = stack.tags.toList()
-        val ingots = tags.mapNotNull { material(it, "ingots/") }.distinct()
-        val gems = tags.mapNotNull { material(it, "gems/") }.distinct()
-        if (ingots.size + gems.size != 1) return null
-        if (gems.size == 1) {
-            return ResolvedSimulation.AutomaticMineral(
-                ResourceLocation.fromNamespaceAndPath(MOD_ID, "automatic/gem/${gems.single()}"),
-                duration,
-                stack.copyWithCount(1),
-            )
-        }
+        base: ResolvedSimulation.Item,
+    ): ResolvedSimulation.Item? {
+        val key = TargetKey(stack)
+        val matches =
+            index.injectionMatches.getOrPut(key) {
+                index.injections.filter { it.value().input.test(stack) }
+            }
+        return composeItemSimulation(base, matches)
+    }
 
-        val material = ingots.single()
-        val rawTag =
-            TagKey.create(
-                BuiltInRegistries.ITEM.key(),
-                ResourceLocation.fromNamespaceAndPath("c", "raw_materials/$material"),
-            )
-        val output =
-            BuiltInRegistries.ITEM
-                .getTag(rawTag)
-                .orElse(null)
-                ?.asSequence()
-                ?.map { it.value() }
-                ?.sortedWith(
-                    compareBy<Item>(
-                        { namespaceRank(BuiltInRegistries.ITEM.getKey(it), itemId.namespace) },
-                        { BuiltInRegistries.ITEM.getKey(it).toString() },
-                    ),
-                )?.firstOrNull() ?: return null
-        return ResolvedSimulation.AutomaticMineral(
-            ResourceLocation.fromNamespaceAndPath(MOD_ID, "automatic/ingot/$material"),
-            duration,
-            ItemStack(output),
+    private fun validOutputCount(simulation: ResolvedSimulation.Item): Boolean {
+        val count = effectiveOutputCount(simulation.itemOutputs, simulation.fluidOutputs, simulation.blockLootOutputs)
+        if (count <= MAX_OUTPUT_ENTRIES) return true
+        Lazy.logger.error(
+            "Disabled simulation {} because its composed output count {} exceeds {}",
+            simulation.id,
+            count,
+            MAX_OUTPUT_ENTRIES,
+        )
+        return false
+    }
+
+    private fun resolvedExplicit(holder: RecipeHolder<ItemSimulationRecipe>): ResolvedSimulation.Item {
+        val recipe = holder.value()
+        return ResolvedSimulation.Item(
+            holder.id(),
+            recipe.durationTicks(),
+            recipe.itemOutputs.map(::copy),
+            recipe.fluidOutputs.map(::copy),
         )
     }
-
-    private fun material(
-        tag: TagKey<Item>,
-        prefix: String,
-    ): String? {
-        val id = tag.location
-        return if (id.namespace == "c" && id.path.startsWith(prefix) && id.path.length > prefix.length) {
-            id.path.removePrefix(prefix)
-        } else {
-            null
-        }
-    }
-
-    private fun namespaceRank(
-        id: ResourceLocation,
-        preferred: String,
-    ): Int =
-        when (id.namespace) {
-            preferred -> 0
-            "minecraft" -> 1
-            else -> 2
-        }
 
     private fun refreshAutomaticSettings(index: RecipeIndex) {
         val settings = currentAutomaticSettings()
@@ -212,23 +200,37 @@ internal object SimulationRecipeResolver {
 
     private fun currentAutomaticSettings() =
         AutomaticSettings(
+            SimulationConfigs.settings.defaultDuration.get(),
             SimulationConfigs.settings.automaticMinerals.get(),
             SimulationConfigs.settings.automaticMineralDuration.get(),
+            SimulationConfigs.settings.automaticMineralModPriority
+                .get()
+                .toList(),
         )
+
+    private fun copy(output: SimulationItemOutput) = output.copy(stack = output.stack.copy())
+
+    private fun copy(output: SimulationFluidOutput) = output.copy(stack = output.stack.copy())
+
+    private fun copy(output: SimulationBlockLootOutput) = output.copy(displayItems = output.displayItems.map(ItemStack::copy))
 
     private class RecipeIndex(
         val itemRecipes: List<RecipeHolder<ItemSimulationRecipe>>,
+        val injections: List<RecipeHolder<ItemSimulationInjectionRecipe>>,
         val entityRecipes: Map<ResourceLocation, RecipeHolder<EntitySimulationRecipe>>,
         var automaticSettings: AutomaticSettings,
     ) {
         val itemMatches = hashMapOf<TargetKey, RecipeHolder<ItemSimulationRecipe>?>()
-        val automaticMatches = hashMapOf<TargetKey, ResolvedSimulation.AutomaticMineral?>()
-        var automaticDisplays: List<AutomaticMineralDisplay>? = null
+        val injectionMatches = hashMapOf<TargetKey, List<RecipeHolder<ItemSimulationInjectionRecipe>>>()
+        val automaticMatches = hashMapOf<TargetKey, ResolvedSimulation.Item?>()
+        var automaticDisplays: List<AutomaticSimulationDisplay>? = null
     }
 
     private data class AutomaticSettings(
-        val enabled: Boolean,
-        val duration: Int,
+        val defaultDuration: Int,
+        val mineralsEnabled: Boolean,
+        val mineralDuration: Int,
+        val mineralPriorities: List<String>,
     )
 
     private data class TargetKey(
@@ -238,3 +240,41 @@ internal object SimulationRecipeResolver {
         constructor(stack: ItemStack) : this(stack.item, stack.componentsPatch)
     }
 }
+
+internal fun selectExplicitSimulation(
+    recipes: List<RecipeHolder<ItemSimulationRecipe>>,
+    stack: ItemStack,
+): RecipeHolder<ItemSimulationRecipe>? =
+    recipes
+        .asSequence()
+        .filter { it.value().input.test(stack) }
+        .minWithOrNull(
+            compareByDescending<RecipeHolder<ItemSimulationRecipe>> { it.value().priority }
+                .thenBy { it.id().toString() },
+        )
+
+internal fun composeItemSimulation(
+    base: ResolvedSimulation.Item?,
+    injections: List<RecipeHolder<ItemSimulationInjectionRecipe>>,
+): ResolvedSimulation.Item? {
+    base ?: return null
+    val sorted = injections.sortedBy { it.id().toString() }
+    val result =
+        base.copy(
+            itemOutputs = base.itemOutputs + sorted.flatMap { it.value().itemOutputs }.map(::copyItemOutput),
+            fluidOutputs = base.fluidOutputs + sorted.flatMap { it.value().fluidOutputs }.map(::copyFluidOutput),
+        )
+    val count = effectiveOutputCount(result.itemOutputs, result.fluidOutputs, result.blockLootOutputs)
+    if (count <= MAX_OUTPUT_ENTRIES) return result
+    Lazy.logger.error(
+        "Disabled simulation {} because its composed output count {} exceeds {}",
+        result.id,
+        count,
+        MAX_OUTPUT_ENTRIES,
+    )
+    return null
+}
+
+private fun copyItemOutput(output: SimulationItemOutput) = output.copy(stack = output.stack.copy())
+
+private fun copyFluidOutput(output: SimulationFluidOutput) = output.copy(stack = output.stack.copy())

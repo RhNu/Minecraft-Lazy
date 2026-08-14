@@ -9,6 +9,7 @@ internal object MysticalAgricultureIntegrationModule : IntegrationModule {
     override val modId: String = "mysticalagriculture"
 
     override fun initialize(context: IntegrationContext) {
+        MysticalAgricultureSimulationAdapter.register()
         EssenceConverterConfigs.init()
         EssenceConverterRegistries.register(context.modBus)
         EssenceConverterTranslations.register()

@@ -5,7 +5,10 @@ import com.mojang.serialization.DataResult
 import com.mojang.serialization.MapCodec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.network.RegistryFriendlyByteBuf
+import net.minecraft.network.codec.ByteBufCodecs
+import net.minecraft.network.codec.StreamCodec
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.fluids.FluidStack
 
 internal const val MAX_OUTPUT_ENTRIES = 28
@@ -87,6 +90,40 @@ internal data class SimulationFluidOutput(
                 buffer.readVarInt(),
                 buffer.readVarInt(),
             )
+    }
+}
+
+internal data class SimulationBlockLootOutput(
+    val state: BlockState,
+    val displayItems: List<ItemStack> = emptyList(),
+) {
+    fun encode(buffer: RegistryFriendlyByteBuf) {
+        STATE_STREAM_CODEC.encode(buffer, state)
+        buffer.writeVarInt(displayItems.size)
+        displayItems.forEach { ItemStack.STREAM_CODEC.encode(buffer, it) }
+    }
+
+    companion object {
+        val CODEC: MapCodec<SimulationBlockLootOutput> =
+            RecordCodecBuilder.mapCodec { instance ->
+                instance
+                    .group(
+                        BlockState.CODEC.fieldOf("state").forGetter(SimulationBlockLootOutput::state),
+                        ItemStack.CODEC
+                            .listOf()
+                            .optionalFieldOf("display_items", emptyList())
+                            .forGetter(SimulationBlockLootOutput::displayItems),
+                    ).apply(instance, ::SimulationBlockLootOutput)
+            }
+
+        fun decode(buffer: RegistryFriendlyByteBuf): SimulationBlockLootOutput =
+            SimulationBlockLootOutput(
+                STATE_STREAM_CODEC.decode(buffer),
+                List(buffer.readVarInt()) { ItemStack.STREAM_CODEC.decode(buffer) },
+            )
+
+        private val STATE_STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, BlockState> =
+            ByteBufCodecs.fromCodecWithRegistries(BlockState.CODEC)
     }
 }
 
