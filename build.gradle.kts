@@ -189,6 +189,21 @@ repositories {
         }
     }
     maven {
+        name = "LatvianDev"
+        url = uri("https://maven.latvian.dev/releases")
+        content {
+            includeGroup("dev.latvian.mods")
+            includeGroup("dev.latvian.apps")
+        }
+    }
+    maven {
+        name = "JitPack"
+        url = uri("https://jitpack.io")
+        content {
+            includeGroup("com.github.rtyley")
+        }
+    }
+    maven {
         name = "Curios"
         url = uri("https://maven.theillusivec4.top/")
         content {
@@ -225,6 +240,8 @@ dependencies {
         "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}:api",
     )
     compileOnly("maven.modrinth:jade:${property("jade_version")}")
+    compileOnly("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
+    compileOnly("dev.latvian.mods:kubejs-neoforge:${property("kubejs_version")}")
     compileOnly("maven.modrinth:silent-gear:${property("silent_gear_version")}")
     compileOnly("maven.modrinth:silent-lib:${property("silent_lib_version")}")
     compileOnly(
@@ -292,6 +309,7 @@ dependencies {
     )
     localRuntime("mezz.jei:jei-${property("minecraft_version")}-neoforge:${property("jei_version")}")
     localRuntime("maven.modrinth:jade:${property("jade_version")}")
+    integrationsRuntime("dev.latvian.mods:kubejs-neoforge:${property("kubejs_version")}")
 
     testImplementation(kotlin("test"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -364,6 +382,8 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
             "curios_version_range" to project.property("curios_version_range"),
             "jade_version_range" to project.property("jade_version_range"),
+            "jei_version_range" to project.property("jei_version_range"),
+            "kubejs_version_range" to project.property("kubejs_version_range"),
             "silent_gear_version_range" to project.property("silent_gear_version_range"),
             "beyond_dimensions_version_range" to project.property("beyond_dimensions_version_range"),
             "ae2_version_range" to project.property("ae2_version_range"),

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "lazy:block/simulation_chamber",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "lazy:block/simulation_chamber"
+    },
+    "facing=south": {
+      "model": "lazy:block/simulation_chamber",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "lazy:block/simulation_chamber",
+      "y": 270
+    }
+  }
+}

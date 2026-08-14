@@ -1,0 +1,22 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:potato"
+  },
+  "item_outputs": [
+    {
+      "max_rolls": 4,
+      "stack": {
+        "count": 1,
+        "id": "minecraft:potato"
+      }
+    },
+    {
+      "chance": 0.02,
+      "stack": {
+        "count": 1,
+        "id": "minecraft:poisonous_potato"
+      }
+    }
+  ]
+}

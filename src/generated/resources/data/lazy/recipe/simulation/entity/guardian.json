@@ -1,0 +1,14 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:prismarine_shard"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:prismarine_crystals"
+    }
+  ],
+  "entity": "minecraft:guardian"
+}

@@ -9,6 +9,7 @@ import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.feature.energy.EnergySourceBlockEntity
 import rhx.lazy.feature.itemcopier.ItemCopierBlockEntity
 import rhx.lazy.feature.repairer.RepairerBlockEntity
+import rhx.lazy.feature.simulation.SimulationChamberBlockEntity
 import snownee.jade.api.BlockAccessor
 import snownee.jade.api.StreamServerDataProvider
 
@@ -112,4 +113,31 @@ internal object RepairerJadeDataProvider : StreamServerDataProvider<BlockAccesso
     override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, ItemStack> = ItemStack.OPTIONAL_STREAM_CODEC
 
     override fun getUid(): ResourceLocation = JadeProviderIds.repairer
+}
+
+internal data class SimulationChamberJadeData(
+    val progress: Float,
+    val speed: Int,
+    val output: Long,
+    val pending: Boolean,
+)
+
+internal object SimulationChamberJadeDataProvider : StreamServerDataProvider<BlockAccessor, SimulationChamberJadeData> {
+    override fun streamData(accessor: BlockAccessor): SimulationChamberJadeData? {
+        val entity = accessor.blockEntity as? SimulationChamberBlockEntity ?: return null
+        return SimulationChamberJadeData(entity.progress(), entity.speedMultiplier(), entity.outputMultiplier(), entity.hasWaitingOutputs())
+    }
+
+    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, SimulationChamberJadeData> =
+        StreamCodec.of(
+            { buffer, value ->
+                buffer.writeFloat(value.progress)
+                buffer.writeVarInt(value.speed)
+                buffer.writeVarLong(value.output)
+                buffer.writeBoolean(value.pending)
+            },
+            { buffer -> SimulationChamberJadeData(buffer.readFloat(), buffer.readVarInt(), buffer.readVarLong(), buffer.readBoolean()) },
+        )
+
+    override fun getUid(): ResourceLocation = JadeProviderIds.simulationChamber
 }

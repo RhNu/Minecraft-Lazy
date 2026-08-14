@@ -1,0 +1,10 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:leather"
+    }
+  ],
+  "entity": "minecraft:donkey"
+}

@@ -1,0 +1,29 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_fluid_outputs": [
+    {
+      "amount": 1000,
+      "id": "minecraft:milk"
+    }
+  ],
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:leather"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:beef"
+    }
+  ],
+  "entity": "minecraft:cow",
+  "fluid_outputs": [
+    {
+      "chance": 0.3,
+      "stack": {
+        "amount": 1000,
+        "id": "minecraft:milk"
+      }
+    }
+  ]
+}

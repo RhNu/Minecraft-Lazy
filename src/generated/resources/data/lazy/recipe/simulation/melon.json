@@ -1,0 +1,16 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:melon_seeds"
+  },
+  "item_outputs": [
+    {
+      "max_rolls": 7,
+      "min_rolls": 3,
+      "stack": {
+        "count": 1,
+        "id": "minecraft:melon_slice"
+      }
+    }
+  ]
+}

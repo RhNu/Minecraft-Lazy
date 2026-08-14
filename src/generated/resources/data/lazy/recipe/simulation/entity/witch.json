@@ -1,0 +1,30 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:redstone"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:glowstone_dust"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:sugar"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:spider_eye"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:glass_bottle"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:stick"
+    }
+  ],
+  "entity": "minecraft:witch"
+}

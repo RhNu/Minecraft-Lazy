@@ -1,0 +1,16 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:nether_wart"
+  },
+  "item_outputs": [
+    {
+      "max_rolls": 4,
+      "min_rolls": 2,
+      "stack": {
+        "count": 1,
+        "id": "minecraft:nether_wart"
+      }
+    }
+  ]
+}

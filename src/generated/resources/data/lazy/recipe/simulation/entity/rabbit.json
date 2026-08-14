@@ -1,0 +1,18 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:rabbit"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:rabbit_hide"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:rabbit_foot"
+    }
+  ],
+  "entity": "minecraft:rabbit"
+}

@@ -9,6 +9,9 @@ displayName="${mod_name}"
 authors="${mod_authors}"
 description='''${mod_description}'''
 
+[[mixins]]
+config="lazy.mixins.json"
+
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"
@@ -52,6 +55,22 @@ versionRange="${jade_version_range}"
 ordering="AFTER"
 side="BOTH"
 reason="Shows Lazy machine status in the Jade overlay"
+
+[[dependencies.${mod_id}]]
+modId="jei"
+type="optional"
+versionRange="${jei_version_range}"
+ordering="AFTER"
+side="CLIENT"
+reason="Displays simulation chamber recipes"
+
+[[dependencies.${mod_id}]]
+modId="kubejs"
+type="optional"
+versionRange="${kubejs_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables scripted simulation chamber recipes"
 
 [[dependencies.${mod_id}]]
 modId="silentgear"

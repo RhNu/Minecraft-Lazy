@@ -9,6 +9,7 @@ import rhx.lazy.integration.jade.EnergySourceJadeDataProvider
 import rhx.lazy.integration.jade.ItemCopierJadeDataProvider
 import rhx.lazy.integration.jade.JadeProviderIds
 import rhx.lazy.integration.jade.RepairerJadeDataProvider
+import rhx.lazy.integration.jade.SimulationChamberJadeDataProvider
 import snownee.jade.api.BlockAccessor
 import snownee.jade.api.IBlockComponentProvider
 import snownee.jade.api.ITooltip
@@ -107,6 +108,21 @@ internal object RepairerJadeComponentProvider : IBlockComponentProvider {
     }
 
     override fun getUid(): ResourceLocation = JadeProviderIds.repairer
+}
+
+internal object SimulationChamberJadeComponentProvider : IBlockComponentProvider {
+    override fun appendTooltip(
+        tooltip: ITooltip,
+        accessor: BlockAccessor,
+        config: IPluginConfig,
+    ) {
+        val data = SimulationChamberJadeDataProvider.decodeFromData(accessor).orElse(null) ?: return
+        tooltip.add(Component.translatable("jade.lazy.simulation_chamber.progress", (data.progress * 100).toInt()))
+        tooltip.add(Component.translatable("jade.lazy.simulation_chamber.multipliers", data.speed, data.output))
+        if (data.pending) tooltip.add(Component.translatable("jade.lazy.simulation_chamber.pending"))
+    }
+
+    override fun getUid(): ResourceLocation = JadeProviderIds.simulationChamber
 }
 
 private fun IoRoute.translationKey(): String = "gui.lazy.io.route.${name.lowercase()}"

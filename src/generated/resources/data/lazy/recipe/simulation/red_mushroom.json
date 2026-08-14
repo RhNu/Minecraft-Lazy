@@ -1,0 +1,14 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:red_mushroom"
+  },
+  "item_outputs": [
+    {
+      "stack": {
+        "count": 1,
+        "id": "minecraft:red_mushroom"
+      }
+    }
+  ]
+}

@@ -30,6 +30,8 @@ import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.itemcopier.ItemCopierRegistries
 import rhx.lazy.feature.machine.MachineCasingRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
+import rhx.lazy.feature.simulation.SimulationRecipeData
+import rhx.lazy.feature.simulation.SimulationRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import rhx.lazy.feature.voidworld.VoidWorldBootstrap
 import java.util.concurrent.CompletableFuture
@@ -133,6 +135,66 @@ internal object DataGeneration {
                 .define('M', MachineCasingRegistries.item.get())
                 .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
                 .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, SimulationRegistries.coreT1.get())
+                .pattern("CRC")
+                .pattern("RBR")
+                .pattern("CRC")
+                .define('C', Tags.Items.INGOTS_COPPER)
+                .define('R', Tags.Items.DUSTS_REDSTONE)
+                .define('B', Tags.Items.STORAGE_BLOCKS_REDSTONE)
+                .unlockedBy("has_redstone", has(Tags.Items.DUSTS_REDSTONE))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, SimulationRegistries.coreT2.get())
+                .pattern("IGI")
+                .pattern("GTG")
+                .pattern("IGI")
+                .define('I', Tags.Items.INGOTS_IRON)
+                .define('G', Tags.Items.INGOTS_GOLD)
+                .define('T', SimulationRegistries.coreT1.get())
+                .unlockedBy("has_t1_core", has(SimulationRegistries.coreT1.get()))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, SimulationRegistries.coreT3.get())
+                .pattern("DDD")
+                .pattern("DTD")
+                .pattern("DDD")
+                .define('D', Tags.Items.GEMS_DIAMOND)
+                .define('T', SimulationRegistries.coreT2.get())
+                .unlockedBy("has_t2_core", has(SimulationRegistries.coreT2.get()))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, SimulationRegistries.coreT4.get())
+                .pattern("NNN")
+                .pattern("NTN")
+                .pattern("NNN")
+                .define('N', Tags.Items.INGOTS_NETHERITE)
+                .define('T', SimulationRegistries.coreT3.get())
+                .unlockedBy("has_t3_core", has(SimulationRegistries.coreT3.get()))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, SimulationRegistries.item.get())
+                .pattern("GRG")
+                .pattern("HMH")
+                .pattern("GRG")
+                .define('G', Tags.Items.GLASS_BLOCKS)
+                .define('R', Tags.Items.STORAGE_BLOCKS_REDSTONE)
+                .define('H', Items.HOPPER)
+                .define('M', MachineCasingRegistries.item.get())
+                .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, SimulationRegistries.dataModelItem.get())
+                .pattern("PQP")
+                .pattern("QRQ")
+                .pattern("PQP")
+                .define('P', Items.PAPER)
+                .define('Q', Tags.Items.GEMS_QUARTZ)
+                .define('R', Tags.Items.DUSTS_REDSTONE)
+                .unlockedBy("has_quartz", has(Tags.Items.GEMS_QUARTZ))
+                .save(output)
+            SimulationRecipeData.build(output)
         }
     }
 
@@ -150,6 +212,12 @@ internal object DataGeneration {
             withExistingParent("energy_source", modLoc("block/energy_source"))
             withExistingParent("item_copier", modLoc("block/item_copier"))
             withExistingParent("repairer", modLoc("block/repairer"))
+            withExistingParent("simulation_chamber", modLoc("block/simulation_chamber"))
+            withExistingParent("data_model", mcLoc("item/generated")).texture("layer0", mcLoc("item/paper"))
+            withExistingParent("simulation_core_t1", mcLoc("item/generated")).texture("layer0", mcLoc("item/copper_ingot"))
+            withExistingParent("simulation_core_t2", mcLoc("item/generated")).texture("layer0", mcLoc("item/gold_ingot"))
+            withExistingParent("simulation_core_t3", mcLoc("item/generated")).texture("layer0", mcLoc("item/diamond"))
+            withExistingParent("simulation_core_t4", mcLoc("item/generated")).texture("layer0", mcLoc("item/netherite_ingot"))
         }
     }
 
@@ -166,9 +234,13 @@ internal object DataGeneration {
             machineBlock(EnergyRegistries.sourceBlock.get())
             machineBlock(ItemCopierRegistries.block.get())
             machineBlock(RepairerRegistries.block.get())
+            machineBlock(SimulationRegistries.block.get())
         }
 
-        private fun machineBlock(block: Block) {
+        private fun machineBlock(
+            block: Block,
+            overlayName: String = BuiltInRegistries.BLOCK.getKey(block).path,
+        ) {
             val name = BuiltInRegistries.BLOCK.getKey(block).path
             val model =
                 models().orientableMachineModel(
@@ -176,7 +248,7 @@ internal object DataGeneration {
                     bottom = modLoc("block/machine/bottom"),
                     side = modLoc("block/machine/side"),
                     top = modLoc("block/machine/top"),
-                    overlay = modLoc("block/overlay/$name"),
+                    overlay = modLoc("block/overlay/$overlayName"),
                 )
             horizontalBlock(block, model)
         }
@@ -200,6 +272,7 @@ internal object DataGeneration {
                 dropSelf(EnergyRegistries.sourceBlock.get())
                 add(ItemCopierRegistries.block.get(), noDrop())
                 dropSelf(RepairerRegistries.block.get())
+                add(SimulationRegistries.block.get(), noDrop())
             }
 
             override fun getKnownBlocks(): MutableIterable<Block> =
@@ -209,6 +282,7 @@ internal object DataGeneration {
                     EnergyRegistries.sourceBlock.get(),
                     ItemCopierRegistries.block.get(),
                     RepairerRegistries.block.get(),
+                    SimulationRegistries.block.get(),
                 )
         }
     }
@@ -222,6 +296,44 @@ internal object DataGeneration {
             addBlock({ EnergyRegistries.sourceBlock.get() }, "Energy Source")
             addBlock({ ItemCopierRegistries.block.get() }, "Item Copier")
             addBlock({ RepairerRegistries.block.get() }, "Repairer")
+            addBlock({ SimulationRegistries.block.get() }, "Simulation Chamber")
+            addItem({ SimulationRegistries.dataModelItem.get() }, "Data Model")
+            addItem({ SimulationRegistries.coreT1.get() }, "T1 Simulation Core")
+            addItem({ SimulationRegistries.coreT2.get() }, "T2 Simulation Core")
+            addItem({ SimulationRegistries.coreT3.get() }, "T3 Simulation Core")
+            addItem({ SimulationRegistries.coreT4.get() }, "T4 Simulation Core")
+            add("tooltip.lazy.data_model.blank", "Unbound — use on a living entity")
+            add("tooltip.lazy.data_model.bound", "Bound to %s — sneak-use to clear")
+            add("tooltip.lazy.simulation_core", "Speed ×%s · output ×%s per core")
+            add("tooltip.lazy.simulation_chamber.contents", "Contains stored simulation data")
+            add("gui.lazy.simulation_chamber.target", "Seed or simulation target")
+            add("gui.lazy.simulation_chamber.core", "Simulation core")
+            add("gui.lazy.simulation_chamber.progress", "Simulation progress")
+            add("gui.lazy.simulation_chamber.pending", "Unable to output — simulation paused")
+            add("gui.lazy.simulation_chamber.output_multiplier", "Output multiplier: ×%s")
+            add("gui.lazy.simulation_chamber.speed_multiplier", "Speed multiplier: ×%s")
+            add("jei.lazy.item_simulation", "Item Simulation")
+            add("jei.lazy.entity_simulation", "Entity Simulation")
+            add("jei.lazy.simulation.output_range", "Chance: %s%% · rolls: %s–%s")
+            add("jei.lazy.simulation.loot_table_output", "Entity death drop; amount and chance vary")
+            add("config.jade.plugin_lazy.simulation_chamber", "Simulation Chamber status")
+            add("jade.lazy.simulation_chamber.progress", "Progress: %s%%")
+            add("jade.lazy.simulation_chamber.multipliers", "Speed ×%s · output ×%s")
+            add("jade.lazy.simulation_chamber.pending", "Paused: output backlog")
+            add("lazy.simulation", "Simulation Chamber")
+            add("lazy.simulation.desc", "Server-authoritative simulation chamber settings")
+            add("lazy.simulation.defaultDuration", "Default cycle duration")
+            add("lazy.simulation.maxRollsPerTick", "Maximum rolls per tick")
+            add("lazy.simulation.automaticMinerals", "Automatic mineral recipes")
+            add("lazy.simulation.automaticMineralDuration", "Automatic mineral duration")
+            add("lazy.simulation.t1SpeedMultiplier", "T1 speed multiplier")
+            add("lazy.simulation.t1OutputMultiplier", "T1 output multiplier")
+            add("lazy.simulation.t2SpeedMultiplier", "T2 speed multiplier")
+            add("lazy.simulation.t2OutputMultiplier", "T2 output multiplier")
+            add("lazy.simulation.t3SpeedMultiplier", "T3 speed multiplier")
+            add("lazy.simulation.t3OutputMultiplier", "T3 output multiplier")
+            add("lazy.simulation.t4SpeedMultiplier", "T4 speed multiplier")
+            add("lazy.simulation.t4OutputMultiplier", "T4 output multiplier")
             addItem({ TeleporterRegistries.item.get() }, "Teleporter")
             addItem({ EnergyRegistries.batteryItem.get() }, "Energy Battery")
             add("biome.lazy.void", "Void")
@@ -385,6 +497,44 @@ internal object DataGeneration {
             addBlock({ RepairerRegistries.block.get() }, "修复器")
             addItem({ TeleporterRegistries.item.get() }, "传送器")
             addItem({ EnergyRegistries.batteryItem.get() }, "能量电池")
+            addBlock({ SimulationRegistries.block.get() }, "模拟室")
+            addItem({ SimulationRegistries.dataModelItem.get() }, "数据模型")
+            addItem({ SimulationRegistries.coreT1.get() }, "T1 模拟核心")
+            addItem({ SimulationRegistries.coreT2.get() }, "T2 模拟核心")
+            addItem({ SimulationRegistries.coreT3.get() }, "T3 模拟核心")
+            addItem({ SimulationRegistries.coreT4.get() }, "T4 模拟核心")
+            add("tooltip.lazy.data_model.blank", "未绑定——对生物使用以绑定")
+            add("tooltip.lazy.data_model.bound", "已绑定：%s——潜行使用以清除")
+            add("tooltip.lazy.simulation_core", "速度 ×%s · 每核心产出 ×%s")
+            add("tooltip.lazy.simulation_chamber.contents", "包含已保存的模拟内容")
+            add("gui.lazy.simulation_chamber.target", "种子物品或模拟目标")
+            add("gui.lazy.simulation_chamber.core", "模拟核心")
+            add("gui.lazy.simulation_chamber.progress", "模拟进度")
+            add("gui.lazy.simulation_chamber.pending", "无法输出——模拟已暂停")
+            add("gui.lazy.simulation_chamber.output_multiplier", "产出倍率：×%s")
+            add("gui.lazy.simulation_chamber.speed_multiplier", "速度倍率：×%s")
+            add("jei.lazy.item_simulation", "物品模拟")
+            add("jei.lazy.entity_simulation", "生物模拟")
+            add("jei.lazy.simulation.output_range", "概率：%s%% · 抽取次数：%s–%s")
+            add("jei.lazy.simulation.loot_table_output", "生物死亡掉落；数量与概率取决于实体")
+            add("config.jade.plugin_lazy.simulation_chamber", "模拟室状态")
+            add("jade.lazy.simulation_chamber.progress", "进度：%s%%")
+            add("jade.lazy.simulation_chamber.multipliers", "速度 ×%s · 产出 ×%s")
+            add("jade.lazy.simulation_chamber.pending", "已暂停：输出积压")
+            add("lazy.simulation", "模拟室")
+            add("lazy.simulation.desc", "由服务端控制的模拟室设置")
+            add("lazy.simulation.defaultDuration", "默认周期时长")
+            add("lazy.simulation.maxRollsPerTick", "每刻最大抽取次数")
+            add("lazy.simulation.automaticMinerals", "自动矿物配方")
+            add("lazy.simulation.automaticMineralDuration", "自动矿物周期时长")
+            add("lazy.simulation.t1SpeedMultiplier", "T1 速度倍率")
+            add("lazy.simulation.t1OutputMultiplier", "T1 产出倍率")
+            add("lazy.simulation.t2SpeedMultiplier", "T2 速度倍率")
+            add("lazy.simulation.t2OutputMultiplier", "T2 产出倍率")
+            add("lazy.simulation.t3SpeedMultiplier", "T3 速度倍率")
+            add("lazy.simulation.t3OutputMultiplier", "T3 产出倍率")
+            add("lazy.simulation.t4SpeedMultiplier", "T4 速度倍率")
+            add("lazy.simulation.t4OutputMultiplier", "T4 产出倍率")
             add("biome.lazy.void", "虚空")
             add("dimension.minecraft.overworld", "主世界")
             add("dimension.minecraft.the_end", "末地")

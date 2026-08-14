@@ -9,6 +9,9 @@ import rhx.lazy.core.command.LazyCommands
 import rhx.lazy.core.registry.LazyRegistries
 import rhx.lazy.feature.protection.DamageCapHandler
 import rhx.lazy.feature.repairer.RepairerConfigs
+import rhx.lazy.feature.simulation.DataModelInteractionHandler
+import rhx.lazy.feature.simulation.SimulationConfigs
+import rhx.lazy.feature.simulation.SimulationRecipeReloads
 import rhx.lazy.feature.teleporter.TeleporterConfigs
 import rhx.lazy.integration.LazyIntegrations
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
@@ -22,9 +25,14 @@ object Lazy {
     init {
         TeleporterConfigs.init()
         RepairerConfigs.init()
+        SimulationConfigs.init()
+        net.neoforged.neoforge.common.NeoForgeMod
+            .enableMilkFluid()
         LazyRegistries.register(MOD_BUS)
         LazyIntegrations.initialize(MOD_BUS)
         NeoForge.EVENT_BUS.addListener(LazyCommands::register)
+        NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onDatapackSync)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, DataModelInteractionHandler::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onInvulnerabilityCheck)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onIncomingDamage)
         logger.info("Lazy mod initialized")

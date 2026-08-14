@@ -1,0 +1,14 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:sugar_cane"
+  },
+  "item_outputs": [
+    {
+      "stack": {
+        "count": 1,
+        "id": "minecraft:sugar_cane"
+      }
+    }
+  ]
+}

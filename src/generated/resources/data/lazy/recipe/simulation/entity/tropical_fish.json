@@ -1,0 +1,14 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:tropical_fish"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:bone_meal"
+    }
+  ],
+  "entity": "minecraft:tropical_fish"
+}

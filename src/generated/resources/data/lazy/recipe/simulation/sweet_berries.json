@@ -1,0 +1,16 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:sweet_berries"
+  },
+  "item_outputs": [
+    {
+      "max_rolls": 3,
+      "min_rolls": 2,
+      "stack": {
+        "count": 1,
+        "id": "minecraft:sweet_berries"
+      }
+    }
+  ]
+}

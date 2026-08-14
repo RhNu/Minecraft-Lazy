@@ -1,0 +1,15 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:carrot"
+  },
+  "item_outputs": [
+    {
+      "max_rolls": 4,
+      "stack": {
+        "count": 1,
+        "id": "minecraft:carrot"
+      }
+    }
+  ]
+}

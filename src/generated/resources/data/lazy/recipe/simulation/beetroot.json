@@ -1,0 +1,15 @@
+{
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "minecraft:beetroot_seeds"
+  },
+  "item_outputs": [
+    {
+      "max_rolls": 3,
+      "stack": {
+        "count": 1,
+        "id": "minecraft:beetroot"
+      }
+    }
+  ]
+}

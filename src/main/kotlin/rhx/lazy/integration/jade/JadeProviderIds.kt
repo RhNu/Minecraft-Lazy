@@ -9,5 +9,6 @@ internal object JadeProviderIds {
     val itemCopier = lazyId("item_copier")
     val repairer = lazyId("repairer")
     val planter = lazyId("planter")
+    val simulationChamber = lazyId("simulation_chamber")
     val essenceConverter = lazyId("essence_converter")
 }

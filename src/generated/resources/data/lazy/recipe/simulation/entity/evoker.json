@@ -1,0 +1,14 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:emerald"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:totem_of_undying"
+    }
+  ],
+  "entity": "minecraft:evoker"
+}

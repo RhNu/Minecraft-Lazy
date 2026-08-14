@@ -1,0 +1,18 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:rotten_flesh"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:gold_nugget"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:gold_ingot"
+    }
+  ],
+  "entity": "minecraft:zombified_piglin"
+}

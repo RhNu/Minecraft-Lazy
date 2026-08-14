@@ -1,0 +1,14 @@
+{
+  "type": "lazy:entity_simulation",
+  "display_item_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:rotten_flesh"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:copper_ingot"
+    }
+  ],
+  "entity": "minecraft:drowned"
+}
