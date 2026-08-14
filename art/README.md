@@ -5,14 +5,14 @@
 ## 当前组织
 
 - `art/block/machine/`：机器共用的底面、侧面、顶面材质。
-- `art/block/overlay/`：各机器正面 overlay（透明背景叠加层），每个机器一个；种植机另有顶部 overlay。
+- `art/block/overlay/`：各机器正面 overlay（透明背景叠加层），每个机器一个。
 - `art/item/icon/`：物品图标的 SVG 源文件。
 - `art/slot/empty/`：空槽位图标的 SVG 源文件。
 
 ## 命名规则
 
 - 机器共用材质按视觉职责命名为 `bottom.svg`、`side.svg`、`top.svg`。
-- overlay 以机器名命名（如 `buffer.svg`、`planter.svg`），种植机顶部为 `planter_top.svg`。
+- overlay 以机器名命名（如 `buffer.svg`、`energy_source.svg`）。
 - SVG 文件名即为 PNG 材质名，不再需要后缀映射。
 
 ## 导出方式
@@ -24,6 +24,6 @@
 
 机器方块使用双 element 模型实现 overlay 叠加：
 1. 第一个 element 是完整的立方体，底/侧/顶/正面各使用对应材质。
-2. 第二个 element 仅渲染正面（种植机还渲染顶面），使用透明背景的 overlay 材质。
+2. 第二个 element 仅渲染正面，使用透明背景的 overlay 材质。
 3. overlay 的透明像素透出底层材质，不透明像素显示 overlay 图案。
 4. 方块朝向通过 blockstate 的 `facing` 属性 + 模型 Y 轴旋转实现，overlay 随之旋转。

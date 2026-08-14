@@ -169,9 +169,6 @@ repositories {
         url = uri("https://maven.blamejared.com")
         content {
             includeGroup("mezz.jei")
-            includeGroup("net.darkhax.bookshelf")
-            includeGroup("net.darkhax.botanypots")
-            includeGroup("net.darkhax.pricklemc")
         }
     }
     maven {
@@ -261,15 +258,6 @@ dependencies {
     compileOnly(
         "curse.maven:applied-flux-965012:${property("applied_flux_file_id")}",
     )
-    compileOnly(
-        "net.darkhax.botanypots:botanypots-neoforge-${property("minecraft_version")}:${property("botany_pots_version")}",
-    )
-    compileOnly(
-        "net.darkhax.bookshelf:bookshelf-neoforge-${property("minecraft_version")}:${property("bookshelf_version")}",
-    )
-    compileOnly(
-        "net.darkhax.pricklemc:prickle-neoforge-${property("minecraft_version")}:${property("prickle_version")}",
-    )
     integrationsRuntime(
         "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}",
     )
@@ -289,18 +277,6 @@ dependencies {
     )
     integrationsRuntime(
         "curse.maven:applied-flux-965012:${property("applied_flux_file_id")}",
-    )
-    integrationsRuntime(
-        "net.darkhax.botanypots:botanypots-neoforge-${property("minecraft_version")}:${property("botany_pots_version")}",
-    )
-    integrationsRuntime(
-        "net.darkhax.bookshelf:bookshelf-neoforge-${property("minecraft_version")}:${property("bookshelf_version")}",
-    )
-    integrationsRuntime(
-        "net.darkhax.pricklemc:prickle-neoforge-${property("minecraft_version")}:${property("prickle_version")}",
-    )
-    integrationsRuntime(
-        "maven.modrinth:botany-pots-tiers:${property("botany_pots_tiers_version")}",
     )
     integrationsRuntime("maven.modrinth:cucumber:${property("cucumber_version")}")
     integrationsRuntime(
@@ -392,8 +368,6 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "guideme_version_range" to project.property("guideme_version_range"),
             "glodium_version_range" to project.property("glodium_version_range"),
             "applied_flux_version_range" to project.property("applied_flux_version_range"),
-            "botany_pots_version_range" to project.property("botany_pots_version_range"),
-            "botany_pots_tiers_version_range" to project.property("botany_pots_tiers_version_range"),
             "mystical_agriculture_version_range" to project.property("mystical_agriculture_version_range"),
             "mystical_agradditions_version_range" to project.property("mystical_agradditions_version_range"),
         )

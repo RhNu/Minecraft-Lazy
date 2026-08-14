@@ -7,7 +7,6 @@ import rhx.lazy.feature.repairer.ItemRepairHooks
 import rhx.lazy.integration.ae2.Ae2IntegrationModule
 import rhx.lazy.integration.appflux.AppliedFluxIntegrationModule
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
-import rhx.lazy.integration.botanypots.BotanyPotsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
 import rhx.lazy.integration.mysticalagriculture.MysticalAgricultureIntegrationModule
 import rhx.lazy.integration.silentgear.SilentGearIntegrationModule
@@ -28,7 +27,6 @@ class IntegrationClassloadingTest {
                     Ae2IntegrationModule,
                     AppliedFluxIntegrationModule,
                     BeyondDimensionsIntegrationModule,
-                    BotanyPotsIntegrationModule,
                     SilentGearIntegrationModule,
                     CuriosIntegrationModule,
                     MysticalAgricultureIntegrationModule,
@@ -58,7 +56,6 @@ class IntegrationClassloadingTest {
         val OPTIONAL_MODS =
             listOf(
                 "beyonddimensions",
-                "botanypots",
                 "silentgear",
                 "curios",
                 "jade",
@@ -72,7 +69,6 @@ class IntegrationClassloadingTest {
         val OPTIONAL_API_CLASSES =
             listOf(
                 "com.wintercogs.beyonddimensions.api.dimensionnet.DimensionsNet",
-                "net.darkhax.botanypots.common.api.context.BotanyPotContext",
                 "net.silentchaos512.gear.util.GearData",
                 "top.theillusivec4.curios.api.CuriosApi",
                 "snownee.jade.api.IWailaPlugin",

@@ -11,8 +11,6 @@ import rhx.lazy.feature.repairer.RepairerBlock
 import rhx.lazy.feature.repairer.RepairerBlockEntity
 import rhx.lazy.feature.simulation.SimulationChamberBlock
 import rhx.lazy.feature.simulation.SimulationChamberBlockEntity
-import rhx.lazy.integration.jade.botanypots.JadePlanterIntegration
-import rhx.lazy.integration.jade.botanypots.client.JadePlanterClientIntegration
 import rhx.lazy.integration.jade.client.BufferJadeComponentProvider
 import rhx.lazy.integration.jade.client.EnergySourceJadeComponentProvider
 import rhx.lazy.integration.jade.client.ItemCopierJadeComponentProvider
@@ -35,9 +33,6 @@ class LazyJadePlugin : IWailaPlugin {
         registration.registerBlockDataProvider(SimulationChamberJadeDataProvider, SimulationChamberBlockEntity::class.java)
         registration.registerEnergyStorage(EnergySourceStorageHider, EnergySourceBlock::class.java)
 
-        if (ModList.get().isLoaded(BOTANY_POTS_MOD_ID)) {
-            JadePlanterIntegration.register(registration)
-        }
         if (ModList.get().isLoaded(MYSTICAL_AGRICULTURE_MOD_ID)) {
             JadeEssenceConverterIntegration.register(registration)
         }
@@ -50,16 +45,12 @@ class LazyJadePlugin : IWailaPlugin {
         registration.registerBlockComponent(RepairerJadeComponentProvider, RepairerBlock::class.java)
         registration.registerBlockComponent(SimulationChamberJadeComponentProvider, SimulationChamberBlock::class.java)
 
-        if (ModList.get().isLoaded(BOTANY_POTS_MOD_ID)) {
-            JadePlanterClientIntegration.register(registration)
-        }
         if (ModList.get().isLoaded(MYSTICAL_AGRICULTURE_MOD_ID)) {
             JadeEssenceConverterClientIntegration.register(registration)
         }
     }
 
     private companion object {
-        const val BOTANY_POTS_MOD_ID = "botanypots"
         const val MYSTICAL_AGRICULTURE_MOD_ID = "mysticalagriculture"
     }
 }

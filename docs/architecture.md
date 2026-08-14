@@ -35,8 +35,6 @@ rhx.lazy
    ├─ curios
    │  └─ client
    ├─ jade
-   │  ├─ botanypots
-   │  │  └─ client
    │  └─ client
    ├─ mysticalagriculture
    └─ silentgear
@@ -47,7 +45,7 @@ rhx.lazy
 - `feature` 使用垂直切片组织业务；方块、物品、方块实体、界面、事件、配置和注册跟随各自领域，不再按 Minecraft 类型横向分包。
 - `integration` 保存第三方模组适配。集成可以依赖 `core` 和 `feature`，业务领域不得反向依赖集成。
 - 可选集成通过 `IntegrationModule` 统一公共侧与客户端初始化，并由唯一的显式模块列表确定顺序。bootstrap 的字段、签名和初始化器不得引用第三方类型；只有确认对应模组已加载后才能解析 adapter。模组已安装但初始化失败属于启动错误，不静默降级。
-- Jade 集成是上述生命周期的明确例外：`LazyJadePlugin` 通过 Jade 的 `@WailaPlugin` 发现，公共数据提供器与客户端组件提供器分别由 Jade 注册，不进入 `IntegrationManager`。Lazy 自身 bootstrap 不引用 Jade API；种植机和精华转换器的 Jade bridge 只有在对应内容模组已加载后才解析。
+- Jade 集成是上述生命周期的明确例外：`LazyJadePlugin` 通过 Jade 的 `@WailaPlugin` 发现，公共数据提供器与客户端组件提供器分别由 Jade 注册，不进入 `IntegrationManager`。Lazy 自身 bootstrap 不引用 Jade API；精华转换器的 Jade bridge 只有在对应内容模组已加载后才解析。
 - 网络输出由 `core.io.NetworkInsertCapability`、`NetworkPayload`、`NetworkOutputProvider` 与统一路由器组成。稳定能力 ID 为 `lazy:item`、`lazy:fluid` 与 `neoforge:energy`；机器和提供者只通过能力交集配对。提供者或能力暂时缺失时保留绑定并重试，目标数据损坏或 Beyond Dimensions 已确认网络永久不存在时才退回被动模式；无法确认提交结果时持久暂停，避免重复写入。
 - Beyond Dimensions 直接实现物品、流体和 FE 三项插入能力，并在集成包内保留网络 ID、`Long` 数量、模拟语义和异常保护，不再经过全局单提供者存储服务。
 - AE2 目标保存无线接入点的维度与方块坐标。每次输出只在目标区块已加载、接入点活动且 Grid 可用时，将物品或流体写入该 Grid 的 `MEStorage`；不创建区块票据，也不保存运行时 Grid 标识。Applied Flux 存在时，由后初始化的 `integration.appflux` 适配器增加 FE 能力并以 `FluxKey(FE)` 写入同一库存，禁止调用 AE2 网络供电缓存。

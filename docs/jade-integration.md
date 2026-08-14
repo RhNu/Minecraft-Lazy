@@ -20,10 +20,7 @@
 | 能量源 | 被动、主动推送或网络推送模式 | `500,000,000 / 500,000,000 FE` 容量条；该数值只是单次传输上限的实现表示，不是有限储能 |
 | 物品复制器 | 模板物品、推送间隔 | 六个相邻容器内容、每次推送结果 |
 | 修复器 | 当前物品及剩余耐久；空机器不增加额外行 | 修复按钮、服务端修复百分比配置 |
-| 种植机 | 生长进度、当前配方每轮生长的预期总产出效率、当前输出模式（被动、向下输出或指定网络） | 完整产物队列、维度网络内容 |
 | 机器外壳 | 无额外信息 | — |
-
-其中种植机同时依赖 Botany Pots。Jade 支持不得让只安装 Jade、未安装 Botany Pots 的实例解析任何 Botany Pots 类型。
 
 ## Jade 生命周期
 
@@ -33,7 +30,6 @@ Jade 通过 `@WailaPlugin` 发现 `IWailaPlugin` 实现，并分别调用公共�
 - 服务端数据提供器放在 `integration.jade`，只引用公共 Minecraft、Lazy 和 Jade API。
 - 组件提供器放在 `integration.jade.client`，只能从 `registerClient` 触达。
 - `LazyIntegrations`、`Lazy` 和 `LazyClient` 均不得引用 Jade 插件或 Jade API。
-- 种植机注册通过单独的 Jade/Botany Pots bridge 完成，并先确认 `botanypots` 已加载；其余 Jade 插件类不得引用 Botany Pots 类型。
 - 注册时以方块或方块实体的类作为目标，不提前对 Lazy 的延迟持有者调用 `get()`。
 
 这构成架构中一个明确的生命周期例外：集成代码仍位于 `integration`，但发现与初始化由 Jade 负责。
@@ -48,7 +44,6 @@ Jade 通过 `@WailaPlugin` 发现 `IWailaPlugin` 实现，并分别调用公共�
 - `lazy:energy_source`
 - `lazy:item_copier`
 - `lazy:repairer`
-- `lazy:planter`
 
 组件提供器沿用同一 UID，使 Jade 自动为每项支持生成可关闭的插件配置。还需生成对应的 `config.jade.plugin_lazy.*` 中英文配置名称；其他新增文本同样必须本地化。
 
@@ -56,17 +51,15 @@ Jade 通过 `@WailaPlugin` 发现 `IWailaPlugin` 实现，并分别调用公共�
 
 - 数量和间隔使用变长整数。
 - 开关和模式使用布尔值或小枚举。
-- 生长进度压缩为有限范围数值，并明确区分“无有效配方”和 `0%`。
-- 种植机只同步一个互斥的输出模式；网络模式额外同步网络提供器标识，用于显示“输出到 xx 网络”。
 - 物品复制器模板与修复器物品最多各发送一个 `ItemStack`。
-- 不发送完整缓冲器槽位、种植机输出或待分发产物列表。
+- 不发送完整缓冲器槽位。
 - 不主动发送维度网络内容，也不因 Jade 查询触发网络存储访问。
 
 Jade 默认约每 250 ms 请求一次服务端数据。以上快照均应是只读、常数时间操作，不进行配方全表扫描、邻接能力遍历或物品路由。
 
 ## 与 Jade 内置信息的关系
 
-Jade 15.10.5 包含通用的物品、流体和能量存储提供器，并会尝试读取默认 NeoForge capability。缓冲器已经公开物品和流体 capability，能量源已经公开能量 capability，种植机向下方公开输出物品 capability。
+Jade 15.10.5 包含通用的物品、流体和能量存储提供器，并会尝试读取默认 NeoForge capability。缓冲器已经公开物品和流体 capability。
 
 因此自定义支持遵循以下规则：
 
@@ -94,12 +87,10 @@ Jade 15.10.5 包含通用的物品、流体和能量存储提供器，并会尝�
 
 - 不安装 Jade：普通客户端、专用服务器和现有测试均可启动。
 - 只在客户端安装 Jade：连接未安装 Jade 的 Lazy 服务器不会报错或显示伪造状态。
-- 客户端与服务端都安装 Jade：五类目标方块显示正确状态，状态变化在下一次 Jade 刷新后更新。
+- 客户端与服务端都安装 Jade：各目标方块显示正确状态，状态变化在下一次 Jade 刷新后更新。
 - Jade 插件类不会在 Lazy 自身 bootstrap 中提前加载。
-- 未安装 Botany Pots 但安装 Jade：种植机 bridge 不解析，其他方块支持正常。
-- 安装 Jade 与 Botany Pots：种植机进度、预期总产出效率和输出模式正确。
 - 每个 provider 可以在 Jade 配置中独立关闭，新增配置名和内容均有 `zh_cn`、`en_us` 翻译。
-- 缓冲器与种植机的大量内容不会使 tooltip 或网络包随库存条目数线性增长。
+- 缓冲器的大量内容不会使 tooltip 或网络包随库存条目数线性增长。
 - 能量源不会向玩家展示具有误导性的有限储能语义。
 
 自动验证运行 `./gradlew runData`、`./gradlew check` 和 `./gradlew build`。发布前仍应使用 `clientIntegrations`、`serverIntegrations` 完成 HUD 显示和专用服务器实机验证。

@@ -60,7 +60,6 @@ class MachineCasingResourceTest {
                 "energy_source" to listOf(" B ", "GMG"),
                 "item_copier" to listOf(" C ", "BMB"),
                 "repairer" to listOf(" A ", "CMC"),
-                "planter" to listOf(" P ", "HMH", " C "),
             )
 
         expectedPatterns.forEach { (machine, expectedPattern) ->
@@ -95,23 +94,6 @@ class MachineCasingResourceTest {
                 "$machine overlay must differ from base bottom texture",
             )
         }
-
-        val planterModel = readJson("/assets/lazy/models/block/planter.json")
-        assertEquals("minecraft:block/block", planterModel["parent"].asString)
-        assertEquals("minecraft:cutout", planterModel["render_type"].asString)
-        assertEquals("lazy:block/machine/bottom", planterModel["textures"].asJsonObject["bottom"].asString)
-        assertEquals("lazy:block/machine/side", planterModel["textures"].asJsonObject["side"].asString)
-        assertEquals("lazy:block/machine/top", planterModel["textures"].asJsonObject["top"].asString)
-        assertEquals("lazy:block/overlay/planter", planterModel["textures"].asJsonObject["overlay"].asString)
-        assertEquals("lazy:block/overlay/planter_top", planterModel["textures"].asJsonObject["top_overlay"].asString)
-
-        val planterOverlay = readTexture("overlay/planter")
-        assertEquals(16, planterOverlay.width)
-        assertEquals(16, planterOverlay.height)
-        assertFalse(
-            planterOverlay.pixels().contentEquals(bottomTexture.pixels()),
-            "planter overlay must differ from base bottom texture",
-        )
 
         val essenceConverterModel = readJson("/assets/lazy/models/block/essence_converter.json")
         assertEquals("minecraft:block/block", essenceConverterModel["parent"].asString)
@@ -160,8 +142,6 @@ class MachineCasingResourceTest {
                 "overlay/essence_converter.svg",
                 "overlay/item_copier.svg",
                 "overlay/repairer.svg",
-                "overlay/planter.svg",
-                "overlay/planter_top.svg",
             )
 
         sources.forEach { source ->
