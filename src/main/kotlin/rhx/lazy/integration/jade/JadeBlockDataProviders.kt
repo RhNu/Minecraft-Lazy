@@ -4,7 +4,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
-import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.feature.energy.EnergySourceBlockEntity
 import rhx.lazy.feature.itemcopier.ItemCopierBlockEntity
@@ -25,7 +25,7 @@ internal object BufferJadeDataProvider : StreamServerDataProvider<BlockAccessor,
         return BufferJadeData(
             itemCount = blockEntity.totalItemCount,
             fluidAmount = blockEntity.totalFluidAmount,
-            networkOutput = blockEntity.ioController.route == rhx.lazy.core.io.IoRoute.NETWORK,
+            networkOutput = blockEntity.ioController.mode == IoMode.NETWORK,
         )
     }
 
@@ -52,23 +52,23 @@ private object BufferJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, Buffer
         )
 }
 
-internal object EnergySourceJadeDataProvider : StreamServerDataProvider<BlockAccessor, IoRoute> {
-    override fun streamData(accessor: BlockAccessor): IoRoute? = (accessor.blockEntity as? EnergySourceBlockEntity)?.ioController?.route
+internal object EnergySourceJadeDataProvider : StreamServerDataProvider<BlockAccessor, IoMode> {
+    override fun streamData(accessor: BlockAccessor): IoMode? = (accessor.blockEntity as? EnergySourceBlockEntity)?.ioController?.mode
 
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, IoRoute> = IoRouteCodec
+    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, IoMode> = IoModeCodec
 
     override fun getUid(): ResourceLocation = JadeProviderIds.energySource
 }
 
-private object IoRouteCodec : StreamCodec<RegistryFriendlyByteBuf, IoRoute> {
+private object IoModeCodec : StreamCodec<RegistryFriendlyByteBuf, IoMode> {
     override fun encode(
         buffer: RegistryFriendlyByteBuf,
-        value: IoRoute,
+        value: IoMode,
     ) {
         buffer.writeVarInt(value.ordinal)
     }
 
-    override fun decode(buffer: RegistryFriendlyByteBuf): IoRoute = IoRoute.entries.getOrElse(buffer.readVarInt()) { IoRoute.PASSIVE }
+    override fun decode(buffer: RegistryFriendlyByteBuf): IoMode = IoMode.entries.getOrElse(buffer.readVarInt()) { IoMode.PASSIVE }
 }
 
 internal data class ItemCopierJadeData(

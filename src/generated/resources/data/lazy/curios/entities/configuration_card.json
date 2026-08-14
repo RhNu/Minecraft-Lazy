@@ -3,6 +3,6 @@
     "minecraft:player"
   ],
   "slots": [
-    "me_link_card"
+    "configuration_card"
   ]
 }

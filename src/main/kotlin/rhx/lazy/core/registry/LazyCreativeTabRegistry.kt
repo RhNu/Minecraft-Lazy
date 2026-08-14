@@ -7,6 +7,7 @@ import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.registries.DeferredRegister
 import rhx.lazy.MOD_ID
+import rhx.lazy.core.io.ConfigurationCardRegistries
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.itemcopier.ItemCopierRegistries
@@ -30,6 +31,7 @@ internal object LazyCreativeTabRegistry : RegistryModule {
                     .icon { ItemStack(BufferRegistries.item.get()) }
                     .displayItems { _, output ->
                         output.accept(MachineCasingRegistries.item.get())
+                        output.accept(ConfigurationCardRegistries.item.get())
                         output.accept(BufferRegistries.item.get())
                         output.accept(TeleporterRegistries.item.get())
                         output.accept(EnergyRegistries.batteryItem.get())

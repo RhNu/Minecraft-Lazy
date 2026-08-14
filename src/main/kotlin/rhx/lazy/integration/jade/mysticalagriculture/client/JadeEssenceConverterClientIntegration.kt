@@ -42,7 +42,7 @@ private object EssenceConverterJadeComponentProvider : IBlockComponentProvider {
                     if (data.outputMode == "network_paused") {
                         "gui.lazy.io.network_paused"
                     } else {
-                        "gui.lazy.io.route.${data.outputMode}"
+                        "gui.lazy.io.mode.${data.outputMode}"
                     },
                 ),
             ),

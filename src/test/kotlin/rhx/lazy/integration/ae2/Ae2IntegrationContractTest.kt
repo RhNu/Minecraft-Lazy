@@ -1,30 +1,22 @@
 package rhx.lazy.integration.ae2
 
-import com.google.gson.JsonParser
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class Ae2IntegrationContractTest {
     @Test
-    fun `generated link card resources are packaged`() {
+    fun `configuration card resources are packaged independently of AE2`() {
         val paths =
             listOf(
-                "/assets/lazy/models/item/me_output_link_card.json",
-                "/assets/lazy/textures/item/icon/me_output_link_card.png",
-                "/data/lazy/recipe/me_output_link_card.json",
+                "/assets/lazy/models/item/configuration_card.json",
+                "/assets/lazy/textures/item/icon/configuration_card.png",
+                "/data/lazy/recipe/configuration_card.json",
             )
         paths.forEach { path -> assertNotNull(javaClass.getResource(path), "Missing generated resource $path") }
-
-        val recipe =
-            javaClass
-                .getResourceAsStream("/data/lazy/recipe/me_output_link_card.json")
-                .use { stream -> JsonParser.parseReader(requireNotNull(stream).reader()).asJsonObject }
-        assertEquals("ae2", recipe.getAsJsonArray("neoforge:conditions")[0].asJsonObject["modid"].asString)
     }
 
     @Test
@@ -47,9 +39,9 @@ class Ae2IntegrationContractTest {
     }
 
     @Test
-    fun `link card texture has an editable SVG source`() {
+    fun `configuration card texture has an editable SVG source`() {
         val projectRoot = Path.of(requireNotNull(System.getProperty("lazy.projectDir")))
 
-        assertTrue(Files.isRegularFile(projectRoot.resolve("art/item/icon/me_output_link_card.svg")))
+        assertTrue(Files.isRegularFile(projectRoot.resolve("art/item/icon/configuration_card.svg")))
     }
 }

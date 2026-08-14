@@ -227,7 +227,7 @@ internal object BufferUI {
     ) : IoPanelModel {
         override val player = holder.player
 
-        override val controller
+        override val editor
             get() = blockEntity?.ioController
 
         private val blockEntity: BufferBlockEntity?

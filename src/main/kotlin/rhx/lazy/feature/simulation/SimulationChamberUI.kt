@@ -141,7 +141,7 @@ internal object SimulationChamberUI {
         private val holder: BlockUIMenuType.BlockUIHolder,
     ) : IoPanelModel {
         override val player = holder.player
-        override val controller get() = blockEntity?.ioController
+        override val editor get() = blockEntity?.ioController
         private val blockEntity: SimulationChamberBlockEntity?
             get() = holder.player.level().blockEntityOrNull(holder.pos, SimulationRegistries.blockEntity.get())
         val inputHandler get() = blockEntity?.inputItemHandler ?: EmptyItems

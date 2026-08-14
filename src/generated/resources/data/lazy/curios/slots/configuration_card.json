@@ -1,0 +1,7 @@
+{
+  "icon": "lazy:slot/empty/empty_configuration_card_slot",
+  "size": 1,
+  "validators": [
+    "lazy:configuration_card_slot"
+  ]
+}

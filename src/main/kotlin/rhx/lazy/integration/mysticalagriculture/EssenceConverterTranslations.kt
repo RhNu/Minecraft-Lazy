@@ -12,13 +12,6 @@ internal object EssenceConverterTranslations {
         add("gui.lazy.essence_converter.amount.tooltip", "Essence amount: %s / %s", "精华量：%s / %s")
         add("gui.lazy.essence_converter.remainder.tooltip", "Remainder: %s / %s essence", "余数：%s / %s 精华量")
         add("gui.lazy.essence_converter.input.tooltip", "Insert essence", "放入精华")
-        add("gui.lazy.essence_converter.downward", "Output to the container below", "输出到下方容器")
-        add("gui.lazy.essence_converter.network", "Output to the bound dimension network", "输出到绑定的维度网络")
-        add(
-            "gui.lazy.essence_converter.network.paused",
-            "Network output paused after an uncertain transfer; select it again to retry",
-            "一次传输结果不确定，网络输出已暂停；重新选择网络输出即可重试",
-        )
         add("gui.lazy.essence_converter.clear", "Clear all stored essence", "清空全部精华")
         add("gui.lazy.essence_converter.clear.confirm", "Destroy all stored essence?", "销毁全部已存精华？")
         add("gui.lazy.essence_converter.clear.accept", "Clear", "清空")
@@ -30,7 +23,6 @@ internal object EssenceConverterTranslations {
         add("jade.lazy.essence_converter.output", "Essence amount: %s", "精华量：%s")
         add("jade.lazy.essence_converter.remainder", "Remainder: %s essence", "余数：%s 精华量")
         add("jade.lazy.essence_converter.output_mode", "Output mode: %s", "输出模式：%s")
-        add("gui.lazy.essence_converter.network_paused", "Network (paused)", "网络（已暂停）")
         add("lazy.essence_converter", "Essence Converter", "精华转换器")
         add("lazy.essence_converter.desc", "Server-authoritative Essence Converter settings", "由服务端控制的精华转换器设置")
         add("lazy.essence_converter.maxStoredEssence", "Maximum stored essence", "最大精华缓存")

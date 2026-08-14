@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.ItemInteractionResult
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.context.BlockPlaceContext
@@ -26,6 +27,8 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.phys.BlockHitResult
 import rhx.lazy.core.blockEntityOrNull
+import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.applyConfigurationCardOnPlacement
 import rhx.lazy.core.sidedItemUseResult
 import rhx.lazy.core.sidedUseResult
 
@@ -62,6 +65,19 @@ internal class EssenceConverterBlock :
 
     override fun createBlockStateDefinition(builder: StateDefinition.Builder<Block, BlockState>) {
         builder.add(FACING)
+    }
+
+    override fun setPlacedBy(
+        level: Level,
+        pos: BlockPos,
+        state: BlockState,
+        placer: LivingEntity?,
+        stack: ItemStack,
+    ) {
+        super.setPlacedBy(level, pos, state, placer, stack)
+        if (!level.isClientSide) {
+            (level.getBlockEntity(pos) as? IoManagedBlockEntity)?.let { applyConfigurationCardOnPlacement(placer as? Player, it) }
+        }
     }
 
     override fun <T : BlockEntity> getTicker(

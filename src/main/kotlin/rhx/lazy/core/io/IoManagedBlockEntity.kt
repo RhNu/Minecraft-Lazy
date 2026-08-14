@@ -1,12 +1,10 @@
 package rhx.lazy.core.io
 
-import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import rhx.lazy.core.ManagedBlockEntity
@@ -16,70 +14,37 @@ internal abstract class IoManagedBlockEntity(
     pos: BlockPos,
     state: BlockState,
 ) : ManagedBlockEntity(type, pos, state) {
-    @field:Persisted
-    @field:LazyManaged
-    private var ioRouteName = IoRoute.PASSIVE.name
-
-    @field:Persisted
-    @field:LazyManaged
-    private var ioProviderName = ""
-
-    @field:Persisted
-    @field:LazyManaged
+    private var ioConfiguration = IoConfiguration.DEFAULT
     private var ioNetworkPaused = false
 
-    private var ioTargetData = CompoundTag()
-    private var cachedIoRoute = IoRoute.PASSIVE
-    private var cachedIoProviderId: ResourceLocation? = null
-    private var cachedIoTarget: NetworkTargetRef? = null
+    val ioController = IoController(this)
 
-    val ioController = IoRouteController(this)
-
-    protected fun installIoAdapter(adapter: IoRouteAdapter): IoRouteController {
+    protected fun installIoAdapter(adapter: IoAdapter): IoController {
         ioController.install(adapter)
         return ioController
     }
 
     protected fun stripIoConfiguration(tag: CompoundTag) {
-        val managed = tag.getCompound(MANAGED_DATA_KEY)
-        managed.remove(IO_ROUTE_FIELD)
-        managed.remove(IO_PROVIDER_FIELD)
-        managed.remove(IO_NETWORK_PAUSED_FIELD)
-        tag.remove(IO_TARGET_DATA_TAG)
-        tag.put(MANAGED_DATA_KEY, managed)
+        tag.remove(IO_CONFIGURATION_TAG)
+        tag.remove(IO_NETWORK_PAUSED_TAG)
     }
 
-    internal fun storedIoRoute(): IoRoute = cachedIoRoute
-
-    internal fun hasCanonicalStoredIoRoute(): Boolean = ioRouteName == cachedIoRoute.name
-
-    internal fun storedIoTarget(): NetworkTargetRef? = cachedIoTarget
+    internal fun storedIoConfiguration(): IoConfiguration = ioConfiguration.copy(networkTarget = ioConfiguration.networkTarget?.copy())
 
     internal fun storedIoNetworkPaused(): Boolean = ioNetworkPaused
 
-    internal fun updateIoRoute(route: IoRoute) {
-        if (cachedIoRoute == route && ioRouteName == route.name) return
-        ioRouteName = route.name
-        cachedIoRoute = route
-        markDirty(IO_ROUTE_FIELD)
-    }
-
-    internal fun updateIoProvider(target: NetworkTargetRef?) {
-        val providerId = target?.providerId
-        val targetData = target?.data?.copy() ?: CompoundTag()
-        val providerName = providerId?.toString() ?: ""
-        if (cachedIoProviderId == providerId && ioProviderName == providerName && ioTargetData == targetData) return
-        ioProviderName = providerName
-        ioTargetData = targetData
-        cachedIoProviderId = providerId
-        cachedIoTarget = providerId?.let { NetworkTargetRef(it, ioTargetData) }
-        markDirty(IO_PROVIDER_FIELD)
+    internal fun updateIoConfiguration(configuration: IoConfiguration) {
+        val copied = configuration.copy(networkTarget = configuration.networkTarget?.copy())
+        if (ioConfiguration == copied) return
+        ioConfiguration = copied
+        setChanged()
+        invalidateCapabilities()
     }
 
     internal fun updateIoNetworkPaused(paused: Boolean) {
         if (ioNetworkPaused == paused) return
         ioNetworkPaused = paused
-        markDirty(IO_NETWORK_PAUSED_FIELD)
+        setChanged()
     }
 
     override fun saveAdditional(
@@ -87,9 +52,8 @@ internal abstract class IoManagedBlockEntity(
         registries: HolderLookup.Provider,
     ) {
         super.saveAdditional(tag, registries)
-        if (!ioTargetData.isEmpty) {
-            tag.put(IO_TARGET_DATA_TAG, ioTargetData.copy())
-        }
+        tag.put(IO_CONFIGURATION_TAG, ioConfiguration.save())
+        if (ioNetworkPaused) tag.putBoolean(IO_NETWORK_PAUSED_TAG, true)
     }
 
     override fun loadAdditional(
@@ -97,124 +61,145 @@ internal abstract class IoManagedBlockEntity(
         registries: HolderLookup.Provider,
     ) {
         super.loadAdditional(tag, registries)
-        ioTargetData =
-            if (tag.contains(IO_TARGET_DATA_TAG, Tag.TAG_COMPOUND.toInt())) {
-                tag.getCompound(IO_TARGET_DATA_TAG).copy()
+        ioConfiguration =
+            if (tag.contains(IO_CONFIGURATION_TAG, Tag.TAG_COMPOUND.toInt())) {
+                IoConfiguration.load(tag.getCompound(IO_CONFIGURATION_TAG))
             } else {
-                CompoundTag()
+                IoConfiguration.DEFAULT
             }
-        refreshIoCache()
+        ioNetworkPaused = tag.getBoolean(IO_NETWORK_PAUSED_TAG)
         ioController.normalize()
     }
 
-    private fun refreshIoCache() {
-        cachedIoRoute =
-            runCatching { IoRoute.valueOf(ioRouteName) }
-                .getOrDefault(IoRoute.PASSIVE)
-        cachedIoProviderId =
-            ioProviderName
-                .takeIf(String::isNotBlank)
-                ?.let { runCatching { ResourceLocation.parse(it) }.getOrNull() }
-        cachedIoTarget = cachedIoProviderId?.let { NetworkTargetRef(it, ioTargetData) }
-    }
-
-    companion object {
-        private const val IO_ROUTE_FIELD = "ioRouteName"
-        private const val IO_PROVIDER_FIELD = "ioProviderName"
-        private const val IO_NETWORK_PAUSED_FIELD = "ioNetworkPaused"
-        private const val IO_TARGET_DATA_TAG = "lazyIoTarget"
-        private const val MANAGED_DATA_KEY = "managed"
+    private companion object {
+        const val IO_CONFIGURATION_TAG = "lazyIoConfiguration"
+        const val IO_NETWORK_PAUSED_TAG = "lazyIoNetworkPaused"
     }
 }
 
-internal class IoRouteController(
+internal interface IoConfigurationEditor {
+    val configuration: IoConfiguration
+    val capabilities: Set<NetworkInsertCapability>
+    val networkPaused: Boolean
+        get() = false
+
+    fun setMode(mode: IoMode)
+
+    fun cycleSide(side: RelativeSide)
+
+    fun toggleAutoEject()
+
+    fun setNetworkTarget(target: NetworkTargetRef): Boolean
+}
+
+internal class IoController(
     private val blockEntity: IoManagedBlockEntity,
-) {
-    private var adapter: IoRouteAdapter? = null
+) : IoConfigurationEditor {
+    private var adapter: IoAdapter? = null
     private var retryTicks = 0
 
-    val route: IoRoute
-        get() = blockEntity.storedIoRoute()
+    override val configuration: IoConfiguration
+        get() = blockEntity.storedIoConfiguration()
 
-    val networkPaused: Boolean
+    val mode: IoMode
+        get() = configuration.mode
+
+    override val networkPaused: Boolean
         get() = blockEntity.storedIoNetworkPaused()
 
     val target: NetworkTargetRef?
-        get() = blockEntity.storedIoTarget()?.copy()
+        get() = configuration.networkTarget
 
-    val supportedRoutes: Set<IoRoute>
-        get() = adapter?.supportedRoutes ?: setOf(IoRoute.PASSIVE)
-
-    val capabilities: Set<NetworkInsertCapability>
+    override val capabilities: Set<NetworkInsertCapability>
         get() = adapter?.capabilities ?: emptySet()
 
-    internal fun install(newAdapter: IoRouteAdapter) {
+    internal fun install(newAdapter: IoAdapter) {
         adapter = newAdapter
         normalize()
     }
 
     internal fun normalize() {
-        val current = route
-        if (!blockEntity.hasCanonicalStoredIoRoute()) {
-            blockEntity.updateIoRoute(current)
+        val current = configuration
+        val normalizedSides = RelativeSide.entries.associateWith(current::side)
+        if (current.sides != normalizedSides) {
+            update(current.copy(sides = normalizedSides))
         }
-        if (current !in supportedRoutes) {
-            setPassive()
-            return
-        }
-        if (current != IoRoute.NETWORK) {
-            blockEntity.updateIoProvider(null)
+        if (current.mode != IoMode.NETWORK) {
             blockEntity.updateIoNetworkPaused(false)
-            return
-        }
-        if (blockEntity.storedIoTarget() == null) {
-            setPassive()
         }
     }
 
-    fun setRoute(newRoute: IoRoute): Boolean {
-        if (newRoute !in supportedRoutes || newRoute == IoRoute.NETWORK) return false
-        blockEntity.updateIoRoute(newRoute)
-        blockEntity.updateIoProvider(null)
+    override fun setMode(mode: IoMode) {
+        update(configuration.copy(mode = mode))
+        blockEntity.updateIoNetworkPaused(false)
+        retryTicks = 0
+    }
+
+    override fun cycleSide(side: RelativeSide) {
+        val current = configuration
+        update(current.withSide(side, current.side(side).next()))
+    }
+
+    override fun toggleAutoEject() {
+        val current = configuration
+        update(current.copy(autoEject = !current.autoEject))
+    }
+
+    override fun setNetworkTarget(target: NetworkTargetRef): Boolean {
+        val currentAdapter = adapter ?: return false
+        if (!currentAdapter.supportsNetworkTarget(target)) return false
+        update(configuration.copy(mode = IoMode.NETWORK, networkTarget = target.copy()))
         blockEntity.updateIoNetworkPaused(false)
         retryTicks = 0
         return true
     }
 
-    fun setNetworkTarget(newTarget: NetworkTargetRef): Boolean {
-        if (IoRoute.NETWORK !in supportedRoutes) return false
-        if (!currentAdapter().supportsNetworkTarget(newTarget)) return false
-        blockEntity.updateIoRoute(IoRoute.NETWORK)
-        blockEntity.updateIoProvider(newTarget)
+    fun applyConfiguration(configuration: IoConfiguration): Boolean {
+        val target = configuration.networkTarget
+        if (configuration.mode == IoMode.NETWORK && target != null) {
+            val provider = NetworkOutputProviders.get(target.providerId)
+            if (provider != null && !checkNotNull(adapter).supportsNetworkTarget(target)) return false
+        }
+        update(configuration)
         blockEntity.updateIoNetworkPaused(false)
         retryTicks = 0
         return true
     }
 
-    fun setPassive() {
-        blockEntity.updateIoRoute(IoRoute.PASSIVE)
-        blockEntity.updateIoProvider(null)
-        blockEntity.updateIoNetworkPaused(false)
-        retryTicks = 0
+    fun sideMode(direction: Direction?): SideIoMode {
+        if (direction == null) return SideIoMode.BOTH
+        return when (configuration.mode) {
+            IoMode.PASSIVE -> SideIoMode.BOTH
+            IoMode.FACE -> configuration.side(RelativeSide.fromWorldDirection(blockEntity.blockState, direction))
+            IoMode.NETWORK -> SideIoMode.INPUT
+        }
     }
+
+    fun outputDirections(): Set<Direction> =
+        if (configuration.mode != IoMode.FACE || !configuration.autoEject) {
+            emptySet()
+        } else {
+            RelativeSide.entries
+                .filter { configuration.side(it).allowsOutput }
+                .mapTo(linkedSetOf()) { it.toWorldDirection(blockEntity.blockState) }
+        }
 
     fun tick() {
         val currentAdapter = adapter ?: return
-        val currentRoute = route
-        if (currentRoute !in currentAdapter.supportedRoutes) return
-        if (currentRoute == IoRoute.PASSIVE && !currentAdapter.ticksWhenPassive) return
+        val current = configuration
+        if (current.mode == IoMode.PASSIVE && !currentAdapter.ticksWhenPassive) return
         if (retryTicks > 0) {
             retryTicks--
             return
         }
+        if (current.mode == IoMode.NETWORK && (current.networkTarget == null || networkPaused)) return
 
-        val currentTarget = if (currentRoute == IoRoute.NETWORK) blockEntity.storedIoTarget() else null
-        if (currentRoute == IoRoute.NETWORK && (currentTarget == null || networkPaused)) return
-
-        when (currentAdapter.push(currentRoute, currentTarget)) {
+        when (currentAdapter.push(current)) {
             IoPushResult.Success -> retryTicks = 0
             IoPushResult.Retry -> retryTicks = NETWORK_RETRY_INTERVAL - 1
-            IoPushResult.TargetMissing -> setPassive()
+            IoPushResult.TargetMissing -> {
+                setMode(IoMode.PASSIVE)
+            }
             IoPushResult.OutcomeUnknown -> {
                 blockEntity.updateIoNetworkPaused(true)
                 retryTicks = 0
@@ -222,7 +207,9 @@ internal class IoRouteController(
         }
     }
 
-    private fun currentAdapter(): IoRouteAdapter = checkNotNull(adapter) { "IO route adapter has not been installed" }
+    private fun update(configuration: IoConfiguration) {
+        blockEntity.updateIoConfiguration(configuration)
+    }
 
     private companion object {
         const val NETWORK_RETRY_INTERVAL = 20

@@ -22,12 +22,11 @@ import net.neoforged.neoforge.event.EventHooks
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
+import rhx.lazy.core.io.IoAdapter
+import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoRoute
-import rhx.lazy.core.io.IoRouteAdapter
 import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.storage.LongItemStack
 import kotlin.math.min
 
@@ -328,15 +327,12 @@ internal class SimulationChamberBlockEntity(
             else -> false
         }
 
-    private inner class OutputIoAdapter : IoRouteAdapter {
-        override val supportedRoutes = setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
+    private inner class OutputIoAdapter : IoAdapter {
         override val capabilities = setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID)
         override val ticksWhenPassive = true
 
-        override fun push(
-            route: IoRoute,
-            target: NetworkTargetRef?,
-        ): IoPushResult = outputRouter.route(level as? ServerLevel, route, target)
+        override fun push(configuration: IoConfiguration): IoPushResult =
+            outputRouter.route(level as? ServerLevel, configuration, ioController.outputDirections())
     }
 
     companion object {

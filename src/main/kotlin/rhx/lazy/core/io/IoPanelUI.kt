@@ -22,7 +22,7 @@ import rhx.lazy.core.lazyId
 
 internal interface IoPanelModel {
     val player: Player
-    val controller: IoRouteController?
+    val editor: IoConfigurationEditor?
 
     fun isValid(): Boolean
 }
@@ -34,19 +34,8 @@ internal object IoPanelUI {
         parent: UIContainer<*, *>,
         model: IoPanelModel,
     ): (UIElement) -> Unit {
-        val controller = model.controller
-        val supportedRoutes = controller?.supportedRoutes ?: setOf(IoRoute.PASSIVE)
-        val providers =
-            NetworkOutputProviders
-                .all()
-                .filter { provider ->
-                    IoRoute.NETWORK in supportedRoutes
-                }
-
         lateinit var rootElement: UIElement
-        val routeButtons = mutableMapOf<IoRoute, UIElement>()
-        val providerButtons = mutableMapOf<net.minecraft.resources.ResourceLocation, UIElement>()
-        var networkPopup: UIElement? = null
+        val panel = createPanel(model)
         val dialog =
             Dialog()
                 .setAutoClose(false)
@@ -58,19 +47,16 @@ internal object IoPanelUI {
                 }
         dialog.titleBar.setDisplay(false)
         dialog.buttonContainer.setDisplay(false)
+        dialog.addContent(panel.element)
+        dialog.setDisplay(false)
 
-        fun restoreMenuCloseKeys() {
+        fun closeDialog() {
+            dialog.setDisplay(false)
             rootElement.getModularUI()?.apply {
+                clearFocus()
                 shouldCloseOnEsc(true)
                 shouldCloseOnKeyInventory(true)
             }
-        }
-
-        fun closeDialog() {
-            networkPopup?.setDisplay(false)
-            dialog.setDisplay(false)
-            rootElement.getModularUI()?.clearFocus()
-            restoreMenuCloseKeys()
         }
         dialog.addEventListener("keyDown") { event ->
             if (event.keyCode == KEY_E || event.keyCode == KEY_ESCAPE) {
@@ -78,92 +64,6 @@ internal object IoPanelUI {
                 event.stopPropagation()
             }
         }
-        val panel =
-            element(
-                {
-                    cls = {
-                        +"lazy-io__panel"
-                    }
-                },
-            ) {
-                column {
-                    label(
-                        {
-                            text = Component.translatable("gui.lazy.io.title")
-                            cls = { +"lazy-io__title" }
-                        },
-                    )
-                    row(
-                        {
-                            cls = { +"lazy-io__routes" }
-                        },
-                    ) {
-                        supportedRoutes
-                            .filter { route -> route != IoRoute.NETWORK || providers.isNotEmpty() }
-                            .forEach { route ->
-                                routeButtons[route] =
-                                    button(
-                                        {
-                                            noText()
-                                            cls = { +"lazy-io__route-button" }
-                                            style = { tooltips(routeTooltip(route)) }
-                                            onClick = {
-                                                networkPopup?.let { popup ->
-                                                    popup.setDisplay(route == IoRoute.NETWORK && !popup.isDisplayed)
-                                                }
-                                            }
-                                            onServerClick = { event ->
-                                                if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                                    if (route != IoRoute.NETWORK) {
-                                                        selectRoute(model, route)
-                                                    }
-                                                }
-                                            }
-                                        },
-                                    ).element.apply {
-                                        addPreIcon(ItemStackTexture(routeIcon(route)))
-                                    }
-                            }
-                    }
-                    if (providers.isNotEmpty()) {
-                        networkPopup =
-                            element(
-                                {
-                                    cls = { +"lazy-io__network-popup" }
-                                },
-                            ) {
-                                row(
-                                    {
-                                        cls = { +"lazy-io__network-popup-options" }
-                                    },
-                                ) {
-                                    providers.forEach { provider ->
-                                        providerButtons[provider.id] =
-                                            button(
-                                                {
-                                                    noText()
-                                                    cls = { +"lazy-io__provider-button" }
-                                                    style = { tooltips(providerTooltip(provider, controller)) }
-                                                    onClick = { networkPopup?.setDisplay(false) }
-                                                    onServerClick = { event ->
-                                                        if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                                            selectNetwork(model, provider.id)
-                                                        }
-                                                    }
-                                                },
-                                            ).element.apply {
-                                                addPreIcon(ItemStackTexture(provider.icon()))
-                                            }
-                                    }
-                                }
-                            }.element.apply {
-                                setDisplay(false)
-                            }
-                    }
-                }
-            }
-        dialog.addContent(panel)
-        dialog.setDisplay(false)
 
         parent
             .button(
@@ -172,7 +72,6 @@ internal object IoPanelUI {
                     cls = { +"lazy-io__trigger" }
                     style = { tooltips(Component.translatable("gui.lazy.io.open")) }
                     onClick = {
-                        networkPopup?.setDisplay(false)
                         rootElement.getModularUI()?.apply {
                             shouldCloseOnEsc(false)
                             shouldCloseOnKeyInventory(false)
@@ -182,111 +81,303 @@ internal object IoPanelUI {
                     }
                 },
             ).element
-            .apply {
-                addPreIcon(ItemStackTexture(ItemStack(Items.COMPARATOR)))
-            }
+            .apply { addPreIcon(ItemStackTexture(ItemStack(Items.COMPARATOR))) }
 
         return { root ->
             rootElement = root
             root.addChild(dialog)
-            routeButtons.forEach { (route, button) ->
-                bindSelected(root, button) { model.controller?.route == route }
+            panel.install(root)
+        }
+    }
+
+    fun addIoPanel(
+        parent: UIContainer<*, *>,
+        model: IoPanelModel,
+    ): (UIElement) -> Unit {
+        val panel = createPanel(model)
+        parent.element.addChild(panel.element)
+        return panel.install
+    }
+
+    private fun createPanel(model: IoPanelModel): Panel {
+        val tabButtons = mutableMapOf<IoMode, UIElement>()
+        val contentElements = mutableMapOf<IoMode, UIElement>()
+        val sideButtons = mutableMapOf<RelativeSide, UIElement>()
+        val providerButtons = mutableMapOf<net.minecraft.resources.ResourceLocation, UIElement>()
+        lateinit var ejectButton: UIElement
+        val providers = NetworkOutputProviders.all()
+
+        val panelRoot =
+            element(
+                {
+                    cls = { +"lazy-io__panel" }
+                },
+            ) {
+                label(
+                    {
+                        text = Component.translatable("gui.lazy.io.title")
+                        cls = { +"lazy-io__title" }
+                    },
+                )
+                row(
+                    {
+                        cls = { +"lazy-io__tabs" }
+                    },
+                ) {
+                    IoMode.entries.forEach { mode ->
+                        tabButtons[mode] =
+                            button(
+                                {
+                                    text = mode.translation()
+                                    cls = { +"lazy-io__tab" }
+                                    onServerClick = { event ->
+                                        if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                            model.editor?.setMode(mode)
+                                        }
+                                    }
+                                },
+                            ).element
+                    }
+                }
+                contentElements[IoMode.PASSIVE] =
+                    element(
+                        {
+                            cls = { +"lazy-io__content" }
+                            style = { tooltips(Component.translatable("gui.lazy.io.passive_hint")) }
+                        },
+                    ) {
+                        button(
+                            {
+                                active = false
+                                noText()
+                                cls = { +"lazy-io__passive-icon" }
+                            },
+                        ).element.apply { addPreIcon(ItemStackTexture(ItemStack(Items.CHEST))) }
+                    }.element
+                contentElements[IoMode.FACE] =
+                    element(
+                        {
+                            cls = { +"lazy-io__content" }
+                        },
+                    ) {
+                        column(
+                            {
+                                cls = { +"lazy-io__face-grid" }
+                            },
+                        ) {
+                            sideRow(model, sideButtons, null, RelativeSide.TOP, null)
+                            sideRow(model, sideButtons, RelativeSide.LEFT, RelativeSide.FRONT, RelativeSide.RIGHT)
+                            sideRow(model, sideButtons, null, RelativeSide.BOTTOM, RelativeSide.BACK)
+                        }
+                        ejectButton =
+                            button(
+                                {
+                                    text = Component.translatable("gui.lazy.io.auto_eject")
+                                    cls = { +"lazy-io__eject" }
+                                    style = { tooltips(Component.translatable("gui.lazy.io.auto_eject.tooltip")) }
+                                    onServerClick = { event ->
+                                        if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                            model.editor?.toggleAutoEject()
+                                        }
+                                    }
+                                },
+                            ).element
+                    }.element
+                contentElements[IoMode.NETWORK] =
+                    element(
+                        {
+                            cls = { +"lazy-io__content" }
+                        },
+                    ) {
+                        column(
+                            {
+                                cls = { +"lazy-io__network-list" }
+                            },
+                        ) {
+                            if (providers.isEmpty()) {
+                                label(
+                                    {
+                                        text = Component.translatable("gui.lazy.io.network.empty")
+                                        cls = { +"lazy-io__network-empty" }
+                                    },
+                                )
+                            }
+                            providers.forEach { provider ->
+                                providerButtons[provider.id] =
+                                    button(
+                                        {
+                                            text = provider.displayName
+                                            cls = { +"lazy-io__provider-button" }
+                                            onServerClick = { event ->
+                                                if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                                    selectNetwork(model, provider)
+                                                }
+                                            }
+                                        },
+                                    ).element.apply { addPreIcon(ItemStackTexture(provider.icon())) }
+                            }
+                        }
+                    }.element
             }
+
+        val install: (UIElement) -> Unit = { root ->
+            tabButtons.forEach { (mode, button) ->
+                bindSelected(root, button) { model.editor?.configuration?.mode == mode }
+            }
+            contentElements.forEach { (mode, content) ->
+                bindDisplay(root, content) { model.editor?.configuration?.mode == mode }
+            }
+            sideButtons.forEach { (side, button) ->
+                bindSideMode(root, button, side) { model.editor?.configuration?.side(side) ?: SideIoMode.NONE }
+            }
+            bindSelected(root, ejectButton) { model.editor?.configuration?.autoEject == true }
             providerButtons.forEach { (providerId, button) ->
-                bindSelected(root, button) { model.controller?.target?.providerId == providerId }
+                bindSelected(root, button) {
+                    val configuration = model.editor?.configuration
+                    configuration?.mode == IoMode.NETWORK && configuration.networkTarget?.providerId == providerId
+                }
+                NetworkOutputProviders.get(providerId)?.let { provider ->
+                    bindTooltip(root, button) { providerTooltip(provider, model.editor) }
+                }
+            }
+        }
+        return Panel(panelRoot, install)
+    }
+
+    private fun UIContainer<*, *>.sideRow(
+        model: IoPanelModel,
+        buttons: MutableMap<RelativeSide, UIElement>,
+        first: RelativeSide?,
+        second: RelativeSide?,
+        third: RelativeSide?,
+    ) {
+        row(
+            {
+                cls = { +"lazy-io__face-row" }
+            },
+        ) {
+            listOf(first, second, third).forEach { side ->
+                if (side == null) {
+                    element({ cls = { +"lazy-io__face-placeholder" } })
+                } else {
+                    buttons[side] =
+                        button(
+                            {
+                                text = Component.translatable("gui.lazy.io.side.${side.name.lowercase()}.short")
+                                cls = { +"lazy-io__face-button" }
+                                style = { tooltips(Component.translatable("gui.lazy.io.side.${side.name.lowercase()}")) }
+                                onServerClick = { event ->
+                                    if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                        model.editor?.cycleSide(side)
+                                    }
+                                }
+                            },
+                        ).element
+                }
             }
         }
     }
 
     private fun bindSelected(
         root: UIElement,
-        button: UIElement,
+        element: UIElement,
         selected: () -> Boolean,
     ) {
         val value = BindableValue(false)
         value.setDisplay(false)
         value.registerValueListener { isSelected ->
-            if (isSelected) button.addClass(SELECTED_BUTTON_CLASS) else button.removeClass(SELECTED_BUTTON_CLASS)
+            if (isSelected) element.addClass(SELECTED_CLASS) else element.removeClass(SELECTED_CLASS)
         }
-        value.bind(
-            DataBindingBuilder
-                .boolS2C { selected() }
-                .initialValue(false)
-                .build(),
-        )
+        value.bind(DataBindingBuilder.boolS2C(selected).initialValue(false).build())
         root.addChild(value)
     }
 
-    private fun selectRoute(
-        model: IoPanelModel,
-        route: IoRoute,
+    private fun bindDisplay(
+        root: UIElement,
+        element: UIElement,
+        displayed: () -> Boolean,
     ) {
-        if (!model.isValid()) return
-        model.controller?.setRoute(route)
+        val value = BindableValue(false)
+        value.setDisplay(false)
+        value.registerValueListener(element::setDisplay)
+        value.bind(DataBindingBuilder.boolS2C(displayed).initialValue(false).build())
+        root.addChild(value)
+    }
+
+    private fun bindSideMode(
+        root: UIElement,
+        element: UIElement,
+        side: RelativeSide,
+        sideMode: () -> SideIoMode,
+    ) {
+        val value = BindableValue(SideIoMode.NONE)
+        value.setDisplay(false)
+        value.registerValueListener { mode ->
+            SideIoMode.entries.forEach { element.removeClass("lazy-io__face--${it.name.lowercase()}") }
+            element.addClass("lazy-io__face--${mode.name.lowercase()}")
+            element.style { style ->
+                style.tooltips(
+                    Component
+                        .translatable("gui.lazy.io.side.${side.name.lowercase()}")
+                        .append("\n")
+                        .append(Component.translatable("gui.lazy.io.side_mode.${mode.name.lowercase()}")),
+                )
+            }
+        }
+        value.bind(DataBindingBuilder.enumValS2C(SideIoMode::class.java, sideMode).initialValue(SideIoMode.NONE).build())
+        root.addChild(value)
+    }
+
+    private fun bindTooltip(
+        root: UIElement,
+        element: UIElement,
+        tooltip: () -> Component,
+    ) {
+        val value = BindableValue<Component>(Component.empty())
+        value.setDisplay(false)
+        value.registerValueListener { component -> element.style { style -> style.tooltips(component) } }
+        value.bind(DataBindingBuilder.componentS2C(tooltip).build())
+        root.addChild(value)
     }
 
     private fun selectNetwork(
         model: IoPanelModel,
-        providerId: net.minecraft.resources.ResourceLocation,
+        provider: NetworkOutputProvider,
     ) {
-        if (!model.isValid()) return
         val player = model.player as? ServerPlayer ?: return
-        val provider = NetworkOutputProviders.get(providerId) ?: return
         when (val resolution = provider.resolvePrimaryTarget(player)) {
             is NetworkTargetResolution.Success -> {
-                if (model.controller?.setNetworkTarget(resolution.target) == true) {
+                if (model.editor?.setNetworkTarget(resolution.target) == true) {
                     player.displayActionBar("message.lazy.io.network.success", provider.displayName)
                 } else {
                     player.displayActionBar("message.lazy.io.network.incompatible")
                 }
             }
-
-            NetworkTargetResolution.Unavailable ->
-                player.displayActionBar("message.lazy.io.network.unavailable")
-
-            NetworkTargetResolution.NotFound ->
-                player.displayActionBar("message.lazy.io.network.no_target")
-
-            NetworkTargetResolution.Unlinked ->
-                player.displayActionBar("message.lazy.io.network.unlinked")
-
-            NetworkTargetResolution.Ambiguous ->
-                player.displayActionBar("message.lazy.io.network.ambiguous")
-
-            NetworkTargetResolution.Incompatible ->
-                player.displayActionBar("message.lazy.io.network.incompatible")
-
-            NetworkTargetResolution.Failed ->
-                player.displayActionBar("message.lazy.io.network.failed")
+            NetworkTargetResolution.Unavailable -> player.displayActionBar("message.lazy.io.network.unavailable")
+            NetworkTargetResolution.NotFound -> player.displayActionBar("message.lazy.io.network.no_target")
+            NetworkTargetResolution.Unlinked -> player.displayActionBar("message.lazy.io.network.unlinked")
+            NetworkTargetResolution.Ambiguous -> player.displayActionBar("message.lazy.io.network.ambiguous")
+            NetworkTargetResolution.Incompatible -> player.displayActionBar("message.lazy.io.network.incompatible")
+            NetworkTargetResolution.Failed -> player.displayActionBar("message.lazy.io.network.failed")
         }
     }
 
-    private fun routeTooltip(route: IoRoute): Component =
-        Component.translatable(
-            when (route) {
-                IoRoute.PASSIVE -> "gui.lazy.io.route.passive"
-                IoRoute.DOWNWARD -> "gui.lazy.io.route.downward"
-                IoRoute.ADJACENT -> "gui.lazy.io.route.adjacent"
-                IoRoute.NETWORK -> "gui.lazy.io.route.network"
-            },
-        )
-
     private fun providerTooltip(
         provider: NetworkOutputProvider,
-        controller: IoRouteController?,
+        editor: IoConfigurationEditor?,
     ): Component =
         provider.displayName
             .copy()
             .append("\n")
-            .append(
-                Component.translatable(
-                    "gui.lazy.io.provider.capabilities",
-                    capabilityList(provider.capabilities),
-                ),
-            ).apply {
-                if (controller?.capabilities?.none { it in provider.capabilities } == true) {
+            .append(Component.translatable("gui.lazy.io.provider.capabilities", capabilityList(provider.capabilities)))
+            .apply {
+                if (editor?.capabilities?.none { it in provider.capabilities } == true) {
                     append("\n")
                     append(Component.translatable("gui.lazy.io.provider.incompatible"))
+                }
+                if (editor?.networkPaused == true) {
+                    append("\n")
+                    append(Component.translatable("gui.lazy.io.network_paused"))
                 }
             }
 
@@ -299,16 +390,13 @@ internal object IoPanelUI {
         return result
     }
 
-    private fun routeIcon(route: IoRoute): ItemStack =
-        when (route) {
-            IoRoute.PASSIVE -> ItemStack(Items.BARRIER)
-            IoRoute.DOWNWARD -> ItemStack(Items.HOPPER)
-            IoRoute.ADJACENT -> ItemStack(Items.DISPENSER)
-            IoRoute.NETWORK -> ItemStack(Items.ENDER_CHEST)
-        }
+    private data class Panel(
+        val element: UIElement,
+        val install: (UIElement) -> Unit,
+    )
 
     private const val LEFT_MOUSE_BUTTON = 0
     private const val KEY_E = 69
     private const val KEY_ESCAPE = 256
-    private const val SELECTED_BUTTON_CLASS = "lazy-io__button--selected"
+    private const val SELECTED_CLASS = "lazy-io__button--selected"
 }

@@ -1,8 +1,9 @@
 package rhx.lazy.integration.mysticalagriculture
 
-import net.minecraft.core.Direction
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
+import rhx.lazy.core.io.IoItemHandler
+import rhx.lazy.core.io.SideIoMode
 
 internal object EssenceConverterCapabilities {
     fun registerCapabilities(event: RegisterCapabilitiesEvent) {
@@ -10,10 +11,11 @@ internal object EssenceConverterCapabilities {
             Capabilities.ItemHandler.BLOCK,
             EssenceConverterRegistries.blockEntity.get(),
         ) { blockEntity, direction ->
-            when (direction) {
-                Direction.DOWN -> blockEntity.combinedHandler
-                null -> blockEntity.combinedHandler
-                else -> blockEntity.inputHandler
+            val sideMode = blockEntity.ioController.sideMode(direction)
+            if (sideMode == SideIoMode.NONE) {
+                null
+            } else {
+                IoItemHandler(blockEntity.inputHandler, blockEntity.outputHandler) { blockEntity.ioController.sideMode(direction) }
             }
         }
     }

@@ -68,8 +68,6 @@ class EssenceConverterResourceTest {
         assertEquals("目标：%s", chinese["jade.lazy.essence_converter.target"].asString)
         assertEquals("Essence amount: %s", english["jade.lazy.essence_converter.output"].asString)
         assertEquals("精华量：%s", chinese["jade.lazy.essence_converter.output"].asString)
-        assertEquals("Network (paused)", english["gui.lazy.essence_converter.network_paused"].asString)
-        assertEquals("网络（已暂停）", chinese["gui.lazy.essence_converter.network_paused"].asString)
         assertFalse(chinese.entrySet().any { (_, value) -> value.asString.contains("Inferium 单位") })
     }
 

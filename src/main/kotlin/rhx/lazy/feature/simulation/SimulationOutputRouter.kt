@@ -9,8 +9,9 @@ import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
+import rhx.lazy.core.io.IoConfiguration
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoRoute
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputProviders
 import rhx.lazy.core.io.NetworkOutputRouter
@@ -83,17 +84,16 @@ internal class SimulationOutputRouter(
 
     fun route(
         level: ServerLevel?,
-        route: IoRoute,
-        target: NetworkTargetRef?,
+        configuration: IoConfiguration,
+        outputDirections: Set<Direction>,
     ): IoPushResult {
-        when (route) {
-            IoRoute.NETWORK -> return pushNetwork(target)
-            IoRoute.PASSIVE -> movePendingLocal()
-            IoRoute.DOWNWARD -> {
+        when (configuration.mode) {
+            IoMode.NETWORK -> return pushNetwork(configuration.networkTarget)
+            IoMode.PASSIVE -> movePendingLocal()
+            IoMode.FACE -> {
                 movePendingLocal()
-                level?.let(::pushDown)
+                level?.let { pushToFaces(it, outputDirections) }
             }
-            IoRoute.ADJACENT -> Unit
         }
         return IoPushResult.Success
     }
@@ -159,28 +159,35 @@ internal class SimulationOutputRouter(
         return remaining
     }
 
-    private fun pushDown(level: ServerLevel) {
+    private fun pushToFaces(
+        level: ServerLevel,
+        directions: Set<Direction>,
+    ) {
         var didChange = false
-        level.getCapability(Capabilities.ItemHandler.BLOCK, blockPos.below(), Direction.UP)?.let { target ->
-            items.indices.forEach { slot ->
-                val original = items[slot]
-                if (original.isEmpty) return@forEach
-                val remainder = ItemHandlerHelper.insertItemStacked(target, original, false)
-                if (!ItemStack.matches(original, remainder)) {
-                    items[slot] = remainder
-                    didChange = true
+        directions.forEach { direction ->
+            level.getCapability(Capabilities.ItemHandler.BLOCK, blockPos.relative(direction), direction.opposite)?.let { target ->
+                items.indices.forEach { slot ->
+                    val original = items[slot]
+                    if (original.isEmpty) return@forEach
+                    val remainder = ItemHandlerHelper.insertItemStacked(target, original, false)
+                    if (!ItemStack.matches(original, remainder)) {
+                        items[slot] = remainder
+                        didChange = true
+                    }
                 }
             }
         }
-        level.getCapability(Capabilities.FluidHandler.BLOCK, blockPos.below(), Direction.UP)?.let { target ->
-            fluids.indices.forEach { tank ->
-                val original = fluids[tank]
-                if (original.isEmpty) return@forEach
-                val accepted = target.fill(original, IFluidHandler.FluidAction.EXECUTE)
-                if (accepted > 0) {
-                    fluids[tank] =
-                        if (accepted >= original.amount) FluidStack.EMPTY else original.copyWithAmount(original.amount - accepted)
-                    didChange = true
+        directions.forEach { direction ->
+            level.getCapability(Capabilities.FluidHandler.BLOCK, blockPos.relative(direction), direction.opposite)?.let { target ->
+                fluids.indices.forEach { tank ->
+                    val original = fluids[tank]
+                    if (original.isEmpty) return@forEach
+                    val accepted = target.fill(original, IFluidHandler.FluidAction.EXECUTE)
+                    if (accepted > 0) {
+                        fluids[tank] =
+                            if (accepted >= original.amount) FluidStack.EMPTY else original.copyWithAmount(original.amount - accepted)
+                        didChange = true
+                    }
                 }
             }
         }

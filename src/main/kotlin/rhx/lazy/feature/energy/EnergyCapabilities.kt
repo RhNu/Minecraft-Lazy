@@ -20,6 +20,8 @@ internal object EnergyCapabilities {
         event.registerBlockEntity(
             Capabilities.EnergyStorage.BLOCK,
             EnergyRegistries.sourceBlockEntity.get(),
-        ) { blockEntity, _ -> blockEntity.energyStorage }
+        ) { blockEntity, side ->
+            blockEntity.energyStorage.takeIf { blockEntity.ioController.sideMode(side).allowsOutput }
+        }
     }
 }

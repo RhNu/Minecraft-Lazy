@@ -7,13 +7,6 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.fluids.FluidStack
 
-internal enum class IoRoute {
-    PASSIVE,
-    DOWNWARD,
-    ADJACENT,
-    NETWORK,
-}
-
 internal class NetworkInsertCapability(
     val id: ResourceLocation,
     val displayName: Component,
@@ -50,6 +43,22 @@ internal data class NetworkTargetRef(
     val data: CompoundTag,
 ) {
     fun copy(): NetworkTargetRef = NetworkTargetRef(providerId, data.copy())
+
+    fun save(): CompoundTag =
+        CompoundTag().apply {
+            putString(PROVIDER_TAG, providerId.toString())
+            put(DATA_TAG, data.copy())
+        }
+
+    companion object {
+        fun load(tag: CompoundTag): NetworkTargetRef? {
+            val provider = ResourceLocation.tryParse(tag.getString(PROVIDER_TAG)) ?: return null
+            return NetworkTargetRef(provider, tag.getCompound(DATA_TAG).copy())
+        }
+
+        private const val PROVIDER_TAG = "provider"
+        private const val DATA_TAG = "data"
+    }
 }
 
 internal sealed interface NetworkTargetResolution {
@@ -163,8 +172,7 @@ internal sealed interface IoPushResult {
     data object OutcomeUnknown : IoPushResult
 }
 
-internal interface IoRouteAdapter {
-    val supportedRoutes: Set<IoRoute>
+internal interface IoAdapter {
     val capabilities: Set<NetworkInsertCapability>
     val ticksWhenPassive: Boolean
         get() = false
@@ -175,8 +183,5 @@ internal interface IoRouteAdapter {
             ?.let { provider -> capabilities.any { it in provider.capabilities } && provider.isTargetValid(target) }
             ?: false
 
-    fun push(
-        route: IoRoute,
-        target: NetworkTargetRef?,
-    ): IoPushResult
+    fun push(configuration: IoConfiguration): IoPushResult
 }

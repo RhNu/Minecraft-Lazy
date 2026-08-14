@@ -17,15 +17,17 @@ import net.neoforged.neoforge.items.IItemHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper
+import rhx.lazy.core.io.IoAdapter
+import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoRoute
-import rhx.lazy.core.io.IoRouteAdapter
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTransferResult
+import java.util.EnumMap
 
 internal class EssenceConverterBlockEntity(
     pos: BlockPos,
@@ -48,10 +50,11 @@ internal class EssenceConverterBlockEntity(
     val outputHandler: IItemHandlerModifiable = OutputHandler()
     val combinedHandler: IItemHandlerModifiable = CombinedInvWrapper(inputHandler, outputHandler)
 
-    private var downwardCache: BlockCapabilityCache<IItemHandler, Direction?>? = null
+    private val neighborCaches =
+        EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction?>>(Direction::class.java)
     private var stateRepairPendingPersistence = false
 
-    private val ioAdapter = EssenceIoRouteAdapter()
+    private val ioAdapter = EssenceIoAdapter()
 
     init {
         installIoAdapter(ioAdapter)
@@ -109,12 +112,12 @@ internal class EssenceConverterBlockEntity(
         registries: HolderLookup.Provider,
     ) {
         super.loadAdditional(tag, registries)
-        downwardCache = null
+        neighborCaches.clear()
         stateRepairPendingPersistence = normalizeState(markChanges = false)
     }
 
     override fun setRemoved() {
-        downwardCache = null
+        neighborCaches.clear()
         super.setRemoved()
     }
 
@@ -149,16 +152,19 @@ internal class EssenceConverterBlockEntity(
         if (remainderChanged) markDirty(STORED_REMAINDER_FIELD)
     }
 
-    private fun pushDownward(): IoPushResult {
+    private fun pushToFaces(directions: Set<Direction>): IoPushResult {
+        if (directions.isEmpty()) return IoPushResult.Success
         val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
-        val target = downwardCache(serverLevel).getCapability() ?: return IoPushResult.Success
         val tier = targetTier ?: return IoPushResult.Success
-        val offered = storedOutput.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        if (offered <= 0) return IoPushResult.Success
-        val stack = tier.createStack(offered)
-        if (stack.isEmpty) return IoPushResult.Success
-        val inserted = EssenceOutputPusher.pushMaximum(target, stack)
-        if (inserted > 0) applyLedger(currentLedger().removeOutput(inserted.toLong()))
+        directions.forEach { direction ->
+            val target = neighborCache(serverLevel, direction).getCapability() ?: return@forEach
+            val offered = storedOutput.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            if (offered <= 0) return@forEach
+            val stack = tier.createStack(offered)
+            if (stack.isEmpty) return@forEach
+            val inserted = EssenceOutputPusher.pushMaximum(target, stack)
+            if (inserted > 0) applyLedger(currentLedger().removeOutput(inserted.toLong()))
+        }
         return IoPushResult.Success
     }
 
@@ -183,17 +189,20 @@ internal class EssenceConverterBlockEntity(
         }
     }
 
-    private fun downwardCache(level: ServerLevel): BlockCapabilityCache<IItemHandler, Direction?> =
-        downwardCache
-            ?: BlockCapabilityCache
-                .create<IItemHandler, Direction?>(
-                    Capabilities.ItemHandler.BLOCK,
-                    level,
-                    blockPos.below(),
-                    Direction.UP,
-                    { !isRemoved },
-                    {},
-                ).also { downwardCache = it }
+    private fun neighborCache(
+        level: ServerLevel,
+        direction: Direction,
+    ): BlockCapabilityCache<IItemHandler, Direction?> =
+        neighborCaches.getOrPut(direction) {
+            BlockCapabilityCache.create<IItemHandler, Direction?>(
+                Capabilities.ItemHandler.BLOCK,
+                level,
+                blockPos.relative(direction),
+                direction.opposite,
+                { !isRemoved },
+                {},
+            )
+        }
 
     private fun persistStateRepairs() {
         if (!stateRepairPendingPersistence) return
@@ -203,18 +212,13 @@ internal class EssenceConverterBlockEntity(
         markDirty(STORED_REMAINDER_FIELD)
     }
 
-    private inner class EssenceIoRouteAdapter : IoRouteAdapter {
-        override val supportedRoutes: Set<IoRoute> =
-            setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
+    private inner class EssenceIoAdapter : IoAdapter {
         override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
 
-        override fun push(
-            route: IoRoute,
-            target: NetworkTargetRef?,
-        ): IoPushResult =
-            when (route) {
-                IoRoute.DOWNWARD -> pushDownward()
-                IoRoute.NETWORK -> pushToNetwork(target)
+        override fun push(configuration: IoConfiguration): IoPushResult =
+            when (configuration.mode) {
+                IoMode.FACE -> pushToFaces(ioController.outputDirections())
+                IoMode.NETWORK -> pushToNetwork(configuration.networkTarget)
                 else -> IoPushResult.Success
             }
     }

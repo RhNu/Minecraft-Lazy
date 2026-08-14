@@ -46,7 +46,7 @@ type="optional"
 versionRange="${curios_version_range}"
 ordering="AFTER"
 side="BOTH"
-reason="Enables the teleporter equipment slot, activation key, and ME Link Card equipment slot"
+reason="Enables the teleporter equipment slot, activation key, and configuration card equipment slot"
 
 [[dependencies.${mod_id}]]
 modId="jade"

@@ -25,6 +25,7 @@ import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
+import rhx.lazy.core.io.ConfigurationCardRegistries
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.itemcopier.ItemCopierRegistries
@@ -88,6 +89,16 @@ internal object DataGeneration {
                 .define('C', Items.CHEST)
                 .define('M', MachineCasingRegistries.item.get())
                 .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ConfigurationCardRegistries.item.get())
+                .pattern(" R ")
+                .pattern("PCP")
+                .pattern(" R ")
+                .define('R', Tags.Items.DUSTS_REDSTONE)
+                .define('P', Items.PAPER)
+                .define('C', Items.COMPARATOR)
+                .unlockedBy("has_comparator", has(Items.COMPARATOR))
                 .save(output)
             ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, TeleporterRegistries.item.get())
@@ -204,6 +215,8 @@ internal object DataGeneration {
     ) : ItemModelProvider(output, MOD_ID, helper) {
         override fun registerModels() {
             withExistingParent("machine_casing", modLoc("block/machine_casing"))
+            withExistingParent("configuration_card", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/configuration_card"))
             withExistingParent("buffer", modLoc("block/buffer"))
             withExistingParent("teleporter", mcLoc("item/generated"))
                 .texture("layer0", modLoc("item/icon/teleporter"))
@@ -292,6 +305,7 @@ internal object DataGeneration {
     ) : LanguageProvider(output, MOD_ID, "en_us") {
         override fun addTranslations() {
             addBlock({ MachineCasingRegistries.block.get() }, "Machine Casing")
+            addItem({ ConfigurationCardRegistries.item.get() }, "Configuration Card")
             addBlock({ BufferRegistries.block.get() }, "Buffer")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "Energy Source")
             addBlock({ ItemCopierRegistries.block.get() }, "Item Copier")
@@ -357,16 +371,24 @@ internal object DataGeneration {
             add("gui.lazy.buffer.unavailable", "Buffer is no longer available")
             add("gui.lazy.io.open", "Open IO settings")
             add("gui.lazy.io.title", "IO settings")
-            add("gui.lazy.io.route.passive", "Passive: only allow external extraction")
-            add("gui.lazy.io.route.downward", "Output downward")
-            add("gui.lazy.io.route.adjacent", "Push to adjacent blocks")
-            add("gui.lazy.io.route.network", "Output to network")
-            add("gui.lazy.io.network_targets", "Network target")
-            add("gui.lazy.io.network_selected", "Target: %s")
-            add("gui.lazy.io.network_unselected", "Select a network target")
+            add("gui.lazy.io.mode.passive", "Passive")
+            add("gui.lazy.io.mode.face", "Faces")
+            add("gui.lazy.io.mode.network", "Network")
+            add("gui.lazy.io.auto_eject", "Auto-eject")
+            add("gui.lazy.io.auto_eject.tooltip", "Push outputs into faces configured for output")
+            add("gui.lazy.io.enabled", "Enabled")
+            add("gui.lazy.io.disabled", "Disabled")
+            add("gui.lazy.io.network.empty", "No network output providers are available")
+            add("gui.lazy.io.side_mode.none", "Disabled")
+            add("gui.lazy.io.side_mode.input", "Input")
+            add("gui.lazy.io.side_mode.output", "Output")
+            add("gui.lazy.io.side_mode.both", "Input and output")
+            addIoSideTranslations(::add, "Top", "T", "Left", "L", "Front", "F", "Right", "R", "Bottom", "D", "Back", "B")
+            add("tooltip.lazy.configuration_card.mode", "Mode: %s")
+            add("tooltip.lazy.configuration_card.eject", "Auto-eject: %s")
+            add("message.lazy.configuration_card.ambiguous", "Multiple configuration cards disagree; no IO template was applied")
             add("gui.lazy.io.network_paused", "Network output paused; select a target again")
             add("gui.lazy.io.passive_hint", "Automatic output is disabled")
-            add("gui.lazy.io.unavailable", "IO settings unavailable")
             add("gui.lazy.io.provider.beyonddimensions", "Beyond Dimensions main network")
             add("gui.lazy.io.provider.capabilities", "Accepts: %s")
             add("gui.lazy.io.provider.incompatible", "Waiting: this machine's output is not currently supported")
@@ -376,28 +398,17 @@ internal object DataGeneration {
             add("message.lazy.io.network.unavailable", "Network integration is unavailable")
             add("message.lazy.io.network.success", "Network output target set: %s")
             add("message.lazy.io.network.no_target", "No primary network target is selected")
-            add("message.lazy.io.network.unlinked", "The ME Output Link Card is not linked")
-            add("message.lazy.io.network.ambiguous", "Multiple network targets found; hold the intended link card")
+            add("message.lazy.io.network.unlinked", "The Configuration Card is not linked")
+            add("message.lazy.io.network.ambiguous", "Multiple network targets found; hold the intended Configuration Card")
             add("message.lazy.io.network.incompatible", "This machine and network have no compatible output capability")
             add("message.lazy.io.network.failed", "Failed to resolve the network target")
-            add("gui.lazy.buffer.network_forwarding.toggle", "Toggle network")
-            add("gui.lazy.buffer.network_forwarding.enabled", "On")
-            add("gui.lazy.buffer.network_forwarding.disabled", "Off")
-            add("message.lazy.buffer.network_forwarding", "Dimension network forwarding: %s")
             add("message.lazy.beyond_dimensions.no_primary_network", "No primary dimension network is selected")
             add("message.lazy.beyond_dimensions.unavailable", "Beyond Dimensions integration is unavailable")
             add("gui.lazy.repairer.repair", "Repair item")
             add("tooltip.lazy.buffer.contents", "%s / %s items, %s / %s mB")
-            add("tooltip.lazy.buffer.network_forwarding", "Forwards to dimension network #%s")
             add("tooltip.lazy.energy.max_transfer", "Max transfer: %s FE/t")
             add("tooltip.lazy.energy_battery.use", "Sneak-use on an energy-capable block to transfer energy")
-            add("tooltip.lazy.energy_source.output_mode", "Use to configure the output mode (passive by default)")
-            add("gui.lazy.energy_source.passive", "Passive")
-            add("gui.lazy.energy_source.passive.description", "Only allows adjacent devices to pull energy")
-            add("gui.lazy.energy_source.active", "Active push")
-            add("gui.lazy.energy_source.active.description", "Pushes energy to all six adjacent faces each tick")
-            add("gui.lazy.energy_source.network", "Network push")
-            add("gui.lazy.energy_source.network.description", "Pushes energy to the selected dimension network")
+            add("tooltip.lazy.energy_source.output_mode", "Configure face or network output in the machine IO settings")
             add("gui.lazy.item_copier.template.empty", "No item selected")
             add("gui.lazy.item_copier.template.selected", "Copying: %s")
             add(
@@ -448,7 +459,7 @@ internal object DataGeneration {
             add("screen.lazy.teleporter.returning", "Returning to %s...")
             add("screen.lazy.teleporter.traveling_to_void", "Traveling to the Void...")
             add("curios.identifier.teleporter", "Teleporter")
-            add("curios.identifier.me_link_card", "ME Link Card")
+            add("curios.identifier.configuration_card", "Configuration Card")
             add("key.categories.lazy", "Lazy")
             add("key.lazy.teleporter.activate", "Activate Teleporter")
             add("lazy.teleporter", "Teleporter")
@@ -485,6 +496,7 @@ internal object DataGeneration {
     ) : LanguageProvider(output, MOD_ID, "zh_cn") {
         override fun addTranslations() {
             addBlock({ MachineCasingRegistries.block.get() }, "机器外壳")
+            addItem({ ConfigurationCardRegistries.item.get() }, "配置卡")
             addBlock({ BufferRegistries.block.get() }, "缓冲器")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "能量源")
             addBlock({ ItemCopierRegistries.block.get() }, "物品复制器")
@@ -550,16 +562,24 @@ internal object DataGeneration {
             add("gui.lazy.buffer.unavailable", "缓冲器已不可用")
             add("gui.lazy.io.open", "打开 IO 设置")
             add("gui.lazy.io.title", "IO 设置")
-            add("gui.lazy.io.route.passive", "被动：仅允许外部抽取")
-            add("gui.lazy.io.route.downward", "向下输出")
-            add("gui.lazy.io.route.adjacent", "向相邻方块主动推送")
-            add("gui.lazy.io.route.network", "输出到网络")
-            add("gui.lazy.io.network_targets", "网络目标")
-            add("gui.lazy.io.network_selected", "目标：%s")
-            add("gui.lazy.io.network_unselected", "请选择网络目标")
+            add("gui.lazy.io.mode.passive", "被动")
+            add("gui.lazy.io.mode.face", "面配置")
+            add("gui.lazy.io.mode.network", "网络")
+            add("gui.lazy.io.auto_eject", "自动弹出")
+            add("gui.lazy.io.auto_eject.tooltip", "向配置为输出的面主动推送产物")
+            add("gui.lazy.io.enabled", "启用")
+            add("gui.lazy.io.disabled", "禁用")
+            add("gui.lazy.io.network.empty", "没有可用的网络输出提供者")
+            add("gui.lazy.io.side_mode.none", "禁用")
+            add("gui.lazy.io.side_mode.input", "输入")
+            add("gui.lazy.io.side_mode.output", "输出")
+            add("gui.lazy.io.side_mode.both", "输入和输出")
+            addIoSideTranslations(::add, "顶部", "上", "左侧", "左", "正面", "前", "右侧", "右", "底部", "下", "背面", "后")
+            add("tooltip.lazy.configuration_card.mode", "模式：%s")
+            add("tooltip.lazy.configuration_card.eject", "自动弹出：%s")
+            add("message.lazy.configuration_card.ambiguous", "多张配置卡的设置不一致，未应用 IO 模板")
             add("gui.lazy.io.network_paused", "网络输出已暂停；请重新选择目标")
             add("gui.lazy.io.passive_hint", "已关闭自动输出")
-            add("gui.lazy.io.unavailable", "IO 设置不可用")
             add("gui.lazy.io.provider.beyonddimensions", "超越维度主网络")
             add("gui.lazy.io.provider.capabilities", "可接收：%s")
             add("gui.lazy.io.provider.incompatible", "等待中：当前不支持该机器的输出能力")
@@ -569,28 +589,17 @@ internal object DataGeneration {
             add("message.lazy.io.network.unavailable", "网络集成当前不可用")
             add("message.lazy.io.network.success", "网络输出目标已设置：%s")
             add("message.lazy.io.network.no_target", "尚未选择主网络目标")
-            add("message.lazy.io.network.unlinked", "ME 输出链接卡尚未链接")
-            add("message.lazy.io.network.ambiguous", "发现多个网络目标；请手持所需的链接卡")
+            add("message.lazy.io.network.unlinked", "配置卡尚未链接")
+            add("message.lazy.io.network.ambiguous", "发现多个网络目标；请手持所需的配置卡")
             add("message.lazy.io.network.incompatible", "该机器与网络没有兼容的输出能力")
             add("message.lazy.io.network.failed", "解析网络目标失败")
-            add("gui.lazy.buffer.network_forwarding.toggle", "切换网络直送")
-            add("gui.lazy.buffer.network_forwarding.enabled", "开")
-            add("gui.lazy.buffer.network_forwarding.disabled", "关")
-            add("message.lazy.buffer.network_forwarding", "维度网络直送：%s")
             add("message.lazy.beyond_dimensions.no_primary_network", "尚未选择主维度网络")
             add("message.lazy.beyond_dimensions.unavailable", "超越维度兼容当前不可用")
             add("gui.lazy.repairer.repair", "修复物品")
             add("tooltip.lazy.buffer.contents", "物品 %s / %s，流体 %s / %s mB")
-            add("tooltip.lazy.buffer.network_forwarding", "直送至维度网络 #%s")
             add("tooltip.lazy.energy.max_transfer", "最大传输：%s FE/t")
             add("tooltip.lazy.energy_battery.use", "潜行对支持能量的方块使用以传输能量")
-            add("tooltip.lazy.energy_source.output_mode", "使用以配置输出模式（默认被动）")
-            add("gui.lazy.energy_source.passive", "被动")
-            add("gui.lazy.energy_source.passive.description", "仅允许相邻设备主动抽取能量")
-            add("gui.lazy.energy_source.active", "主动推送")
-            add("gui.lazy.energy_source.active.description", "每刻向六个相邻面推送能量")
-            add("gui.lazy.energy_source.network", "网络推送")
-            add("gui.lazy.energy_source.network.description", "向选中的维度网络推送能量")
+            add("tooltip.lazy.energy_source.output_mode", "在机器 IO 设置中配置六面或网络输出")
             add("gui.lazy.item_copier.template.empty", "未标记物品")
             add("gui.lazy.item_copier.template.selected", "正在复制：%s")
             add("gui.lazy.item_copier.template.description", "鼠标携带物品时点击进行标记；空鼠标点击清空")
@@ -638,7 +647,7 @@ internal object DataGeneration {
             add("screen.lazy.teleporter.returning", "正在返回%s……")
             add("screen.lazy.teleporter.traveling_to_void", "正在前往虚空……")
             add("curios.identifier.teleporter", "传送器")
-            add("curios.identifier.me_link_card", "ME链接卡")
+            add("curios.identifier.configuration_card", "配置卡")
             add("key.categories.lazy", "懒狗工具箱")
             add("key.lazy.teleporter.activate", "激活传送器")
             add("lazy.teleporter", "传送器")
@@ -664,6 +673,34 @@ internal object DataGeneration {
                 "每次按下按钮时，最多修复物品最大耐久的百分比。",
             )
             LanguageContributions.chinese().forEach(::add)
+        }
+    }
+
+    private fun addIoSideTranslations(
+        add: (String, String) -> Unit,
+        top: String,
+        topShort: String,
+        left: String,
+        leftShort: String,
+        front: String,
+        frontShort: String,
+        right: String,
+        rightShort: String,
+        bottom: String,
+        bottomShort: String,
+        back: String,
+        backShort: String,
+    ) {
+        listOf(
+            "top" to (top to topShort),
+            "left" to (left to leftShort),
+            "front" to (front to frontShort),
+            "right" to (right to rightShort),
+            "bottom" to (bottom to bottomShort),
+            "back" to (back to backShort),
+        ).forEach { (id, names) ->
+            add("gui.lazy.io.side.$id", names.first)
+            add("gui.lazy.io.side.$id.short", names.second)
         }
     }
 }

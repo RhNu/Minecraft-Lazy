@@ -16,14 +16,16 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.ItemHandlerHelper
+import rhx.lazy.core.io.IoAdapter
+import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoRoute
-import rhx.lazy.core.io.IoRouteAdapter
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTransferResult
+import java.util.EnumMap
 import kotlin.math.min
 
 internal class BufferBlockEntity(
@@ -53,10 +55,12 @@ internal class BufferBlockEntity(
     val itemHandler: IItemHandlerModifiable = BufferItemHandler()
     val fluidHandler: IFluidHandler = BufferFluidHandler()
 
-    private var downwardItemCache: BlockCapabilityCache<IItemHandler, Direction?>? = null
-    private var downwardFluidCache: BlockCapabilityCache<IFluidHandler, Direction?>? = null
+    private val neighborItemCaches =
+        EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction?>>(Direction::class.java)
+    private val neighborFluidCaches =
+        EnumMap<Direction, BlockCapabilityCache<IFluidHandler, Direction?>>(Direction::class.java)
 
-    private val ioAdapter = BufferIoRouteAdapter()
+    private val ioAdapter = BufferIoAdapter()
 
     init {
         installIoAdapter(ioAdapter)
@@ -107,8 +111,8 @@ internal class BufferBlockEntity(
     }
 
     override fun setRemoved() {
-        downwardItemCache = null
-        downwardFluidCache = null
+        neighborItemCaches.clear()
+        neighborFluidCaches.clear()
         super.setRemoved()
     }
 
@@ -365,28 +369,24 @@ internal class BufferBlockEntity(
         }
     }
 
-    private inner class BufferIoRouteAdapter : IoRouteAdapter {
-        override val supportedRoutes: Set<IoRoute> =
-            setOf(IoRoute.PASSIVE, IoRoute.DOWNWARD, IoRoute.NETWORK)
+    private inner class BufferIoAdapter : IoAdapter {
         override val capabilities =
             setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID)
 
-        override fun push(
-            route: IoRoute,
-            target: rhx.lazy.core.io.NetworkTargetRef?,
-        ): IoPushResult =
-            when (route) {
-                IoRoute.DOWNWARD -> pushDownward()
-                IoRoute.NETWORK -> pushToNetwork(target)
+        override fun push(configuration: IoConfiguration): IoPushResult =
+            when (configuration.mode) {
+                IoMode.FACE -> pushToFaces(ioController.outputDirections())
+                IoMode.NETWORK -> pushToNetwork(configuration.networkTarget)
                 else -> IoPushResult.Success
             }
 
-        private fun pushDownward(): IoPushResult {
+        private fun pushToFaces(directions: Set<Direction>): IoPushResult {
+            if (directions.isEmpty()) return IoPushResult.Success
             val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
             var itemsChanged = false
             var fluidsChanged = false
-            val itemTarget = itemCache(serverLevel).getCapability()
-            if (itemTarget != null) {
+            directions.forEach { direction ->
+                val itemTarget = itemCache(serverLevel, direction).getCapability() ?: return@forEach
                 itemTemplates.indices.forEach { slot ->
                     val template = itemTemplates[slot]
                     val stored = itemCounts[slot]
@@ -400,8 +400,8 @@ internal class BufferBlockEntity(
                     }
                 }
             }
-            val fluidTarget = fluidCache(serverLevel).getCapability()
-            if (fluidTarget != null) {
+            directions.forEach { direction ->
+                val fluidTarget = fluidCache(serverLevel, direction).getCapability() ?: return@forEach
                 fluids.indices.forEach { tank ->
                     val stored = fluids[tank]
                     if (stored.isEmpty || stored.amount <= 0) return@forEach
@@ -490,33 +490,35 @@ internal class BufferBlockEntity(
             stack: FluidStack,
         ): NetworkTransferResult = NetworkOutputRouter.insert(target, NetworkPayload.Fluid(stack), false)
 
-        private fun itemCache(level: ServerLevel): BlockCapabilityCache<IItemHandler, Direction?> {
-            val cached = downwardItemCache
-            if (cached != null) return cached
-            return BlockCapabilityCache
-                .create<IItemHandler, Direction?>(
+        private fun itemCache(
+            level: ServerLevel,
+            direction: Direction,
+        ): BlockCapabilityCache<IItemHandler, Direction?> =
+            neighborItemCaches.getOrPut(direction) {
+                BlockCapabilityCache.create<IItemHandler, Direction?>(
                     Capabilities.ItemHandler.BLOCK,
                     level,
-                    blockPos.below(),
-                    Direction.UP,
+                    blockPos.relative(direction),
+                    direction.opposite,
                     { !isRemoved },
                     {},
-                ).also { downwardItemCache = it }
-        }
+                )
+            }
 
-        private fun fluidCache(level: ServerLevel): BlockCapabilityCache<IFluidHandler, Direction?> {
-            val cached = downwardFluidCache
-            if (cached != null) return cached
-            return BlockCapabilityCache
-                .create<IFluidHandler, Direction?>(
+        private fun fluidCache(
+            level: ServerLevel,
+            direction: Direction,
+        ): BlockCapabilityCache<IFluidHandler, Direction?> =
+            neighborFluidCaches.getOrPut(direction) {
+                BlockCapabilityCache.create<IFluidHandler, Direction?>(
                     Capabilities.FluidHandler.BLOCK,
                     level,
-                    blockPos.below(),
-                    Direction.UP,
+                    blockPos.relative(direction),
+                    direction.opposite,
                     { !isRemoved },
                     {},
-                ).also { downwardFluidCache = it }
-        }
+                )
+            }
     }
 
     companion object {

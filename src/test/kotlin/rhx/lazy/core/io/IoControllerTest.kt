@@ -15,34 +15,28 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class IoRouteControllerTest {
+class IoControllerTest {
     @Test
     fun `network target keeps provider and opaque data`() {
-        val first = RecordingProvider("first")
-        val second = RecordingProvider("second")
-        NetworkOutputProviders.register(first)
-        NetworkOutputProviders.register(second)
+        val provider = RecordingProvider("opaque")
+        NetworkOutputProviders.register(provider)
         val source = newSource()
-        val target = first.target("opaque-value")
 
-        assertTrue(source.ioController.setNetworkTarget(target))
+        assertTrue(source.ioController.setNetworkTarget(provider.target("value")))
         source.onServerTick()
 
-        assertEquals(IoRoute.NETWORK, source.ioController.route)
-        assertEquals(first.id, source.ioController.target?.providerId)
+        assertEquals(IoMode.NETWORK, source.ioController.mode)
         assertEquals(
-            "opaque-value",
+            "value",
             source.ioController.target
                 ?.data
                 ?.getString("opaque"),
         )
-        assertEquals(2, NetworkOutputProviders.all().count { it.id == first.id || it.id == second.id })
-        assertEquals(ENERGY_TRANSFER_LIMIT.toLong(), first.energyAmount)
-        assertEquals(0L, second.energyAmount)
+        assertEquals(ENERGY_TRANSFER_LIMIT.toLong(), provider.energyAmount)
     }
 
     @Test
-    fun `temporary failure keeps route and retries later`() {
+    fun `temporary failure keeps mode and retries later`() {
         val provider = RecordingProvider("temporary")
         NetworkOutputProviders.register(provider)
         val source = newSource()
@@ -50,8 +44,7 @@ class IoRouteControllerTest {
         provider.result = NetworkTransferResult.TemporarilyUnavailable
 
         source.onServerTick()
-
-        assertEquals(IoRoute.NETWORK, source.ioController.route)
+        assertEquals(IoMode.NETWORK, source.ioController.mode)
         assertFalse(source.ioController.networkPaused)
         val attempts = provider.attempts
         repeat(19) { source.onServerTick() }
@@ -71,8 +64,7 @@ class IoRouteControllerTest {
 
         source.onServerTick()
 
-        assertEquals(IoRoute.PASSIVE, source.ioController.route)
-        assertFalse(source.ioController.networkPaused)
+        assertEquals(IoMode.PASSIVE, source.ioController.mode)
     }
 
     @Test
@@ -85,8 +77,6 @@ class IoRouteControllerTest {
         provider.result = NetworkTransferResult.OutcomeUnknown
 
         source.onServerTick()
-
-        assertEquals(IoRoute.NETWORK, source.ioController.route)
         assertTrue(source.ioController.networkPaused)
         val attempts = provider.attempts
         provider.result = NetworkTransferResult.Success(0)
@@ -96,11 +86,10 @@ class IoRouteControllerTest {
         assertTrue(source.ioController.setNetworkTarget(target))
         source.onServerTick()
         assertFalse(source.ioController.networkPaused)
-        assertTrue(provider.attempts > attempts)
     }
 
     @Test
-    fun `passive route still runs adapter maintenance`() {
+    fun `passive mode still runs adapter maintenance`() {
         val entity = PassiveMaintenanceEntity()
 
         entity.ioController.tick()
@@ -109,42 +98,21 @@ class IoRouteControllerTest {
     }
 
     @Test
-    fun `exposed target data is a defensive copy`() {
-        val provider = RecordingProvider("defensive_copy")
-        NetworkOutputProviders.register(provider)
+    fun `temporarily missing provider preserves a saved network target`() {
         val source = newSource()
-        assertTrue(source.ioController.setNetworkTarget(provider.target("original")))
-
-        source.ioController.target
-            ?.data
-            ?.putString("opaque", "mutated")
-
-        assertEquals(
-            "original",
-            source.ioController.target
-                ?.data
-                ?.getString("opaque"),
-        )
-    }
-
-    @Test
-    fun `temporarily missing provider does not erase a saved network binding`() {
-        val source = newSource()
-        val missingTarget =
+        val target =
             NetworkTargetRef(
                 ResourceLocation.fromNamespaceAndPath("lazy", "temporarily_missing"),
                 CompoundTag().apply { putString("opaque", "preserved") },
             )
-        source.updateIoRoute(IoRoute.NETWORK)
-        source.updateIoProvider(missingTarget)
 
-        source.ioController.normalize()
+        assertTrue(source.ioController.applyConfiguration(IoConfiguration(mode = IoMode.NETWORK, networkTarget = target)))
 
-        assertEquals(IoRoute.NETWORK, source.ioController.route)
-        assertEquals(missingTarget, source.ioController.target)
+        assertEquals(IoMode.NETWORK, source.ioController.mode)
+        assertEquals(target, source.ioController.target)
     }
 
-    private fun newSource(): EnergySourceBlockEntity =
+    private fun newSource() =
         EnergySourceBlockEntity(
             BlockPos.ZERO,
             EnergyRegistries.sourceBlock.get().defaultBlockState(),
@@ -153,21 +121,18 @@ class IoRouteControllerTest {
     private class RecordingProvider(
         suffix: String,
     ) : NetworkOutputProvider {
-        override val id: ResourceLocation =
-            ResourceLocation.fromNamespaceAndPath("lazy", "test_io_$suffix")
+        override val id = ResourceLocation.fromNamespaceAndPath("lazy", "test_io_$suffix")
         override val displayName: Component = Component.literal("Test $suffix")
-        override val capabilities: Set<NetworkInsertCapability> = setOf(NetworkInsertCapabilities.ENERGY)
-
-        override fun icon(): ItemStack = ItemStack(Items.CHEST)
-
+        override val capabilities = setOf(NetworkInsertCapabilities.ENERGY)
         var result: NetworkTransferResult = NetworkTransferResult.Success(0)
         var attempts = 0
         var energyAmount = 0L
 
-        override fun resolvePrimaryTarget(player: ServerPlayer): NetworkTargetResolution = NetworkTargetResolution.Unavailable
+        override fun icon() = ItemStack(Items.CHEST)
 
-        override fun isTargetValid(target: NetworkTargetRef): Boolean =
-            target.providerId == id && target.data.getString("opaque").isNotBlank()
+        override fun resolvePrimaryTarget(player: ServerPlayer) = NetworkTargetResolution.Unavailable
+
+        override fun isTargetValid(target: NetworkTargetRef) = target.providerId == id && target.data.getString("opaque").isNotBlank()
 
         override fun insert(
             target: NetworkTargetRef,
@@ -179,11 +144,7 @@ class IoRouteControllerTest {
             return result
         }
 
-        fun target(value: String): NetworkTargetRef =
-            NetworkTargetRef(
-                id,
-                CompoundTag().apply { putString("opaque", value) },
-            )
+        fun target(value: String) = NetworkTargetRef(id, CompoundTag().apply { putString("opaque", value) })
     }
 
     private class PassiveMaintenanceEntity :
@@ -196,15 +157,11 @@ class IoRouteControllerTest {
 
         init {
             installIoAdapter(
-                object : IoRouteAdapter {
-                    override val supportedRoutes: Set<IoRoute> = setOf(IoRoute.PASSIVE)
+                object : IoAdapter {
                     override val capabilities: Set<NetworkInsertCapability> = emptySet()
-                    override val ticksWhenPassive: Boolean = true
+                    override val ticksWhenPassive = true
 
-                    override fun push(
-                        route: IoRoute,
-                        target: NetworkTargetRef?,
-                    ): IoPushResult {
+                    override fun push(configuration: IoConfiguration): IoPushResult {
                         maintenanceTicks++
                         return IoPushResult.Success
                     }

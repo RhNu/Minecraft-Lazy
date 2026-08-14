@@ -3,7 +3,7 @@ package rhx.lazy.feature.energy
 import net.minecraft.core.BlockPos
 import net.minecraft.core.RegistryAccess
 import net.minecraft.core.registries.BuiltInRegistries
-import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
@@ -31,6 +31,6 @@ class EnergySourceBlockEntityPersistenceTest {
             )
         restored.loadWithComponents(source.saveWithFullMetadata(registries), registries)
 
-        assertEquals(IoRoute.NETWORK, restored.ioController.route)
+        assertEquals(IoMode.NETWORK, restored.ioController.mode)
     }
 }

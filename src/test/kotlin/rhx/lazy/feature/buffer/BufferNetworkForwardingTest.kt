@@ -6,7 +6,7 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
-import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
@@ -36,7 +36,7 @@ class BufferNetworkForwardingTest {
         assertEquals(80, buffer.getItemCount(0))
         assertEquals(20_000, storage.storedFluidAmount)
         assertEquals(20_000, buffer.getFluid(0).amount)
-        assertEquals(IoRoute.NETWORK, buffer.ioController.route)
+        assertEquals(IoMode.NETWORK, buffer.ioController.mode)
     }
 
     @Test
@@ -68,7 +68,7 @@ class BufferNetworkForwardingTest {
 
         assertEquals(10, storage.storedItemAmount)
         assertEquals(70, buffer.getItemCount(0))
-        assertEquals(IoRoute.NETWORK, buffer.ioController.route)
+        assertEquals(IoMode.NETWORK, buffer.ioController.mode)
     }
 
     @Test
@@ -90,7 +90,7 @@ class BufferNetworkForwardingTest {
         assertEquals(0, storage.storedFluidAmount)
         assertEquals(0, buffer.totalItemCount)
         assertEquals(0, buffer.totalFluidAmount)
-        assertEquals(IoRoute.NETWORK, buffer.ioController.route)
+        assertEquals(IoMode.NETWORK, buffer.ioController.mode)
     }
 
     @Test
@@ -104,7 +104,7 @@ class BufferNetworkForwardingTest {
         buffer.onServerTick()
 
         assertEquals(24, buffer.getItemCount(0))
-        assertEquals(IoRoute.PASSIVE, buffer.ioController.route)
+        assertEquals(IoMode.PASSIVE, buffer.ioController.mode)
         assertFalse(buffer.ioController.networkPaused)
     }
 

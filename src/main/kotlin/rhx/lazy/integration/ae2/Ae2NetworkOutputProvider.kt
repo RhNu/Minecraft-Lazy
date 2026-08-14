@@ -12,6 +12,8 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.server.ServerLifecycleHooks
 import rhx.lazy.MOD_ID
+import rhx.lazy.core.io.ConfigurationCardRegistries
+import rhx.lazy.core.io.ConfigurationCardSources
 import rhx.lazy.core.io.NetworkInsertCapability
 import rhx.lazy.core.io.NetworkOutputProvider
 import rhx.lazy.core.io.NetworkPayload
@@ -40,27 +42,17 @@ internal object Ae2NetworkOutputProvider : NetworkOutputProvider {
                 player.getItemInHand(InteractionHand.MAIN_HAND),
                 player.getItemInHand(InteractionHand.OFF_HAND),
             )
-        val curiosCard =
-            if (CuriosLinkCardSource.isAvailable()) {
-                CuriosLinkCardSource.findEquippedCard(player)
-            } else {
-                null
-            }
-        val inventoryTargets =
-            player.inventory.items.mapNotNull(::linkedTarget) +
-                listOfNotNull(curiosCard).mapNotNull(::linkedTarget)
-        return when (val selection = MeLinkCardSelection.select(orderedHands.map(::linkedTarget), inventoryTargets)) {
-            is MeLinkCardSelection.Selected -> NetworkTargetResolution.Success(createTarget(selection.target))
-            MeLinkCardSelection.Missing ->
-                if (orderedHands.any(Ae2Registries::isLinkCard) ||
-                    player.inventory.items.any(Ae2Registries::isLinkCard) ||
-                    listOfNotNull(curiosCard).any(Ae2Registries::isLinkCard)
-                ) {
+        val cards = ConfigurationCardSources.allCards(player)
+        val inventoryTargets = cards.mapNotNull(::linkedTarget)
+        return when (val selection = ConfigurationCardTargetSelection.select(orderedHands.map(::linkedTarget), inventoryTargets)) {
+            is ConfigurationCardTargetSelection.Selected -> NetworkTargetResolution.Success(createTarget(selection.target))
+            ConfigurationCardTargetSelection.Missing ->
+                if (orderedHands.any(ConfigurationCardRegistries::isCard) || cards.isNotEmpty()) {
                     NetworkTargetResolution.Unlinked
                 } else {
                     NetworkTargetResolution.NotFound
                 }
-            MeLinkCardSelection.Ambiguous -> NetworkTargetResolution.Ambiguous
+            ConfigurationCardTargetSelection.Ambiguous -> NetworkTargetResolution.Ambiguous
         }
     }
 
@@ -106,5 +98,5 @@ internal object Ae2NetworkOutputProvider : NetworkOutputProvider {
     fun createTarget(pos: GlobalPos): NetworkTargetRef = Ae2NetworkTarget.create(pos)
 
     private fun linkedTarget(stack: ItemStack): GlobalPos? =
-        stack.takeIf(Ae2Registries::isLinkCard)?.get(appeng.api.ids.AEComponents.WIRELESS_LINK_TARGET)
+        stack.takeIf(ConfigurationCardRegistries::isCard)?.get(appeng.api.ids.AEComponents.WIRELESS_LINK_TARGET)
 }

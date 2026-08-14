@@ -2,7 +2,7 @@ package rhx.lazy.integration.jade.client
 
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
-import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.integration.jade.BufferJadeDataProvider
 import rhx.lazy.integration.jade.EnergySourceJadeDataProvider
@@ -125,7 +125,7 @@ internal object SimulationChamberJadeComponentProvider : IBlockComponentProvider
     override fun getUid(): ResourceLocation = JadeProviderIds.simulationChamber
 }
 
-private fun IoRoute.translationKey(): String = "gui.lazy.io.route.${name.lowercase()}"
+private fun IoMode.translationKey(): String = "gui.lazy.io.mode.${name.lowercase()}"
 
 internal fun enabledState(enabled: Boolean): Component =
     Component.translatable(

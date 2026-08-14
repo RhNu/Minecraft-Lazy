@@ -1,7 +1,0 @@
-{
-  "icon": "lazy:slot/empty/empty_me_link_card_slot",
-  "size": 1,
-  "validators": [
-    "lazy:me_link_card_slot"
-  ]
-}

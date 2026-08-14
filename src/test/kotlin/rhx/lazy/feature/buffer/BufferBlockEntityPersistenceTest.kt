@@ -10,7 +10,7 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
-import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
@@ -100,7 +100,7 @@ class BufferBlockEntityPersistenceTest {
 
         assertEquals(180, restored.getItemCount(0))
         assertEquals(32_000, restored.getFluid(0).amount)
-        assertEquals(IoRoute.NETWORK, restored.ioController.route)
+        assertEquals(IoMode.NETWORK, restored.ioController.mode)
         assertEquals(
             FakeNetworkStorage.TEST_NETWORK_ID.value,
             restored.ioController.target

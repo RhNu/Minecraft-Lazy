@@ -2,7 +2,7 @@ package rhx.lazy.feature.energy
 
 import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
-import rhx.lazy.core.io.IoRoute
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
@@ -16,17 +16,17 @@ class EnergySourceOutputModeTest {
     fun `output modes are mutually exclusive`() {
         val source = newSource()
 
-        assertEquals(IoRoute.PASSIVE, source.ioController.route)
+        assertEquals(IoMode.PASSIVE, source.ioController.mode)
 
-        assertTrue(source.ioController.setRoute(IoRoute.ADJACENT))
-        assertEquals(IoRoute.ADJACENT, source.ioController.route)
+        source.ioController.setMode(IoMode.FACE)
+        assertEquals(IoMode.FACE, source.ioController.mode)
 
         val provider = FakeNetworkOutputProvider(FakeNetworkStorage())
         assertTrue(source.ioController.setNetworkTarget(provider.target))
-        assertEquals(IoRoute.NETWORK, source.ioController.route)
+        assertEquals(IoMode.NETWORK, source.ioController.mode)
 
-        source.ioController.setPassive()
-        assertEquals(IoRoute.PASSIVE, source.ioController.route)
+        source.ioController.setMode(IoMode.PASSIVE)
+        assertEquals(IoMode.PASSIVE, source.ioController.mode)
     }
 
     @Test
@@ -35,7 +35,7 @@ class EnergySourceOutputModeTest {
         val provider = FakeNetworkOutputProvider(FakeNetworkStorage())
 
         assertFalse(source.ioController.setNetworkTarget(NetworkTargetRef(provider.id, CompoundTag())))
-        assertEquals(IoRoute.PASSIVE, source.ioController.route)
+        assertEquals(IoMode.PASSIVE, source.ioController.mode)
     }
 
     @Test
@@ -47,12 +47,12 @@ class EnergySourceOutputModeTest {
 
         source.onServerTick()
         assertEquals(ENERGY_TRANSFER_LIMIT.toLong(), storage.storedEnergy)
-        assertEquals(IoRoute.NETWORK, source.ioController.route)
+        assertEquals(IoMode.NETWORK, source.ioController.mode)
 
         storage.networkExists = false
         source.onServerTick()
 
-        assertEquals(IoRoute.PASSIVE, source.ioController.route)
+        assertEquals(IoMode.PASSIVE, source.ioController.mode)
     }
 
     private fun newSource(): EnergySourceBlockEntity =

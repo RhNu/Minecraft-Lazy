@@ -12,10 +12,11 @@ import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.IItemHandler
+import rhx.lazy.core.io.IoAdapter
+import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoRoute
-import rhx.lazy.core.io.IoRouteAdapter
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
@@ -40,7 +41,7 @@ internal class ItemCopierBlockEntity(
     private val neighborItemCaches =
         EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction?>>(Direction::class.java)
 
-    private val ioAdapter = ItemCopierIoRouteAdapter()
+    private val ioAdapter = ItemCopierIoAdapter()
 
     init {
         installIoAdapter(ioAdapter)
@@ -126,29 +127,25 @@ internal class ItemCopierBlockEntity(
             )
         }
 
-    private inner class ItemCopierIoRouteAdapter : IoRouteAdapter {
-        override val supportedRoutes: Set<IoRoute> =
-            setOf(IoRoute.PASSIVE, IoRoute.ADJACENT, IoRoute.NETWORK)
+    private inner class ItemCopierIoAdapter : IoAdapter {
         override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
 
-        override fun push(
-            route: IoRoute,
-            target: NetworkTargetRef?,
-        ): IoPushResult {
-            if (route == IoRoute.PASSIVE) return IoPushResult.Success
+        override fun push(configuration: IoConfiguration): IoPushResult {
+            if (configuration.mode == IoMode.PASSIVE) return IoPushResult.Success
+            if (configuration.mode == IoMode.FACE && ioController.outputDirections().isEmpty()) return IoPushResult.Success
             if (!advanceSchedule()) return IoPushResult.Success
-            return when (route) {
-                IoRoute.ADJACENT -> {
+            return when (configuration.mode) {
+                IoMode.FACE -> {
                     val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
                     ItemCopierPusher.pushToHandlers(
                         template,
-                        Direction.entries.map { direction -> cacheFor(serverLevel, direction).getCapability() },
+                        ioController.outputDirections().map { direction -> cacheFor(serverLevel, direction).getCapability() },
                     )
                     IoPushResult.Success
                 }
 
-                IoRoute.NETWORK -> pushToNetwork(target)
-                else -> IoPushResult.Success
+                IoMode.NETWORK -> pushToNetwork(configuration.networkTarget)
+                IoMode.PASSIVE -> IoPushResult.Success
             }
         }
 

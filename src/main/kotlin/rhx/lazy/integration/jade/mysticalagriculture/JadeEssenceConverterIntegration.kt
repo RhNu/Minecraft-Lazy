@@ -37,7 +37,7 @@ internal object EssenceConverterJadeDataProvider :
                 if (blockEntity.isNetworkOutputPaused) {
                     NETWORK_PAUSED_MODE
                 } else {
-                    blockEntity.ioController.route.name
+                    blockEntity.ioController.mode.name
                         .lowercase()
                 },
         )

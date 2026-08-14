@@ -7,10 +7,11 @@ import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.energy.IEnergyStorage
+import rhx.lazy.core.io.IoAdapter
+import rhx.lazy.core.io.IoConfiguration
 import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.IoRoute
-import rhx.lazy.core.io.IoRouteAdapter
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputRouter
 import rhx.lazy.core.io.NetworkPayload
@@ -27,7 +28,7 @@ internal class EnergySourceBlockEntity(
     private val neighborEnergyCaches =
         EnumMap<Direction, BlockCapabilityCache<IEnergyStorage, Direction?>>(Direction::class.java)
 
-    private val ioAdapter = EnergyIoRouteAdapter()
+    private val ioAdapter = EnergyIoAdapter()
 
     init {
         installIoAdapter(ioAdapter)
@@ -42,24 +43,20 @@ internal class EnergySourceBlockEntity(
         super.setRemoved()
     }
 
-    private inner class EnergyIoRouteAdapter : IoRouteAdapter {
-        override val supportedRoutes: Set<IoRoute> =
-            setOf(IoRoute.PASSIVE, IoRoute.ADJACENT, IoRoute.NETWORK)
+    private inner class EnergyIoAdapter : IoAdapter {
         override val capabilities = setOf(NetworkInsertCapabilities.ENERGY)
 
-        override fun push(
-            route: IoRoute,
-            target: NetworkTargetRef?,
-        ): IoPushResult =
-            when (route) {
-                IoRoute.ADJACENT -> pushToAdjacent()
-                IoRoute.NETWORK -> pushToNetwork(target)
+        override fun push(configuration: IoConfiguration): IoPushResult =
+            when (configuration.mode) {
+                IoMode.FACE -> pushToFaces(ioController.outputDirections())
+                IoMode.NETWORK -> pushToNetwork(configuration.networkTarget)
                 else -> IoPushResult.Success
             }
 
-        private fun pushToAdjacent(): IoPushResult {
+        private fun pushToFaces(directions: Set<Direction>): IoPushResult {
+            if (directions.isEmpty()) return IoPushResult.Success
             val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
-            Direction.entries.forEach { direction ->
+            directions.forEach { direction ->
                 val storage = cacheFor(serverLevel, direction).getCapability()
                 if (storage?.canReceive() == true) {
                     storage.receiveEnergy(ENERGY_TRANSFER_LIMIT, false)
