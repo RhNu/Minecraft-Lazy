@@ -3,18 +3,30 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Repairer overlay: larger square frame with a centered strike head. -->
-    <rect x="3" y="3" width="10" height="10" fill="#3c4950" />
-    <rect x="3" y="3" width="10" height="1" fill="#859399" />
-    <rect x="3" y="4" width="1" height="8" fill="#6f7d82" />
-    <rect x="12" y="4" width="1" height="8" fill="#354247" />
-    <rect x="4" y="12" width="8" height="1" fill="#2e3940" />
+    <!-- Repairer overlay: shared bezel and inset window, a hammer over its handle. -->
 
-    <rect x="5" y="5" width="6" height="5" fill="#0d7077" />
-    <rect x="5" y="5" width="6" height="1" fill="#33b1b7" />
-    <rect x="5" y="6" width="1" height="3" fill="#1b9099" />
-    <rect x="10" y="6" width="1" height="3" fill="#0b4851" />
-    <rect x="6" y="6" width="4" height="1" fill="#e7fff7" />
-    <rect x="7" y="7" width="2" height="1" fill="#80f1f4" />
-    <rect x="7" y="8" width="2" height="1" fill="#0d7077" />
+    <!-- Bezel ring: outer device frame, lit from the top-left. -->
+    <rect x="2" y="2" width="12" height="12" fill="#40312b" />
+    <rect x="3" y="2" width="10" height="1" fill="#b39994" />
+    <rect x="2" y="3" width="1" height="10" fill="#88706a" />
+    <rect x="13" y="3" width="1" height="10" fill="#2f221c" />
+    <rect x="3" y="13" width="10" height="1" fill="#2b1e18" />
+
+    <!-- Inset window: recessed panel that carries the machine colour. -->
+    <rect x="4" y="4" width="8" height="8" fill="#7f5449" />
+    <rect x="5" y="4" width="6" height="1" fill="#ffcdc5" />
+    <rect x="4" y="5" width="1" height="6" fill="#eda59b" />
+    <rect x="11" y="5" width="1" height="6" fill="#623d31" />
+    <rect x="5" y="11" width="6" height="1" fill="#4e3026" />
+
+    <!-- Glyph field: 6x6 machine mark. -->
+    <rect x="6" y="5" width="4" height="2" fill="#fff6f3" />
+    <rect x="6" y="7" width="4" height="1" fill="#d37f7c" />
+    <rect x="7" y="8" width="2" height="2" fill="#d37f7c" />
+    <rect x="7" y="10" width="2" height="1" fill="#834f42" />
+
+    <!-- Status strip: family-wide signature row. -->
+    <rect x="3" y="14" width="2" height="1" fill="#e05b4d" />
+    <rect x="7" y="14" width="2" height="1" fill="#f0bd4f" />
+    <rect x="11" y="14" width="2" height="1" fill="#59d09d" />
 </svg>

@@ -3,25 +3,31 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Simulation chamber: glass observation window around an active virtual core. -->
+    <!-- Simulation chamber overlay: shared bezel and inset window, a running virtual core. -->
+
+    <!-- Bezel ring: outer device frame, lit from the top-left. -->
     <rect x="2" y="2" width="12" height="12" fill="#26383d" />
     <rect x="3" y="2" width="10" height="1" fill="#8aa6aa" />
     <rect x="2" y="3" width="1" height="10" fill="#607c80" />
     <rect x="13" y="3" width="1" height="10" fill="#18282d" />
     <rect x="3" y="13" width="10" height="1" fill="#152429" />
 
+    <!-- Inset window: recessed panel that carries the machine colour. -->
     <rect x="4" y="4" width="8" height="8" fill="#316a73" />
     <rect x="5" y="4" width="6" height="1" fill="#9deaf0" />
     <rect x="4" y="5" width="1" height="6" fill="#72cbd2" />
     <rect x="11" y="5" width="1" height="6" fill="#1c505a" />
     <rect x="5" y="11" width="6" height="1" fill="#173f48" />
 
+    <!-- Glyph field: 6x6 machine mark. -->
     <rect x="7" y="6" width="2" height="1" fill="#eafcff" />
-    <rect x="6" y="7" width="4" height="2" fill="#74f1e0" />
-    <rect x="7" y="9" width="2" height="1" fill="#31aeb0" />
+    <rect x="6" y="7" width="1" height="2" fill="#74f1e0" />
     <rect x="7" y="7" width="2" height="2" fill="#fff49b" />
+    <rect x="9" y="7" width="1" height="2" fill="#74f1e0" />
+    <rect x="7" y="9" width="2" height="1" fill="#31aeb0" />
 
+    <!-- Status strip: family-wide signature row. -->
     <rect x="3" y="14" width="2" height="1" fill="#e05b4d" />
-    <rect x="6" y="14" width="2" height="1" fill="#f0bd4f" />
-    <rect x="9" y="14" width="4" height="1" fill="#59d09d" />
+    <rect x="7" y="14" width="2" height="1" fill="#f0bd4f" />
+    <rect x="11" y="14" width="2" height="1" fill="#59d09d" />
 </svg>

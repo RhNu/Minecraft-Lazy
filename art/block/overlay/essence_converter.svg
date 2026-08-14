@@ -3,21 +3,34 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Essence converter overlay: larger square reactor plate with a centered conversion core. -->
-    <rect x="3" y="3" width="10" height="10" fill="#3c4950" />
-    <rect x="3" y="3" width="10" height="1" fill="#859399" />
-    <rect x="3" y="4" width="1" height="8" fill="#6f7d82" />
-    <rect x="12" y="4" width="1" height="8" fill="#354247" />
-    <rect x="4" y="12" width="8" height="1" fill="#2e3940" />
+    <!-- Essence converter overlay: shared bezel and inset window, an essence crystal around a bright core. -->
 
-    <rect x="5" y="5" width="6" height="6" fill="#6f3aa5" />
-    <rect x="5" y="5" width="6" height="1" fill="#cb93ff" />
-    <rect x="5" y="6" width="1" height="4" fill="#8d4ec9" />
-    <rect x="10" y="6" width="1" height="4" fill="#4f2d7d" />
-    <rect x="6" y="6" width="4" height="4" fill="#a96fe8" />
-    <rect x="6" y="6" width="4" height="1" fill="#f0dbff" />
-    <rect x="6" y="7" width="4" height="1" fill="#d2a7ff" />
-    <rect x="6" y="8" width="4" height="1" fill="#8d59c8" />
-    <rect x="7" y="5" width="2" height="1" fill="#d9afff" />
-    <rect x="7" y="10" width="2" height="1" fill="#5f347c" />
+    <!-- Bezel ring: outer device frame, lit from the top-left. -->
+    <rect x="2" y="2" width="12" height="12" fill="#2b392f" />
+    <rect x="3" y="2" width="10" height="1" fill="#95a594" />
+    <rect x="2" y="3" width="1" height="10" fill="#6b7b6a" />
+    <rect x="13" y="3" width="1" height="10" fill="#1c2920" />
+    <rect x="3" y="13" width="10" height="1" fill="#19251d" />
+
+    <!-- Inset window: recessed panel that carries the machine colour. -->
+    <rect x="4" y="4" width="8" height="8" fill="#4a6a4b" />
+    <rect x="5" y="4" width="6" height="1" fill="#c2e7b6" />
+    <rect x="4" y="5" width="1" height="6" fill="#9fc892" />
+    <rect x="11" y="5" width="1" height="6" fill="#325137" />
+    <rect x="5" y="11" width="6" height="1" fill="#26402c" />
+
+    <!-- Glyph field: 6x6 machine mark. -->
+    <rect x="7" y="5" width="2" height="1" fill="#f0fcf0" />
+    <rect x="6" y="6" width="4" height="1" fill="#f0fcf0" />
+    <rect x="5" y="7" width="2" height="1" fill="#f0fcf0" />
+    <rect x="7" y="7" width="2" height="2" fill="#fff49b" />
+    <rect x="9" y="7" width="2" height="1" fill="#f0fcf0" />
+    <rect x="6" y="8" width="1" height="1" fill="#81a863" />
+    <rect x="9" y="8" width="1" height="1" fill="#81a863" />
+    <rect x="7" y="9" width="2" height="1" fill="#81a863" />
+
+    <!-- Status strip: family-wide signature row. -->
+    <rect x="3" y="14" width="2" height="1" fill="#e05b4d" />
+    <rect x="7" y="14" width="2" height="1" fill="#f0bd4f" />
+    <rect x="11" y="14" width="2" height="1" fill="#59d09d" />
 </svg>

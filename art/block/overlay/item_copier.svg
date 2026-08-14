@@ -3,25 +3,28 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Item copier overlay: larger square frame with two mirrored item blocks and one centered transfer line. -->
-    <rect x="3" y="3" width="10" height="10" fill="#3c4950" />
-    <rect x="3" y="3" width="10" height="1" fill="#859399" />
-    <rect x="3" y="4" width="1" height="8" fill="#6f7d82" />
-    <rect x="12" y="4" width="1" height="8" fill="#354247" />
-    <rect x="4" y="12" width="8" height="1" fill="#2e3940" />
+    <!-- Item copier overlay: shared bezel and inset window, an item plate and its duplicate. -->
 
-    <rect x="4" y="5" width="3" height="3" fill="#9156c9" />
-    <rect x="4" y="8" width="3" height="2" fill="#653692" />
-    <rect x="5" y="5" width="1" height="1" fill="#d8b5ff" />
-    <rect x="6" y="6" width="1" height="1" fill="#e9d2ff" />
-    <rect x="5" y="7" width="1" height="1" fill="#b878ee" />
+    <!-- Bezel ring: outer device frame, lit from the top-left. -->
+    <rect x="2" y="2" width="12" height="12" fill="#3a313d" />
+    <rect x="3" y="2" width="10" height="1" fill="#a59bb0" />
+    <rect x="2" y="3" width="1" height="10" fill="#7b7185" />
+    <rect x="13" y="3" width="1" height="10" fill="#2a222c" />
+    <rect x="3" y="13" width="10" height="1" fill="#271e28" />
 
-    <rect x="7" y="7" width="2" height="1" fill="#e4c8ff" />
-    <rect x="8" y="6" width="1" height="3" fill="#12aeb4" />
+    <!-- Inset window: recessed panel that carries the machine colour. -->
+    <rect x="4" y="4" width="8" height="8" fill="#6b577b" />
+    <rect x="5" y="4" width="6" height="1" fill="#e3d1ff" />
+    <rect x="4" y="5" width="1" height="6" fill="#c5ade8" />
+    <rect x="11" y="5" width="1" height="6" fill="#533f5e" />
+    <rect x="5" y="11" width="6" height="1" fill="#423149" />
 
-    <rect x="9" y="5" width="3" height="3" fill="#9156c9" />
-    <rect x="9" y="8" width="3" height="2" fill="#653692" />
-    <rect x="10" y="5" width="1" height="1" fill="#d8b5ff" />
-    <rect x="9" y="6" width="1" height="1" fill="#e9d2ff" />
-    <rect x="10" y="7" width="1" height="1" fill="#b878ee" />
+    <!-- Glyph field: 6x6 machine mark. -->
+    <rect x="5" y="5" width="3" height="3" fill="#fbf6ff" />
+    <rect x="8" y="8" width="3" height="3" fill="#a28cd3" />
+
+    <!-- Status strip: family-wide signature row. -->
+    <rect x="3" y="14" width="2" height="1" fill="#e05b4d" />
+    <rect x="7" y="14" width="2" height="1" fill="#f0bd4f" />
+    <rect x="11" y="14" width="2" height="1" fill="#59d09d" />
 </svg>
