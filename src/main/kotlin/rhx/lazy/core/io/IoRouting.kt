@@ -237,7 +237,7 @@ internal interface IoAdapter {
             ?.let { provider -> capabilities.any { it in provider.capabilities } && provider.isTargetValid(target) }
             ?: false
 
-    /** Local upkeep; runs every tick in passive mode and before every face push. */
+    /** Local upkeep; runs every tick in every mode, before that mode's push. */
     fun maintain() = Unit
 
     /** Rate limit or precondition, evaluated once per tick immediately before a push. */

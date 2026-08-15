@@ -74,11 +74,17 @@ internal class SimulationChamberBlockEntity(
     fun serverTick() {
         val level = level as? ServerLevel ?: return
         migrateLegacyBatch(level)
+        advance(level)
         ioController.tick()
-        if (batch != null) {
-            processBatch(level)
-            return
-        }
+    }
+
+    /**
+     * The chamber refuses to start while anything is still buffered, so [serverTick] runs this first
+     * and hands the results to the IO cycle within the same tick: a batch that finished never spends
+     * a tick reported as blocked, and the next recipe starts on the very next tick.
+     */
+    private fun advance(level: ServerLevel) {
+        if (batch != null) return processBatch(level)
         if (outputRouter.hasOutputs) return
         val simulation = SimulationRecipeResolver.resolve(level, inputs[TARGET_SLOT]) ?: return resetProgress()
         val tier = SimulationRegistries.coreTier(inputs[CORE_SLOT]) ?: return resetProgress()
@@ -89,7 +95,9 @@ internal class SimulationChamberBlockEntity(
         processBatch(level)
     }
 
+    /** A batch that spans several ticks holds the bar full: the recipe is done and only rolls remain. */
     fun progress(): Float {
+        if (batch != null) return 1f
         val simulation = level?.let { SimulationRecipeResolver.resolve(it, inputs[TARGET_SLOT]) } ?: return 0f
         return (progressTicks.toFloat() / simulation.duration).coerceIn(0f, 1f)
     }

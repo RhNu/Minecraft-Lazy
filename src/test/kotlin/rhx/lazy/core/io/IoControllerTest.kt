@@ -91,11 +91,47 @@ class IoControllerTest {
 
     @Test
     fun `passive mode still runs adapter maintenance`() {
-        val entity = PassiveMaintenanceEntity()
+        val entity = MaintainingEntity()
 
         entity.ioController.tick()
 
         assertEquals(1, entity.maintenanceTicks)
+    }
+
+    @Test
+    fun `network mode maintains a buffered adapter while nothing is bound`() {
+        val entity = MaintainingEntity()
+        assertTrue(entity.ioController.applyConfiguration(IoConfiguration(mode = IoMode.NETWORK)))
+
+        entity.ioController.tick()
+
+        assertEquals(1, entity.maintenanceTicks)
+        assertEquals(0, entity.pushes)
+    }
+
+    @Test
+    fun `network back-off skips the push but keeps maintaining`() {
+        val entity = MaintainingEntity()
+        entity.result = IoPushResult.Retry
+        assertTrue(entity.ioController.applyConfiguration(networkTo("backoff")))
+
+        repeat(5) { entity.ioController.tick() }
+
+        assertEquals(5, entity.maintenanceTicks)
+        assertEquals(1, entity.pushes)
+    }
+
+    @Test
+    fun `paused network keeps maintaining until the player picks a target again`() {
+        val entity = MaintainingEntity()
+        entity.result = IoPushResult.OutcomeUnknown
+        assertTrue(entity.ioController.applyConfiguration(networkTo("paused")))
+
+        repeat(3) { entity.ioController.tick() }
+
+        assertTrue(entity.ioController.networkPaused)
+        assertEquals(3, entity.maintenanceTicks)
+        assertEquals(1, entity.pushes)
     }
 
     @Test
@@ -144,6 +180,13 @@ class IoControllerTest {
             EnergyRegistries.sourceBlock.get().defaultBlockState(),
         )
 
+    /** A target whose provider is never registered, so the controller keeps it without a capability check. */
+    private fun networkTo(name: String) =
+        IoConfiguration(
+            mode = IoMode.NETWORK,
+            networkTarget = NetworkTargetRef(ResourceLocation.fromNamespaceAndPath("lazy", "unregistered_$name"), CompoundTag()),
+        )
+
     private class RecordingProvider(
         suffix: String,
     ) : NetworkOutputProvider {
@@ -173,13 +216,15 @@ class IoControllerTest {
         fun target(value: String) = NetworkTargetRef(id, CompoundTag().apply { putString("opaque", value) })
     }
 
-    private class PassiveMaintenanceEntity :
+    private class MaintainingEntity :
         IoManagedBlockEntity(
             EnergyRegistries.sourceBlockEntity.get(),
             BlockPos.ZERO,
             EnergyRegistries.sourceBlock.get().defaultBlockState(),
         ) {
         var maintenanceTicks = 0
+        var pushes = 0
+        var result: IoPushResult = IoPushResult.Success
 
         init {
             installIoAdapter(
@@ -189,6 +234,11 @@ class IoControllerTest {
 
                     override fun maintain() {
                         maintenanceTicks++
+                    }
+
+                    override fun pushToNetwork(target: NetworkTargetRef): IoPushResult {
+                        pushes++
+                        return result
                     }
                 },
             )

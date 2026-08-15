@@ -192,13 +192,21 @@ internal class IoController(
             .mapTo(linkedSetOf()) { it.toWorldDirection(blockEntity.blockState) }
     }
 
+    /**
+     * One IO cycle. Machines run it once per tick and *after* their own work, so whatever they
+     * produced during the tick leaves in the same tick instead of spending one looking blocked.
+     *
+     * Maintenance runs whatever the mode is, because a buffered adapter has to keep draining even
+     * when the mode's push is skipped — which a network machine does while it is unbound, paused or
+     * inside its retry back-off.
+     */
     fun tick() {
         val currentAdapter = adapter ?: return
+        if (currentAdapter.maintainsWhenIdle) currentAdapter.maintain()
         val current = configuration
         when (current.mode) {
-            IoMode.PASSIVE -> if (currentAdapter.maintainsWhenIdle) currentAdapter.maintain()
+            IoMode.PASSIVE -> Unit
             IoMode.FACE -> {
-                if (currentAdapter.maintainsWhenIdle) currentAdapter.maintain()
                 val directions = outputDirections()
                 if (directions.isEmpty()) return
                 if (!readyToPush(currentAdapter)) return

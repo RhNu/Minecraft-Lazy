@@ -47,7 +47,7 @@ rhx.lazy
 - 可选集成通过 `IntegrationModule` 统一公共侧与客户端初始化，并由唯一的显式模块列表确定顺序。bootstrap 的字段、签名和初始化器不得引用第三方类型；只有确认对应模组已加载后才能解析 adapter。模组已安装但初始化失败属于启动错误，不静默降级。
 - Jade 集成是上述生命周期的明确例外：`LazyJadePlugin` 通过 Jade 的 `@WailaPlugin` 发现，公共数据提供器与客户端组件提供器分别由 Jade 注册，不进入 `IntegrationManager`。Lazy 自身 bootstrap 不引用 Jade API；精华转换器的 Jade bridge 只有在对应内容模组已加载后才解析。
 - IO 由 `IoConfiguration`、`IoController` 与机器 `IoAdapter` 统一管理。三种互斥模式为被动、六面配置和网络输出：被动模式允许各面按机器自身输入/输出能力交互；六面配置按机器朝向保存上、左、前、右、下、后各面的禁用/输入/输出/双向状态，并可选择是否主动弹出；网络模式允许各面输入并把产物送往所选网络。
-- 模式分发、重试退避、暂停与结果映射只存在于 `IoController`；`IoAdapter` 只实现 `maintain`、`pushToFaces` 与 `pushToNetwork`，并用 `acceptsInput` 声明是否可接收输入。相邻方块能力缓存统一走 `NeighborCapabilities`，侧面能力注册统一走 `IoCapabilityRegistration`，放置时的配置卡应用统一走 `Level.applyConfigurationCardOnPlacement`。
+- 模式分发、重试退避、暂停与结果映射只存在于 `IoController`；`IoAdapter` 只实现 `maintain`、`pushToFaces` 与 `pushToNetwork`，并用 `acceptsInput` 声明是否可接收输入。机器在自身逻辑之后调用 `IoController.tick()`，本刻产出的产物在同一刻送出，不会多占一刻显示为阻塞；`maintain` 在三种模式下都执行，网络未绑定、已暂停或处于退避期间缓冲仍继续消化。相邻方块能力缓存统一走 `NeighborCapabilities`，侧面能力注册统一走 `IoCapabilityRegistration`，放置时的配置卡应用统一走 `Level.applyConfigurationCardOnPlacement`。
 - `IoConfiguration` 视为不可变值：`NetworkTargetRef` 的不透明数据只在存取边界深拷贝，读取路径（侧面能力查询、每 tick 推送、界面绑定）不再复制 NBT。
 - 仅当配置非默认时才写入方块实体 NBT，因此未配置的机器掉落物仍可堆叠；配置非默认或存有内容的机器在掉落时保留自身状态。
 - `lazy:configuration_card` 保存完整 `IoConfiguration`。卡可直接打开同一套 IO 面板；右击机器应用配置，潜行右击复制机器配置；玩家携带唯一明确配置的卡放置默认状态机器时，机器复制该配置。AE2 只为这张通用卡增加无线接入点链接行为，Curios 只增加可装备的配置卡槽。
