@@ -31,14 +31,14 @@ internal object LazyCreativeTabRegistry : RegistryModule {
                     .icon { ItemStack(BufferRegistries.item.get()) }
                     .displayItems { _, output ->
                         output.accept(MachineCasingRegistries.item.get())
-                        output.accept(ConfigurationCardRegistries.item.get())
                         output.accept(BufferRegistries.item.get())
-                        output.accept(TeleporterRegistries.item.get())
-                        output.accept(EnergyRegistries.batteryItem.get())
                         output.accept(EnergyRegistries.sourceItem.get())
                         output.accept(ItemCopierRegistries.item.get())
                         output.accept(RepairerRegistries.item.get())
                         output.accept(SimulationRegistries.item.get())
+                        output.accept(ConfigurationCardRegistries.item.get())
+                        output.accept(EnergyRegistries.batteryItem.get())
+                        output.accept(TeleporterRegistries.item.get())
                         output.accept(SimulationRegistries.dataModelItem.get())
                         SimulationRegistries.allCoreItems().forEach { output.accept(it.get()) }
                     }.build()

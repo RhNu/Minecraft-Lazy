@@ -1,7 +1,10 @@
 package rhx.lazy.integration.mysticalagriculture
 
+import net.minecraft.world.item.CreativeModeTab
+import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent
 import rhx.lazy.core.registry.LazyCreativeTabRegistry
+import rhx.lazy.feature.simulation.SimulationRegistries
 import rhx.lazy.integration.IntegrationContext
 import rhx.lazy.integration.IntegrationModule
 
@@ -20,7 +23,11 @@ internal object MysticalAgricultureIntegrationModule : IntegrationModule {
 
     private fun addCreativeTabContents(event: BuildCreativeModeTabContentsEvent) {
         if (event.tabKey == LazyCreativeTabRegistry.tab.key) {
-            event.accept(EssenceConverterRegistries.item.get())
+            event.insertAfter(
+                ItemStack(SimulationRegistries.item.get()),
+                ItemStack(EssenceConverterRegistries.item.get()),
+                CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS,
+            )
         }
     }
 }
