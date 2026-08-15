@@ -2,32 +2,11 @@ package rhx.lazy.core.io
 
 import com.lowdragmc.lowdraglib2.gui.factory.HeldItemUIMenuType
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
-import com.lowdragmc.lowdraglib2.gui.ui.UI
-import com.lowdragmc.lowdraglib2.gui.ui.UIElement
-import com.lowdragmc.lowdraglib2.gui.ui.element
-import com.lowdragmc.lowdraglib2.gui.ui.inventorySlots
-import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager
 import net.minecraft.world.item.ItemStack
 
+/** The card's own screen is the IO panel and nothing else: it holds no items to interact with. */
 internal object ConfigurationCardUI {
-    fun create(holder: HeldItemUIMenuType.HeldItemUIHolder): ModularUI {
-        val model = Model(holder)
-        lateinit var installIoPanel: (UIElement) -> Unit
-        val root =
-            element(
-                {
-                    cls = {
-                        +"panel_bg"
-                        +"lazy-configuration-card"
-                    }
-                },
-            ) {
-                installIoPanel = IoPanelUI.addIoPanel(this, model)
-                inventorySlots({ cls = { +"lazy-configuration-card__inventory" } })
-            }
-        installIoPanel(root)
-        return ModularUI(UI.of(root, StylesheetManager.MC, IoPanelUI.stylesheet), holder.player)
-    }
+    fun create(holder: HeldItemUIMenuType.HeldItemUIHolder): ModularUI = IoPanelUI.createStandaloneUI(Model(holder))
 
     private class Model(
         private val holder: HeldItemUIMenuType.HeldItemUIHolder,

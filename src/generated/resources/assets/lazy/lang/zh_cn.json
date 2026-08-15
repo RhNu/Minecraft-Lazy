@@ -58,6 +58,7 @@
   "gui.lazy.io.network.resume": "恢复输出",
   "gui.lazy.io.network.resume.tooltip": "在无法确认的传输之后恢复输出",
   "gui.lazy.io.network.unbound": "尚未绑定网络",
+  "gui.lazy.io.network.unknown": "未知网络",
   "gui.lazy.io.network.unknown_provider": "未知提供者（%s）",
   "gui.lazy.io.network_paused": "网络输出已暂停；请重新选择目标",
   "gui.lazy.io.open": "打开 IO 设置",

@@ -79,7 +79,7 @@ internal interface IoConfigurationEditor {
     val configuration: IoConfiguration
     val capabilities: Set<NetworkInsertCapability>
 
-    /** False for machines that can only emit, so the panel hides the input face states. */
+    /** False for machines that can only emit, so cycling a face skips the input-capable states. */
     val acceptsInput: Boolean
         get() = true
 

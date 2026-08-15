@@ -2,29 +2,72 @@ package rhx.lazy.core.io
 
 import com.lowdragmc.lowdraglib2.gui.ui.style.Stylesheet
 import kotlin.test.Test
-import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class IoPanelStylesheetTest {
     @Test
-    fun `io panel stylesheet parses`() {
-        val text =
-            requireNotNull(javaClass.getResourceAsStream("/assets/lazy/lss/io.lss"))
+    fun `io panel stylesheet selectors and declarations are valid`() {
+        val declarationCount =
+            STYLESHEET
+                .lineSequence()
+                .count { line -> line.trim().matches(DECLARATION) }
+        val stylesheet = Stylesheet.parse(STYLESHEET)
+
+        assertTrue(stylesheet.rules.isNotEmpty())
+        // Every declaration must become a property: an unknown name is dropped without a word.
+        assertEquals(declarationCount, stylesheet.rules.sumOf { rule -> rule.properties.size })
+    }
+
+    @Test
+    fun `io panel stylesheet styles every widget the panel builds`() {
+        SELECTORS.forEach { selector ->
+            assertTrue(STYLESHEET.contains("$selector "), "missing rule for $selector")
+        }
+    }
+
+    @Test
+    fun `the tab body height belongs to the panel code`() {
+        // IoPanelUI sizes the body to the tallest tab so switching tabs never resizes the window;
+        // a height declared here would override that and bring the resizing back.
+        val body = STYLESHEET.substringAfter(".lazy-io__body {").substringBefore('}')
+        assertTrue(body.isNotBlank())
+        assertTrue(!body.contains("height:"), "the body height belongs to IoPanelUI.bodyHeight")
+    }
+
+    private companion object {
+        val STYLESHEET: String =
+            requireNotNull(IoPanelStylesheetTest::class.java.getResourceAsStream("/assets/lazy/lss/io.lss"))
                 .bufferedReader()
                 .use { it.readText() }
-        val stylesheet = Stylesheet.parse(text)
-        assertTrue(stylesheet.rules.isNotEmpty())
-        assertTrue(text.contains(".lazy-io__panel"))
-        assertTrue(text.contains(".lazy-io__tabs"))
-        assertTrue(text.contains(".lazy-io__face--input"))
-        assertTrue(text.contains(".lazy-io__network-list"))
-        assertTrue(text.contains(".lazy-io__network-status"))
-        assertTrue(text.contains(".lazy-io__network-action"))
-        assertTrue(text.contains(".lazy-io__button--selected"))
-        assertTrue(text.contains("base-background: built-in(ui-mc:RECT_BORDER)"))
-        assertFalse(text.contains("text-wrap: wrap"))
-        assertFalse(text.contains("max-width: 120"))
-        assertFalse(text.contains("width: 190"))
-        assertFalse(text.contains("width: 180"))
+
+        val DECLARATION = Regex("""[a-z-]+\s*:\s*.+;""")
+
+        val SELECTORS =
+            listOf(
+                ".lazy-io__panel",
+                ".lazy-io__title",
+                ".lazy-io__tabs",
+                ".lazy-io__tab",
+                ".lazy-io__body",
+                ".lazy-io__content",
+                ".lazy-io__passive-icon",
+                ".lazy-io__hint",
+                ".lazy-io__face-grid",
+                ".lazy-io__face-row",
+                ".lazy-io__face-placeholder",
+                ".lazy-io__face--none",
+                ".lazy-io__face--input",
+                ".lazy-io__face--output",
+                ".lazy-io__face--both",
+                ".lazy-io__eject",
+                ".lazy-io__network-status",
+                ".lazy-io__network-list",
+                ".lazy-io__network-empty",
+                ".lazy-io__provider",
+                ".lazy-io__network-actions",
+                ".lazy-io__network-action",
+                ".lazy-io__button--selected",
+            )
     }
 }

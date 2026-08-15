@@ -223,7 +223,7 @@ internal fun NetworkTargetRef.offer(
 internal interface IoAdapter {
     val capabilities: Set<NetworkInsertCapability>
 
-    /** Machines that never accept an inbound transfer hide the input face states in the panel. */
+    /** Machines that never accept an inbound transfer skip the input face states while cycling. */
     val acceptsInput: Boolean
         get() = true
 

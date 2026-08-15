@@ -58,6 +58,7 @@
   "gui.lazy.io.network.resume": "Resume",
   "gui.lazy.io.network.resume.tooltip": "Resume output after an unconfirmed transfer",
   "gui.lazy.io.network.unbound": "No network target",
+  "gui.lazy.io.network.unknown": "Unknown network",
   "gui.lazy.io.network.unknown_provider": "Unknown provider (%s)",
   "gui.lazy.io.network_paused": "Network output paused; select a target again",
   "gui.lazy.io.open": "Open IO settings",
