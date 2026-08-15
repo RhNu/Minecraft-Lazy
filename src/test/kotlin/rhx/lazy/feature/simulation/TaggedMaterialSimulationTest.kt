@@ -44,6 +44,19 @@ class TaggedMaterialSimulationTest {
     }
 
     @Test
+    fun `only rules whose output differs from their input can fall back to duplicate self`() {
+        val (selfOutput, derived) = TaggedMaterialRules.all().partition { it.inputPrefix == it.outputPrefix }
+
+        // gem 与 dust 的输出标签就是输入标签，匹配到的物品必然是自己的候选，tagged 不会落空，
+        // 所以 TaggedMaterialAdapter.resolve 里的 duplicate_self 回退只对下面的 derived 生效。
+        assertEquals(setOf("gem", "dust"), selfOutput.map(TaggedMaterialRule::kind).toSet())
+        selfOutput.forEach { rule -> assertEquals("iron", rule.material(rule.outputTag("iron"))) }
+
+        assertEquals(setOf("ingot"), derived.map(TaggedMaterialRule::kind).toSet())
+        derived.forEach { rule -> assertNull(rule.material(rule.outputTag("iron"))) }
+    }
+
+    @Test
     fun `rule kinds are unique`() {
         assertTrue(
             runCatching {

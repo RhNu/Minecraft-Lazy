@@ -91,9 +91,12 @@
 | `dust` | `c:dusts/<材料>` | `c:dusts/<材料>` | `lazy:automatic/material/dust/<材料>` |
 
 - 输出标签里有多个候选时，统一按服务端 `taggedMaterialModPriority` 配置按序选取。默认顺序是 `kubejs > minecraft > alltheores > create > mekanism > jaopca`；列表内一个都没有命中时，剩余候选按命名空间和完整物品 ID 升序确定唯一赢家，缺失模组会自然跳过。今后任何「标签物品存在多个可能产物」的场景都走同一份配置。
-- 同时匹配多条规则或多种材料（例如同属 `c:ingots/iron` 与 `c:dusts/iron`）时不猜产物，也不生成自动配方；缺少候选产物时同样不生成。单个材料的例外用显式模拟配方覆写。
+- 同时匹配多条规则或多种材料（例如同属 `c:ingots/iron` 与 `c:dusts/iron`）时不猜产物，也不生成自动配方。单个材料的例外用显式模拟配方覆写。
 - 原版紫水晶碎片属于 `c:gems/amethyst`，由 `gem` 规则覆盖；紫水晶簇和芽属于独立的 `c:clusters`/`c:buds` 标签，不会被当作紫水晶碎片的生长目标。
-- 没有 `c:` 材料标签、但语义上「自己产出自己」的物品放进 `lazy:simulation/target/duplicate_self` 物品标签，配方 id 为 `lazy:automatic/material/self/<命名空间>/<路径>`。默认内容只有 `minecraft:coal`（木炭不在内），整合包可以自由追加。该标签同样受 `taggedMaterials` 开关、`taggedMaterialDuration` 时长和材料黑名单控制。
+- 没有 `c:` 材料标签、但语义上「自己产出自己」的物品放进 `lazy:simulation/target/duplicate_self` 物品标签，配方 id 为 `lazy:automatic/material/self/<命名空间>/<路径>`。整合包可以自由追加。该标签同样受 `taggedMaterials` 开关、`taggedMaterialDuration` 时长和材料黑名单控制。
+- 默认内容为 `minecraft:coal`（木炭不在内）、`#c:gems` 和 `#c:dusts`。后两者是 NeoForge 的伞标签，用来兜住「只注册了 `c:gems` / `c:dusts`、没有注册任何 `<类别>/<材料>` 子标签」的模组物品——正常打标的物品会先命中 `gem` / `dust` 规则，根本走不到自产自身分支，所以两者不冲突。`#c:ingots` **不在**默认内容里：锭的规则产出是粗矿，让锭自产自身会跳过整条粗矿链，并且造成「打标规范的铁锭产出粗铁、打标偷懒的合金锭直接产出自己」的倒挂。
+- 规则命中但输出标签查不到候选时（`c:ingots/<材料>` 没有对应的 `c:raw_materials/<材料>`，钢、黄铜等一切合金锭皆如此），同样回落到 `duplicate_self`：把那个锭单独写进标签就能让它自产自身，不需要写显式配方。输入输出同标签的 `gem` 与 `dust` 规则不会走到这条回退——物品自己就在输出标签里，查不空。
+- 原版 `minecraft:netherite_ingot` 也缺 `c:raw_materials/netherite`，由显式配方 `lazy:simulation/netherite_ingot` 接上，产出 `minecraft:netherite_scrap`。显式配方不受 `taggedMaterials` 开关和材料黑名单影响，时长取 `defaultDuration` 而非 `taggedMaterialDuration`；要改行为请覆写或移除该配方。
 - 自动材料的周期时长使用 `taggedMaterialDuration`。
 
 ## 标签总览
@@ -103,7 +106,7 @@
 | 标签 | 注册表 | 作用 |
 | --- | --- | --- |
 | `lazy:simulation/target/plant` | 物品 | 自动植物目标 |
-| `lazy:simulation/target/duplicate_self` | 物品 | 自产自身的材料目标 |
+| `lazy:simulation/target/duplicate_self` | 物品 | 自产自身的材料目标，默认含 `#c:gems`、`#c:dusts` |
 | `lazy:simulation/blacklist/all` | 物品 | 禁止该目标的全部自动来源 |
 | `lazy:simulation/blacklist/tree` | 物品 | 只禁止自动树木 |
 | `lazy:simulation/blacklist/crop` | 物品 | 只禁止自动作物 |

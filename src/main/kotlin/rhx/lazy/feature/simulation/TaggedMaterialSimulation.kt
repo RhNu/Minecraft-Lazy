@@ -109,7 +109,10 @@ internal object TaggedMaterialAdapter : AutomaticSimulationAdapter {
         val matches = TaggedMaterialRules.matches(stack.tags.toList())
         return when (matches.size) {
             0 -> duplicateSelf(stack)
-            1 -> tagged(matches.single())
+            // 规则命中却查不到候选产物时（合金锭没有对应的 c:raw_materials/<材料>）回落到显式
+            // opt-in，否则 duplicate_self 对这些物品静默失效。输入输出同标签的规则（gem、dust）
+            // 走不到这一步：物品自己就在输出标签里，tagged 不会落空。
+            1 -> tagged(matches.single()) ?: duplicateSelf(stack)
             else -> null
         }
     }

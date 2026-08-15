@@ -1,6 +1,14 @@
 {
   "replace": false,
   "values": [
-    "minecraft:coal"
+    "minecraft:coal",
+    {
+      "id": "#c:gems",
+      "required": false
+    },
+    {
+      "id": "#c:dusts",
+      "required": false
+    }
   ]
 }

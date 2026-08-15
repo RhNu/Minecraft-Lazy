@@ -20,6 +20,8 @@ internal object SimulationRecipeData {
         item("glow_berries", Items.GLOW_BERRIES, output, itemOutput(Items.GLOW_BERRIES))
         item("kelp", Items.KELP, output, itemOutput(Items.KELP))
         item("nether_wart", Items.NETHER_WART, output, itemOutput(Items.NETHER_WART, min = 2, max = 4))
+        // c:raw_materials/netherite 不存在，ingot 规则查不到产物，补一条显式配方接上这条链
+        item("netherite_ingot", Items.NETHERITE_INGOT, output, itemOutput(Items.NETHERITE_SCRAP))
         item("red_mushroom", Items.RED_MUSHROOM, output, itemOutput(Items.RED_MUSHROOM))
         item("sugar_cane", Items.SUGAR_CANE, output, itemOutput(Items.SUGAR_CANE))
         item("sweet_berries", Items.SWEET_BERRIES, output, itemOutput(Items.SWEET_BERRIES, min = 2, max = 3))
