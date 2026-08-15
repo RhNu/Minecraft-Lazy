@@ -7,12 +7,16 @@ import net.minecraft.world.item.Item
 import rhx.lazy.core.lazyId
 
 internal object SimulationTags {
+    val automaticPlantTargets: TagKey<Item> =
+        TagKey.create(Registries.ITEM, lazyId("automatic_plant"))
     val automaticSimulationBlacklist: TagKey<Item> =
         TagKey.create(Registries.ITEM, lazyId("automatic_simulation_blacklist"))
     val automaticTreeBlacklist: TagKey<Item> =
         TagKey.create(Registries.ITEM, lazyId("automatic_tree_blacklist"))
     val automaticCropBlacklist: TagKey<Item> =
         TagKey.create(Registries.ITEM, lazyId("automatic_crop_blacklist"))
+    val automaticPlantBlacklist: TagKey<Item> =
+        TagKey.create(Registries.ITEM, lazyId("automatic_plant_blacklist"))
     val automaticMineralBlacklist: TagKey<Item> =
         TagKey.create(Registries.ITEM, lazyId("automatic_mineral_blacklist"))
     val automaticMysticalBlacklist: TagKey<Item> =
@@ -24,6 +28,7 @@ internal object SimulationTags {
         when (source.path) {
             "tree" -> automaticTreeBlacklist
             "crop" -> automaticCropBlacklist
+            "plant" -> automaticPlantBlacklist
             "mineral" -> automaticMineralBlacklist
             "mystical" -> automaticMysticalBlacklist
             else -> null

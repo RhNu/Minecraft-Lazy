@@ -162,7 +162,8 @@ internal sealed interface SimulationBatch {
 
         private fun copy(output: SimulationFluidOutput) = output.copy(stack = output.stack.copy())
 
-        private fun copy(output: SimulationBlockLootOutput) = output.copy(displayItems = output.displayItems.map(ItemStack::copy))
+        private fun copy(output: SimulationBlockLootOutput) =
+            output.copy(displayItems = output.displayItems.map(ItemStack::copy), tool = output.tool.copy())
 
         private fun <T> encodeList(
             context: com.mojang.serialization.DynamicOps<Tag>,

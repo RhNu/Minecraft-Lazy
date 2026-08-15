@@ -10,6 +10,7 @@ import net.minecraft.network.codec.StreamCodec
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.fluids.FluidStack
+import java.util.Optional
 
 internal const val MAX_OUTPUT_ENTRIES = 28
 
@@ -96,11 +97,13 @@ internal data class SimulationFluidOutput(
 internal data class SimulationBlockLootOutput(
     val state: BlockState,
     val displayItems: List<ItemStack> = emptyList(),
+    val tool: ItemStack = ItemStack.EMPTY,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         STATE_STREAM_CODEC.encode(buffer, state)
         buffer.writeVarInt(displayItems.size)
         displayItems.forEach { ItemStack.STREAM_CODEC.encode(buffer, it) }
+        ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, tool)
     }
 
     companion object {
@@ -113,13 +116,19 @@ internal data class SimulationBlockLootOutput(
                             .listOf()
                             .optionalFieldOf("display_items", emptyList())
                             .forGetter(SimulationBlockLootOutput::displayItems),
-                    ).apply(instance, ::SimulationBlockLootOutput)
+                        ItemStack.CODEC.optionalFieldOf("tool").forGetter { output ->
+                            Optional.of(output.tool).filter { !it.isEmpty }
+                        },
+                    ).apply(instance) { state, displayItems, tool ->
+                        SimulationBlockLootOutput(state, displayItems, tool.orElse(ItemStack.EMPTY))
+                    }
             }
 
         fun decode(buffer: RegistryFriendlyByteBuf): SimulationBlockLootOutput =
             SimulationBlockLootOutput(
                 STATE_STREAM_CODEC.decode(buffer),
                 List(buffer.readVarInt()) { ItemStack.STREAM_CODEC.decode(buffer) },
+                ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer),
             )
 
         private val STATE_STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, BlockState> =

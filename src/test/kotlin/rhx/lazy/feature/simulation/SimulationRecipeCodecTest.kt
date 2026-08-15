@@ -187,7 +187,13 @@ class SimulationRecipeCodecTest {
             SimulationBatch.Item(
                 emptyList(),
                 emptyList(),
-                listOf(SimulationBlockLootOutput(Blocks.WHEAT.defaultBlockState(), listOf(ItemStack(Items.WHEAT)))),
+                listOf(
+                    SimulationBlockLootOutput(
+                        Blocks.WHEAT.defaultBlockState(),
+                        listOf(ItemStack(Items.WHEAT)),
+                        ItemStack(Items.SHEARS),
+                    ),
+                ),
                 3,
             )
 
@@ -207,7 +213,27 @@ class SimulationRecipeCodecTest {
                 .single()
                 .item,
         )
+        assertEquals(
+            Items.SHEARS,
+            restored.blockLootOutputs
+                .single()
+                .tool.item,
+        )
         assertEquals(3, restored.remaining)
+    }
+
+    @Test
+    fun `block loot descriptions without a tool decode as empty`() {
+        val json =
+            JsonParser
+                .parseString(
+                    """{"state":{"Name":"minecraft:poppy"},"display_items":[{"id":"minecraft:poppy","count":1}]}""",
+                ).asJsonObject
+        val result = SimulationBlockLootOutput.CODEC.codec().parse(JsonOps.INSTANCE, json)
+
+        val output = result.resultOrPartial { error("Failed to decode block loot output: $it") }.orElseThrow()
+        assertEquals(Blocks.POPPY, output.state.block)
+        assertTrue(output.tool.isEmpty)
     }
 
     @Test
@@ -252,6 +278,7 @@ class SimulationRecipeCodecTest {
                                 SimulationBlockLootOutput(
                                     Blocks.WHEAT.defaultBlockState(),
                                     listOf(ItemStack(Items.WHEAT), ItemStack(Items.WHEAT_SEEDS)),
+                                    ItemStack(Items.SHEARS),
                                 ),
                             ),
                         ),
@@ -278,6 +305,12 @@ class SimulationRecipeCodecTest {
                     .single()
                     .displayItems
                     .map { it.item },
+            )
+            assertEquals(
+                Items.SHEARS,
+                display.simulation.blockLootOutputs
+                    .single()
+                    .tool.item,
             )
         } finally {
             buffer.release()

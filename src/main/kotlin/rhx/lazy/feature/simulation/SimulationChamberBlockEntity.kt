@@ -230,7 +230,7 @@ internal class SimulationChamberBlockEntity(
                 repeat(budget) {
                     active.blockLootOutputs.forEach { output ->
                         net.minecraft.world.level.block.Block
-                            .getDrops(output.state, level, blockPos, null, null, ItemStack.EMPTY)
+                            .getDrops(output.state, level, blockPos, null, null, output.tool)
                             .forEach(accumulator::add)
                     }
                 }

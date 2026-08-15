@@ -15,6 +15,8 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.BlockStateProperties
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 import rhx.lazy.Lazy
 import rhx.lazy.core.lazyId
 
@@ -40,14 +42,15 @@ internal fun interface AutomaticSimulationAdapter {
 
 internal object AutomaticSimulationAdapters {
     private val external = linkedMapOf<ResourceLocation, AutomaticSimulationAdapter>()
-    private val builtIns = listOf(TreeSimulationAdapter, CropSimulationAdapter, MineralSimulationAdapter)
+    private val builtIns =
+        listOf(TreeSimulationAdapter, CropSimulationAdapter, PlantSimulationAdapter, MineralSimulationAdapter)
 
     @Synchronized
     fun register(
         source: ResourceLocation,
         adapter: AutomaticSimulationAdapter,
     ) {
-        require(source.namespace != "lazy" || source.path !in setOf("tree", "crop", "mineral")) {
+        require(source.namespace != "lazy" || source.path !in setOf("tree", "crop", "plant", "mineral")) {
             "Automatic simulation source $source is reserved"
         }
         require(external.putIfAbsent(source, adapter) == null) { "Duplicate automatic simulation source $source" }
@@ -166,12 +169,27 @@ private object CropSimulationAdapter : AutomaticSimulationAdapter {
         )
     }
 
-    private fun blockLoot(
-        level: Level,
-        state: BlockState,
-    ) = SimulationBlockLootOutput(state, (level as? ServerLevel)?.let { SimulationLootDisplays.items(it, state) }.orEmpty())
-
     private val SOURCE = lazyId("crop")
+    private const val PRIORITY = 200
+}
+
+private object PlantSimulationAdapter : AutomaticSimulationAdapter {
+    override fun resolve(
+        level: Level,
+        stack: ItemStack,
+    ): AutomaticSimulationCandidate? {
+        if (!stack.`is`(SimulationTags.automaticPlantTargets)) return null
+        val state = automaticPlantState(stack) ?: return null
+        return AutomaticSimulationCandidate(
+            SOURCE,
+            automaticId("plant", stack),
+            SimulationConfigs.settings.defaultDuration.get(),
+            PRIORITY,
+            blockLootOutputs = listOf(blockLoot(level, state, ItemStack(Items.SHEARS))),
+        )
+    }
+
+    private val SOURCE = lazyId("plant")
     private const val PRIORITY = 200
 }
 
@@ -265,6 +283,18 @@ internal fun matureCropState(stack: ItemStack): BlockState? {
     return crop.getStateForAge(crop.maxAge)
 }
 
+internal fun automaticPlantState(stack: ItemStack): BlockState? {
+    val block = (stack.item as? BlockItem)?.block ?: return null
+    if (block is CropBlock) return null
+    val state = block.defaultBlockState()
+    if (state.isAir) return null
+    return if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
+        state.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.LOWER)
+    } else {
+        state
+    }
+}
+
 internal fun mineralCandidateIdComparator(priorities: List<String>): Comparator<ResourceLocation> =
     compareBy<ResourceLocation>(
         { id -> priorities.indexOf(id.namespace).let { if (it < 0) Int.MAX_VALUE else it } },
@@ -353,3 +383,13 @@ private fun automaticId(
     val input = BuiltInRegistries.ITEM.getKey(stack.item)
     return lazyId("automatic/$kind/${input.namespace}/${input.path}")
 }
+
+private fun blockLoot(
+    level: Level,
+    state: BlockState,
+    tool: ItemStack = ItemStack.EMPTY,
+) = SimulationBlockLootOutput(
+    state,
+    (level as? ServerLevel)?.let { SimulationLootDisplays.items(it, state) }.orEmpty(),
+    tool,
+)

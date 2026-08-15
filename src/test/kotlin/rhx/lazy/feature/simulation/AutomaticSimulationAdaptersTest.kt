@@ -4,6 +4,9 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.CropBlock
+import net.minecraft.world.level.block.state.properties.BlockStateProperties
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
+import rhx.lazy.core.lazyId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -40,6 +43,39 @@ class AutomaticSimulationAdaptersTest {
             assertEquals(crop.maxAge, crop.getAge(state))
         }
         assertNull(matureCropState(ItemStack(Items.SWEET_BERRIES)))
+    }
+
+    @Test
+    fun `double plants resolve their lower half so loot conditions match`() {
+        listOf(Items.SUNFLOWER, Items.LILAC, Items.PEONY, Items.ROSE_BUSH, Items.PITCHER_PLANT).forEach { item ->
+            val state = assertNotNull(automaticPlantState(ItemStack(item)))
+            assertEquals(DoubleBlockHalf.LOWER, state.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF))
+        }
+    }
+
+    @Test
+    fun `single plants resolve their default state`() {
+        listOf(Items.POPPY, Items.DANDELION, Items.WITHER_ROSE, Items.PINK_PETALS, Items.SPORE_BLOSSOM).forEach { item ->
+            val state = assertNotNull(automaticPlantState(ItemStack(item)))
+            assertEquals(state.block.defaultBlockState(), state)
+        }
+    }
+
+    @Test
+    fun `plant states skip crops and non block items`() {
+        listOf(Items.WHEAT_SEEDS, Items.CARROT, Items.POTATO).forEach { item ->
+            assertNull(automaticPlantState(ItemStack(item)))
+        }
+        assertNull(automaticPlantState(ItemStack(Items.STICK)))
+    }
+
+    @Test
+    fun `every automatic source maps to its own blacklist tag`() {
+        listOf("tree", "crop", "plant", "mineral", "mystical").forEach { source ->
+            val tag = assertNotNull(SimulationTags.automaticBlacklist(lazyId(source)), source)
+            assertEquals(lazyId("automatic_${source}_blacklist"), tag.location)
+        }
+        assertNull(SimulationTags.automaticBlacklist(lazyId("unknown")))
     }
 
     @Test
