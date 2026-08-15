@@ -1,5 +1,6 @@
 package rhx.lazy.feature.simulation
 
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.MinecraftServer
 import net.neoforged.neoforge.event.OnDatapackSyncEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
@@ -7,7 +8,7 @@ import net.neoforged.neoforge.network.PacketDistributor
 import java.util.WeakHashMap
 
 internal object SimulationRecipeReloads {
-    private val synchronizedSettings = WeakHashMap<MinecraftServer, AutomaticSettings>()
+    private val synchronizedSettings = WeakHashMap<MinecraftServer, SyncedSettings>()
 
     fun onDatapackSync(event: OnDatapackSyncEvent) {
         if (event.player == null) SimulationRecipeResolver.invalidate()
@@ -28,23 +29,15 @@ internal object SimulationRecipeReloads {
             .forEach { PacketDistributor.sendToPlayer(it, payload) }
     }
 
-    private fun currentSettings() =
-        AutomaticSettings(
-            SimulationConfigs.settings.defaultDuration.get(),
-            SimulationConfigs.settings.automaticMinerals.get(),
-            SimulationConfigs.settings.automaticMineralDuration.get(),
-            SimulationConfigs.settings.automaticMineralModPriority
-                .get()
-                .toList(),
-            AutomaticSimulationAdapters.settingsFingerprint(),
-        )
+    /**
+     * Adapter fingerprints can be expensive to build, so they only join the periodic sync check
+     * instead of [AutomaticSimulationSettings], which is sampled on every resolve.
+     */
+    private fun currentSettings() = SyncedSettings(AutomaticSimulationSettings.current(), AutomaticSimulationAdapters.settingsFingerprint())
 
-    private data class AutomaticSettings(
-        val defaultDuration: Int,
-        val mineralsEnabled: Boolean,
-        val mineralDuration: Int,
-        val mineralPriorities: List<String>,
-        val adapterSettings: List<Pair<net.minecraft.resources.ResourceLocation, Any?>>,
+    private data class SyncedSettings(
+        val settings: AutomaticSimulationSettings,
+        val adapterSettings: List<Pair<ResourceLocation, Any?>>,
     )
 
     private const val SETTINGS_CHECK_INTERVAL = 20

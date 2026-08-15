@@ -12,7 +12,7 @@ import me.fzzyhmstrs.fzzy_config.validation.misc.ValidatedString
 import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedInt
 import rhx.lazy.core.lazyId
 
-@Version(2)
+@Version(3)
 @WithPerms(opLevel = 2)
 internal class SimulationConfig : Config(lazyId("simulation")) {
     @Comment("Default simulation duration in ticks when a recipe does not specify one.")
@@ -21,14 +21,14 @@ internal class SimulationConfig : Config(lazyId("simulation")) {
     @Comment("Maximum virtual output rolls processed by one chamber per server tick.")
     var maxRollsPerTick = ValidatedInt(16, 1..4096)
 
-    @Comment("Allow automatic c:ingots/material, c:gems/material, c:dusts/material, and vanilla coal simulation recipes.")
-    var automaticMinerals = ValidatedBoolean(true)
+    @Comment("Allow automatic simulations from the c: material tag rules and the lazy:simulation/target/duplicate_self tag.")
+    var taggedMaterials = ValidatedBoolean(true)
 
-    @Comment("Duration in ticks for automatically inferred mineral simulations.")
-    var automaticMineralDuration = ValidatedInt(1200, 1..72_000)
+    @Comment("Duration in ticks for automatically inferred tagged material simulations.")
+    var taggedMaterialDuration = ValidatedInt(1200, 1..72_000)
 
-    @Comment("Preferred item namespaces for automatic mineral outputs, from highest to lowest priority.")
-    var automaticMineralModPriority: ValidatedList<String> =
+    @Comment("Preferred item namespaces for tag derived outputs, from highest to lowest priority.")
+    var taggedMaterialModPriority: ValidatedList<String> =
         ValidatedList<String>(
             listOf("kubejs", "minecraft", "alltheores", "create", "mekanism", "jaopca"),
             ValidatedString(),

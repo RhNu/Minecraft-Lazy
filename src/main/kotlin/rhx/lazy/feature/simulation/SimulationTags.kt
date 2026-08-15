@@ -1,36 +1,27 @@
 package rhx.lazy.feature.simulation
 
 import net.minecraft.core.registries.Registries
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.tags.TagKey
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.item.Item
+import rhx.lazy.MOD_ID
 import rhx.lazy.core.lazyId
 
 internal object SimulationTags {
-    val automaticPlantTargets: TagKey<Item> =
-        TagKey.create(Registries.ITEM, lazyId("automatic_plant"))
-    val automaticSimulationBlacklist: TagKey<Item> =
-        TagKey.create(Registries.ITEM, lazyId("automatic_simulation_blacklist"))
-    val automaticTreeBlacklist: TagKey<Item> =
-        TagKey.create(Registries.ITEM, lazyId("automatic_tree_blacklist"))
-    val automaticCropBlacklist: TagKey<Item> =
-        TagKey.create(Registries.ITEM, lazyId("automatic_crop_blacklist"))
-    val automaticPlantBlacklist: TagKey<Item> =
-        TagKey.create(Registries.ITEM, lazyId("automatic_plant_blacklist"))
-    val automaticMineralBlacklist: TagKey<Item> =
-        TagKey.create(Registries.ITEM, lazyId("automatic_mineral_blacklist"))
-    val automaticMysticalBlacklist: TagKey<Item> =
-        TagKey.create(Registries.ITEM, lazyId("automatic_mystical_blacklist"))
+    val plantTargets: TagKey<Item> = itemTag("simulation/target/plant")
+    val duplicateSelfTargets: TagKey<Item> = itemTag("simulation/target/duplicate_self")
+    val blacklist: TagKey<Item> = itemTag("simulation/blacklist/all")
     val dataModelBlacklist: TagKey<EntityType<*>> =
-        TagKey.create(Registries.ENTITY_TYPE, lazyId("data_model_blacklist"))
+        TagKey.create(Registries.ENTITY_TYPE, lazyId("simulation/blacklist/data_model"))
 
-    fun automaticBlacklist(source: net.minecraft.resources.ResourceLocation): TagKey<Item>? =
-        when (source.path) {
-            "tree" -> automaticTreeBlacklist
-            "crop" -> automaticCropBlacklist
-            "plant" -> automaticPlantBlacklist
-            "mineral" -> automaticMineralBlacklist
-            "mystical" -> automaticMysticalBlacklist
-            else -> null
+    /** `lazy:tree` becomes `lazy:simulation/blacklist/tree`; other namespaces keep their own segment. */
+    fun sourceBlacklist(source: ResourceLocation): TagKey<Item> =
+        if (source.namespace == MOD_ID) {
+            itemTag("simulation/blacklist/${source.path}")
+        } else {
+            itemTag("simulation/blacklist/${source.namespace}/${source.path}")
         }
+
+    private fun itemTag(path: String): TagKey<Item> = TagKey.create(Registries.ITEM, lazyId(path))
 }

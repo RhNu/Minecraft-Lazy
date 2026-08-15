@@ -115,7 +115,7 @@ internal object SimulationRecipeResolver {
                                     .thenBy { it.id().toString() },
                             ).first()
                     }
-            RecipeIndex(itemRecipes, injections, entityRecipes, currentAutomaticSettings())
+            RecipeIndex(itemRecipes, injections, entityRecipes, AutomaticSimulationSettings.current())
         }
     }
 
@@ -191,22 +191,12 @@ internal object SimulationRecipeResolver {
     }
 
     private fun refreshAutomaticSettings(index: RecipeIndex) {
-        val settings = currentAutomaticSettings()
+        val settings = AutomaticSimulationSettings.current()
         if (settings == index.automaticSettings) return
         index.automaticSettings = settings
         index.automaticMatches.clear()
         index.automaticDisplays = null
     }
-
-    private fun currentAutomaticSettings() =
-        AutomaticSettings(
-            SimulationConfigs.settings.defaultDuration.get(),
-            SimulationConfigs.settings.automaticMinerals.get(),
-            SimulationConfigs.settings.automaticMineralDuration.get(),
-            SimulationConfigs.settings.automaticMineralModPriority
-                .get()
-                .toList(),
-        )
 
     private fun copy(output: SimulationItemOutput) = output.copy(stack = output.stack.copy())
 
@@ -219,20 +209,13 @@ internal object SimulationRecipeResolver {
         val itemRecipes: List<RecipeHolder<ItemSimulationRecipe>>,
         val injections: List<RecipeHolder<ItemSimulationInjectionRecipe>>,
         val entityRecipes: Map<ResourceLocation, RecipeHolder<EntitySimulationRecipe>>,
-        var automaticSettings: AutomaticSettings,
+        var automaticSettings: AutomaticSimulationSettings,
     ) {
         val itemMatches = hashMapOf<TargetKey, RecipeHolder<ItemSimulationRecipe>?>()
         val injectionMatches = hashMapOf<TargetKey, List<RecipeHolder<ItemSimulationInjectionRecipe>>>()
         val automaticMatches = hashMapOf<TargetKey, ResolvedSimulation.Item?>()
         var automaticDisplays: List<AutomaticSimulationDisplay>? = null
     }
-
-    private data class AutomaticSettings(
-        val defaultDuration: Int,
-        val mineralsEnabled: Boolean,
-        val mineralDuration: Int,
-        val mineralPriorities: List<String>,
-    )
 
     private data class TargetKey(
         val item: Item,

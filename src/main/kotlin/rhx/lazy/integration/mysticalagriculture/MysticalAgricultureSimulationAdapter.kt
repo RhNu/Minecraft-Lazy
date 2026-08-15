@@ -16,6 +16,7 @@ import rhx.lazy.feature.simulation.AutomaticSimulationAdapters
 import rhx.lazy.feature.simulation.AutomaticSimulationCandidate
 import rhx.lazy.feature.simulation.SimulationConfigs
 import rhx.lazy.feature.simulation.SimulationItemOutput
+import rhx.lazy.feature.simulation.automaticId
 
 internal object MysticalAgricultureSimulationAdapter : AutomaticSimulationAdapter {
     @Volatile
@@ -53,7 +54,7 @@ internal object MysticalAgricultureSimulationAdapter : AutomaticSimulationAdapte
         val seedId = BuiltInRegistries.ITEM.getKey(stack.item)
         return AutomaticSimulationCandidate(
             SOURCE,
-            lazyId("automatic/mystical/${seedId.namespace}/${seedId.path}"),
+            automaticId(SOURCE, seedId.namespace, seedId.path),
             SimulationConfigs.settings.defaultDuration.get(),
             PRIORITY,
             claimsInput = true,

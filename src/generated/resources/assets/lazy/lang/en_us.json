@@ -136,9 +136,6 @@
   "lazy.repairer.minimumRepairPercent": "Minimum repair percentage",
   "lazy.repairer.minimumRepairPercent.desc": "Minimum percentage of an item's maximum durability repaired per button press.",
   "lazy.simulation": "Simulation Chamber",
-  "lazy.simulation.automaticMineralDuration": "Automatic mineral duration",
-  "lazy.simulation.automaticMineralModPriority": "Automatic mineral mod priority",
-  "lazy.simulation.automaticMinerals": "Automatic mineral recipes",
   "lazy.simulation.defaultDuration": "Default cycle duration",
   "lazy.simulation.desc": "Server-authoritative simulation chamber settings",
   "lazy.simulation.maxRollsPerTick": "Maximum rolls per tick",
@@ -150,6 +147,9 @@
   "lazy.simulation.t3SpeedMultiplier": "T3 speed multiplier",
   "lazy.simulation.t4OutputMultiplier": "T4 output multiplier",
   "lazy.simulation.t4SpeedMultiplier": "T4 speed multiplier",
+  "lazy.simulation.taggedMaterialDuration": "Tagged material duration",
+  "lazy.simulation.taggedMaterialModPriority": "Tagged material mod priority",
+  "lazy.simulation.taggedMaterials": "Tagged material recipes",
   "lazy.teleporter": "Teleporter",
   "lazy.teleporter.chargeTicks": "Charge time",
   "lazy.teleporter.chargeTicks.desc": "Ticks the teleporter must be charged before it activates.",
@@ -212,7 +212,7 @@
   "tooltip.lazy.item_copier.interval": "Push interval: %s ticks",
   "tooltip.lazy.item_copier.template": "Template: %s",
   "tooltip.lazy.simulation_chamber.contents": "Contains stored simulation data",
-  "tooltip.lazy.simulation_core": "Speed ×%s · output ×%s per core",
+  "tooltip.lazy.simulation_core": "Speed ×%s · Output ×%s",
   "tooltip.lazy.teleporter.return": "Return: %s @ %s, %s, %s",
   "tooltip.lazy.teleporter.target": "Target: %s @ %s, %s, %s"
 }

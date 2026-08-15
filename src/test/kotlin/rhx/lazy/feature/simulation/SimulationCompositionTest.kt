@@ -52,15 +52,6 @@ class SimulationCompositionTest {
         assertNull(composeItemSimulation(base, listOf(injection("extra", Items.DIAMOND))))
     }
 
-    @Test
-    fun `category blacklist routing is source specific`() {
-        assertEquals(SimulationTags.automaticTreeBlacklist, SimulationTags.automaticBlacklist(id("tree")))
-        assertEquals(SimulationTags.automaticCropBlacklist, SimulationTags.automaticBlacklist(id("crop")))
-        assertEquals(SimulationTags.automaticMineralBlacklist, SimulationTags.automaticBlacklist(id("mineral")))
-        assertEquals(SimulationTags.automaticMysticalBlacklist, SimulationTags.automaticBlacklist(id("mystical")))
-        assertNull(SimulationTags.automaticBlacklist(id("third_party")))
-    }
-
     private fun explicit(
         name: String,
         priority: Int,

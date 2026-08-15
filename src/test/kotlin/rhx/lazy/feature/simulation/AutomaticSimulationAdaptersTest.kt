@@ -1,9 +1,6 @@
 package rhx.lazy.feature.simulation
 
-import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.tags.TagKey
-import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.CropBlock
@@ -14,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class AutomaticSimulationAdaptersTest {
     @Test
@@ -73,54 +71,32 @@ class AutomaticSimulationAdaptersTest {
     }
 
     @Test
-    fun `every automatic source maps to its own blacklist tag`() {
-        listOf("tree", "crop", "plant", "mineral", "mystical").forEach { source ->
-            val tag = assertNotNull(SimulationTags.automaticBlacklist(lazyId(source)), source)
-            assertEquals(lazyId("automatic_${source}_blacklist"), tag.location)
-        }
-        assertNull(SimulationTags.automaticBlacklist(lazyId("unknown")))
-    }
-
-    @Test
-    fun `mineral candidate order uses configured namespaces then deterministic fallback`() {
-        val comparator = mineralCandidateIdComparator(listOf("kubejs", "minecraft", "create"))
-        val ids =
-            listOf(
-                id("zeta", "raw_iron"),
-                id("create", "raw_iron"),
-                id("alpha", "raw_iron_b"),
-                id("minecraft", "raw_iron"),
-                id("kubejs", "raw_iron"),
-                id("alpha", "raw_iron_a"),
-            ).sortedWith(comparator)
-
+    fun `automatic recipe ids follow their source path`() {
         assertEquals(
-            listOf(
-                id("kubejs", "raw_iron"),
-                id("minecraft", "raw_iron"),
-                id("create", "raw_iron"),
-                id("alpha", "raw_iron_a"),
-                id("alpha", "raw_iron_b"),
-                id("zeta", "raw_iron"),
-            ),
-            ids,
+            lazyId("automatic/plant/minecraft/poppy"),
+            inputId(PlantSimulationAdapter.SOURCE, ItemStack(Items.POPPY)),
+        )
+        assertEquals(lazyId("automatic/material/gem/amethyst"), automaticId(TaggedMaterialAdapter.SOURCE, "gem", "amethyst"))
+        assertEquals(
+            lazyId("automatic/material/self/minecraft/coal"),
+            automaticId(TaggedMaterialAdapter.SOURCE, "self", "minecraft", "coal"),
         )
     }
 
     @Test
-    fun `common gem and dust tags expose their material names`() {
-        val amethyst = itemTag("gems/amethyst")
-        val glowstone = itemTag("dusts/glowstone")
-
-        assertEquals("amethyst", mineralMaterial(amethyst, "gems/"))
-        assertEquals("glowstone", mineralMaterial(glowstone, "dusts/"))
-        assertNull(mineralMaterial(glowstone, "gems/"))
+    fun `built in sources share the external registry and reject duplicates`() {
+        listOf(
+            TreeSimulationAdapter.SOURCE,
+            CropSimulationAdapter.SOURCE,
+            PlantSimulationAdapter.SOURCE,
+            TaggedMaterialAdapter.SOURCE,
+        ).forEach { source ->
+            assertTrue(
+                runCatching {
+                    AutomaticSimulationAdapters.register(source) { _, _ -> null }
+                }.exceptionOrNull() is IllegalArgumentException,
+                source.toString(),
+            )
+        }
     }
-
-    private fun id(
-        namespace: String,
-        path: String,
-    ) = ResourceLocation.fromNamespaceAndPath(namespace, path)
-
-    private fun itemTag(path: String): TagKey<Item> = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", path))
 }
