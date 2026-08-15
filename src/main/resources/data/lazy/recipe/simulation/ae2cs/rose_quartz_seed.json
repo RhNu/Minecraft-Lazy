@@ -1,0 +1,21 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2cs"
+    }
+  ],
+  "type": "lazy:item_simulation",
+  "input": {
+    "item": "ae2cs:rose_quartz_seed"
+  },
+  "duration": 600,
+  "item_outputs": [
+    {
+      "stack": {
+        "count": 1,
+        "id": "ae2cs:purified_rose_quartz"
+      }
+    }
+  ]
+}
