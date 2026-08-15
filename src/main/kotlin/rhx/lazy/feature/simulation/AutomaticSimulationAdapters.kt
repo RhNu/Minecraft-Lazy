@@ -200,9 +200,14 @@ private object MineralSimulationAdapter : AutomaticSimulationAdapter {
     ): AutomaticSimulationCandidate? {
         if (!SimulationConfigs.settings.automaticMinerals.get()) return null
         val tags = stack.tags.toList()
-        val ingots = tags.mapNotNull { material(it, "ingots/") }.distinct()
-        val gems = tags.mapNotNull { material(it, "gems/") }.distinct()
-        if (ingots.size + gems.size != 1) return null
+        val ingots = tags.mapNotNull { mineralMaterial(it, "ingots/") }.distinct()
+        val gems = tags.mapNotNull { mineralMaterial(it, "gems/") }.distinct()
+        val dusts = tags.mapNotNull { mineralMaterial(it, "dusts/") }.distinct()
+        val matchedMaterials = ingots.size + gems.size + dusts.size
+        if (matchedMaterials == 0) {
+            return if (stack.`is`(Items.COAL)) vanillaCoalCandidate() else null
+        }
+        if (matchedMaterials != 1) return null
 
         val kind: String
         val material: String
@@ -211,6 +216,10 @@ private object MineralSimulationAdapter : AutomaticSimulationAdapter {
             kind = "gem"
             material = gems.single()
             outputTag = tag("gems/$material")
+        } else if (dusts.size == 1) {
+            kind = "dust"
+            material = dusts.single()
+            outputTag = tag("dusts/$material")
         } else {
             kind = "ingot"
             material = ingots.single()
@@ -226,6 +235,15 @@ private object MineralSimulationAdapter : AutomaticSimulationAdapter {
         )
     }
 
+    private fun vanillaCoalCandidate() =
+        AutomaticSimulationCandidate(
+            SOURCE,
+            lazyId("automatic/coal"),
+            SimulationConfigs.settings.automaticMineralDuration.get(),
+            PRIORITY,
+            itemOutputs = listOf(SimulationItemOutput(ItemStack(Items.COAL))),
+        )
+
     private fun preferredItem(tag: TagKey<Item>): Item? {
         val priorities = SimulationConfigs.settings.automaticMineralModPriority.get()
         val idComparator = mineralCandidateIdComparator(priorities)
@@ -240,22 +258,22 @@ private object MineralSimulationAdapter : AutomaticSimulationAdapter {
             }
     }
 
-    private fun material(
-        tag: TagKey<Item>,
-        prefix: String,
-    ): String? {
-        val id = tag.location
-        return if (id.namespace == "c" && id.path.startsWith(prefix) && id.path.length > prefix.length) {
-            id.path.removePrefix(prefix)
-        } else {
-            null
-        }
-    }
-
     private fun tag(path: String) = TagKey.create(BuiltInRegistries.ITEM.key(), ResourceLocation.fromNamespaceAndPath("c", path))
 
     private val SOURCE = lazyId("mineral")
     private const val PRIORITY = 100
+}
+
+internal fun mineralMaterial(
+    tag: TagKey<Item>,
+    prefix: String,
+): String? {
+    val id = tag.location
+    return if (id.namespace == "c" && id.path.startsWith(prefix) && id.path.length > prefix.length) {
+        id.path.removePrefix(prefix)
+    } else {
+        null
+    }
 }
 
 internal data class AutomaticTreePair(

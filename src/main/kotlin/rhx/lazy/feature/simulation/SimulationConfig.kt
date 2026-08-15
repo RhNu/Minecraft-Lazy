@@ -21,7 +21,7 @@ internal class SimulationConfig : Config(lazyId("simulation")) {
     @Comment("Maximum virtual output rolls processed by one chamber per server tick.")
     var maxRollsPerTick = ValidatedInt(16, 1..4096)
 
-    @Comment("Allow automatic c:ingots/material and c:gems/material simulation recipes.")
+    @Comment("Allow automatic c:ingots/material, c:gems/material, c:dusts/material, and vanilla coal simulation recipes.")
     var automaticMinerals = ValidatedBoolean(true)
 
     @Comment("Duration in ticks for automatically inferred mineral simulations.")

@@ -85,6 +85,9 @@
 开启服务端配置 `automaticMinerals` 时：
 
 - `c:ingots/<material>` 输入会寻找 `c:raw_materials/<material>`；`c:gems/<material>` 输入从同一宝石标签选择规范产物。
+- `c:dusts/<material>` 输入从同一粉末标签选择规范产物，因此原版荧石粉和红石粉可以自动模拟。
+- 原版紫水晶碎片属于 `c:gems/amethyst`，已经由宝石适配器覆盖；紫水晶簇和芽属于独立的 `c:clusters`/`c:buds` 标签，不会被当作紫水晶碎片的生长目标。
+- 原版煤炭没有对应的 `c:gems/<material>` 或 `c:dusts/<material>` 标签，因此额外提供煤炭的内置自动模拟；木炭不包含在内。
 - 两类候选统一按服务端 `automaticMineralModPriority` 配置选择。默认顺序是 `kubejs > minecraft > alltheores > create > mekanism > jaopca`；未列出的命名空间随后按命名空间和完整物品 ID 排序，缺失模组会自然跳过。
 - 同时匹配多个材料或缺少候选时不生成自动配方。单个矿物的例外用显式模拟配方覆写。
 - `lazy:automatic_simulation_blacklist` 禁止目标的全部自动来源；`lazy:automatic_tree_blacklist`、`lazy:automatic_crop_blacklist`、`lazy:automatic_plant_blacklist`、`lazy:automatic_mineral_blacklist` 和 `lazy:automatic_mystical_blacklist` 只禁止对应来源。黑名单不影响显式配方，注入仍需已有基底。

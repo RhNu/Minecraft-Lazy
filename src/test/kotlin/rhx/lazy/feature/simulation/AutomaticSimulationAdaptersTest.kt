@@ -1,6 +1,9 @@
 package rhx.lazy.feature.simulation
 
+import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.tags.TagKey
+import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.CropBlock
@@ -104,8 +107,20 @@ class AutomaticSimulationAdaptersTest {
         )
     }
 
+    @Test
+    fun `common gem and dust tags expose their material names`() {
+        val amethyst = itemTag("gems/amethyst")
+        val glowstone = itemTag("dusts/glowstone")
+
+        assertEquals("amethyst", mineralMaterial(amethyst, "gems/"))
+        assertEquals("glowstone", mineralMaterial(glowstone, "dusts/"))
+        assertNull(mineralMaterial(glowstone, "gems/"))
+    }
+
     private fun id(
         namespace: String,
         path: String,
     ) = ResourceLocation.fromNamespaceAndPath(namespace, path)
+
+    private fun itemTag(path: String): TagKey<Item> = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", path))
 }
