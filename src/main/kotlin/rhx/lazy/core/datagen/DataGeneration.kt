@@ -538,7 +538,7 @@ internal object DataGeneration {
             add("gui.lazy.simulation_chamber.output_multiplier", "产出倍率：×%s")
             add("gui.lazy.simulation_chamber.speed_multiplier", "速度倍率：×%s")
             add("jei.lazy.item_simulation", "物品模拟")
-            add("jei.lazy.entity_simulation", "生物模拟")
+            add("jei.lazy.entity_simulation", "实体模拟")
             add("jei.lazy.simulation.output_range", "概率：%s%% · 抽取次数：%s–%s")
             add("jei.lazy.simulation.loot_table_output", "战利品表产物；数量与概率动态决定")
             add("config.jade.plugin_lazy.simulation_chamber", "模拟室状态")
