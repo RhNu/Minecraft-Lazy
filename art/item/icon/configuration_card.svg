@@ -1,11 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
-    <rect fill="#171d25" x="2" y="1" width="12" height="14" />
-    <rect fill="#465561" x="3" y="2" width="10" height="12" />
-    <rect fill="#25303a" x="4" y="3" width="8" height="10" />
-    <rect fill="#80f1f4" x="5" y="5" width="6" height="1" />
-    <rect fill="#e4ffff" x="6" y="5" width="4" height="1" />
-    <rect fill="#4aa8c6" x="5" y="10" width="2" height="1" />
-    <rect fill="#4aa8c6" x="9" y="10" width="2" height="1" />
-    <rect fill="#d8b5ff" x="5" y="8" width="6" height="1" />
-    <rect fill="#9156c9" x="6" y="7" width="4" height="1" />
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    shape-rendering="crispEdges">
+    <!-- Configuration card: portrait chassis, cyan settings screen, gold contact chip. -->
+
+    <!-- Chassis: shared gunmetal shell, lit from the top-left. -->
+    <path fill="#12171f" d="M4 1h8v1h1v12h-1v1H4v-1H3V2h1z" />
+    <rect x="4" y="2" width="8" height="12" fill="#414d56" />
+    <rect x="4" y="2" width="8" height="1" fill="#8a99a3" />
+    <rect x="4" y="3" width="1" height="10" fill="#5f6e78" />
+    <rect x="11" y="3" width="1" height="10" fill="#2b353d" />
+    <rect x="4" y="13" width="8" height="1" fill="#212a31" />
+
+    <!-- Display recess: shared cyan screen treatment. -->
+    <rect x="5" y="4" width="6" height="7" fill="#173f48" />
+    <rect x="5" y="4" width="6" height="1" fill="#31707a" />
+    <rect x="5" y="5" width="1" height="6" fill="#295e68" />
+    <rect x="10" y="5" width="1" height="6" fill="#0f2d36" />
+    <rect x="6" y="10" width="4" height="1" fill="#0b2129" />
+
+    <!-- Setting rows with family status toggles. -->
+    <rect x="6" y="5" width="4" height="1" fill="#9deaf0" />
+    <rect x="7" y="5" width="2" height="1" fill="#eafcff" />
+    <rect x="6" y="7" width="3" height="1" fill="#4ec9d8" />
+    <rect x="9" y="7" width="1" height="1" fill="#f0bd4f" />
+    <rect x="6" y="9" width="3" height="1" fill="#2f8ba0" />
+    <rect x="9" y="9" width="1" height="1" fill="#59d09d" />
+
+    <!-- Contact chip. -->
+    <rect x="5" y="11" width="6" height="2" fill="#b58a2a" />
+    <rect x="5" y="11" width="6" height="1" fill="#e0b755" />
+    <rect x="6" y="11" width="1" height="2" fill="#7a5b18" />
+    <rect x="9" y="11" width="1" height="2" fill="#7a5b18" />
 </svg>

@@ -3,25 +3,36 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Battery: clean silhouette with a compact vertical charge window. -->
-    <rect x="6" y="1" width="4" height="1" fill="#161b25" />
-    <rect x="5" y="2" width="6" height="2" fill="#161b25" />
-    <rect x="6" y="2" width="4" height="1" fill="#7d8890" />
-    <rect x="6" y="3" width="4" height="1" fill="#3b454d" />
+    <!-- Energy battery: shared gunmetal shell with a cyan charge column. -->
 
-    <path fill="#161b25" d="M5 3h6v1h1v10h-1v1H5v-1H4V4h1z" />
-    <rect x="5" y="4" width="6" height="10" fill="#344048" />
-    <rect x="5" y="4" width="6" height="1" fill="#728087" />
-    <rect x="5" y="5" width="1" height="9" fill="#59666d" />
-    <rect x="10" y="5" width="1" height="9" fill="#232d34" />
-    <rect x="6" y="13" width="4" height="1" fill="#1f2830" />
+    <!-- Cell body. -->
+    <path fill="#12171f" d="M5 3h6v1h1v10h-1v1H5v-1H4V4h1z" />
+    <rect x="5" y="4" width="6" height="10" fill="#414d56" />
+    <rect x="5" y="4" width="6" height="1" fill="#8a99a3" />
+    <rect x="5" y="5" width="1" height="9" fill="#5f6e78" />
+    <rect x="10" y="5" width="1" height="9" fill="#2b353d" />
+    <rect x="5" y="13" width="6" height="1" fill="#212a31" />
 
-    <rect x="6" y="5" width="4" height="7" fill="#102a35" />
-    <rect x="6" y="5" width="4" height="1" fill="#183d49" />
-    <rect x="6" y="6" width="1" height="6" fill="#1b4b56" />
-    <rect x="9" y="6" width="1" height="6" fill="#0b222d" />
-    <rect x="7" y="6" width="2" height="1" fill="#a8fff3" />
-    <rect x="7" y="7" width="2" height="2" fill="#39d5d9" />
-    <rect x="7" y="9" width="2" height="2" fill="#1e9fba" />
-    <rect x="7" y="11" width="2" height="1" fill="#266d9f" />
+    <!-- Terminal nub, drawn over the body so the cap stays solid. -->
+    <rect x="6" y="1" width="4" height="1" fill="#12171f" />
+    <rect x="5" y="2" width="6" height="2" fill="#12171f" />
+    <rect x="6" y="2" width="4" height="2" fill="#414d56" />
+    <rect x="6" y="2" width="4" height="1" fill="#8a99a3" />
+
+    <!-- Display recess: shared cyan screen treatment. -->
+    <rect x="6" y="5" width="4" height="7" fill="#173f48" />
+    <rect x="6" y="5" width="4" height="1" fill="#31707a" />
+    <rect x="6" y="6" width="1" height="6" fill="#295e68" />
+    <rect x="9" y="6" width="1" height="6" fill="#0f2d36" />
+
+    <!-- Charge column. -->
+    <rect x="7" y="6" width="2" height="1" fill="#eafcff" />
+    <rect x="7" y="7" width="2" height="2" fill="#9deaf0" />
+    <rect x="7" y="9" width="2" height="2" fill="#4ec9d8" />
+    <rect x="7" y="11" width="2" height="1" fill="#2f8ba0" />
+
+    <!-- Family status lights. -->
+    <rect x="6" y="12" width="4" height="1" fill="#2b353d" />
+    <rect x="6" y="12" width="1" height="1" fill="#59d09d" />
+    <rect x="9" y="12" width="1" height="1" fill="#f0bd4f" />
 </svg>

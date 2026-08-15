@@ -3,13 +3,15 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Empty teleporter slot: outline only, with sparse inner facets. -->
+    <!-- Empty teleporter slot: housing outline with a sparse crystal socket hint. -->
     <path fill="#555555" fill-rule="evenodd"
-        d="M5 1h6v1h2v2h1v8h-1v2h-2v1H5v-1H3v-2H2V4h1V2h2zm0 2H4v2H3v6h1v2h2v1h4v-1h2v-2h1V5h-1V3h-2V2H6v1z" />
+        d="M5 1h6v1h2v2h1v8h-1v2h-2v1H5v-1H3v-2H2V4h1V2h2zM5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z" />
+    <rect x="6" y="4" width="4" height="1" fill="#555555" />
     <rect x="5" y="5" width="1" height="1" fill="#555555" />
     <rect x="10" y="5" width="1" height="1" fill="#555555" />
     <rect x="4" y="7" width="1" height="2" fill="#555555" />
     <rect x="11" y="7" width="1" height="2" fill="#555555" />
-    <rect x="6" y="11" width="1" height="1" fill="#555555" />
-    <rect x="9" y="11" width="1" height="1" fill="#555555" />
+    <rect x="5" y="10" width="1" height="1" fill="#555555" />
+    <rect x="10" y="10" width="1" height="1" fill="#555555" />
+    <rect x="6" y="11" width="4" height="1" fill="#555555" />
 </svg>

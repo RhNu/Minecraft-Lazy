@@ -226,11 +226,16 @@ internal object DataGeneration {
             withExistingParent("item_copier", modLoc("block/item_copier"))
             withExistingParent("repairer", modLoc("block/repairer"))
             withExistingParent("simulation_chamber", modLoc("block/simulation_chamber"))
-            withExistingParent("data_model", mcLoc("item/generated")).texture("layer0", mcLoc("item/paper"))
-            withExistingParent("simulation_core_t1", mcLoc("item/generated")).texture("layer0", mcLoc("item/copper_ingot"))
-            withExistingParent("simulation_core_t2", mcLoc("item/generated")).texture("layer0", mcLoc("item/gold_ingot"))
-            withExistingParent("simulation_core_t3", mcLoc("item/generated")).texture("layer0", mcLoc("item/diamond"))
-            withExistingParent("simulation_core_t4", mcLoc("item/generated")).texture("layer0", mcLoc("item/netherite_ingot"))
+            withExistingParent("data_model", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/data_model"))
+            withExistingParent("simulation_core_t1", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/simulation_core_t1"))
+            withExistingParent("simulation_core_t2", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/simulation_core_t2"))
+            withExistingParent("simulation_core_t3", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/simulation_core_t3"))
+            withExistingParent("simulation_core_t4", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/simulation_core_t4"))
         }
     }
 

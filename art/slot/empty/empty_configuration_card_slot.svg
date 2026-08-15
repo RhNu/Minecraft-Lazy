@@ -1,10 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    shape-rendering="crispEdges">
+    <!-- Empty configuration card slot: card outline with sparse screen and chip hints. -->
     <path fill="#555555" fill-rule="evenodd"
-        d="M5 1h6v1h2v2h1v8h-1v2h-2v1H5v-1H3v-2H2V4h1V2h2zm0 2H4v2H3v6h1v2h2v1h4v-1h2v-2h1V5h-1V3h-2V2H6v1z" />
-    <rect fill="#555555" x="5" y="4" width="6" height="1" />
-    <rect fill="#555555" x="4" y="6" width="1" height="1" />
-    <rect fill="#555555" x="11" y="6" width="1" height="1" />
-    <rect fill="#555555" x="5" y="10" width="6" height="1" />
-    <rect fill="#555555" x="6" y="6" width="4" height="1" />
-    <rect fill="#555555" x="6" y="8" width="4" height="1" />
+        d="M4 1h8v1h1v12h-1v1H4v-1H3V2h1zM4 2v12h8V2z" />
+    <rect x="5" y="4" width="6" height="1" fill="#555555" />
+    <rect x="5" y="6" width="1" height="1" fill="#555555" />
+    <rect x="10" y="6" width="1" height="1" fill="#555555" />
+    <rect x="5" y="8" width="1" height="1" fill="#555555" />
+    <rect x="10" y="8" width="1" height="1" fill="#555555" />
+    <rect x="5" y="10" width="6" height="1" fill="#555555" />
+    <rect x="6" y="12" width="4" height="1" fill="#555555" />
 </svg>
