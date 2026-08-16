@@ -29,6 +29,8 @@ import rhx.lazy.core.io.IoPushResult
 import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.render.MachineActivity
+import rhx.lazy.core.render.MachineDisplayState
 import rhx.lazy.core.storage.LongItemStack
 import kotlin.math.min
 
@@ -76,6 +78,7 @@ internal class SimulationChamberBlockEntity(
         migrateLegacyBatch(level)
         advance(level)
         ioController.tick()
+        tickDisplayState()
     }
 
     /**
@@ -111,6 +114,24 @@ internal class SimulationChamberBlockEntity(
             ?: 0L
 
     fun hasWaitingOutputs(): Boolean = batch == null && outputRouter.hasOutputs
+
+    /**
+     * The chamber shows its target on the front panel. Progress and the reason a stalled chamber is
+     * stalled stay in the screen and the Jade view; out in the world there is only "what" and "is it
+     * alive", which is what a player scanning a wall of chambers can actually read.
+     */
+    override fun computeDisplayState(): MachineDisplayState {
+        val icon = SimulationDisplayIcons.iconFor(inputs[TARGET_SLOT])
+        if (icon.isEmpty) return MachineDisplayState.EMPTY
+        return MachineDisplayState(icon, displayActivity())
+    }
+
+    private fun displayActivity(): MachineActivity =
+        when {
+            batch != null || progressTicks > 0 -> MachineActivity.RUNNING
+            outputRouter.hasOutputs -> MachineActivity.BLOCKED
+            else -> MachineActivity.IDLE
+        }
 
     fun getInput(slot: Int): ItemStack = inputs[slot].copy()
 
@@ -323,6 +344,7 @@ internal class SimulationChamberBlockEntity(
         inputs[slot] = stack
         if (slot == TARGET_SLOT) resetProgress()
         markDirty(INPUTS_FIELD)
+        refreshDisplayState()
     }
 
     private fun inputLimit(
