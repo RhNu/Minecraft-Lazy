@@ -66,8 +66,8 @@ class EssenceConverterResourceTest {
         assertEquals("精华转换器", chinese["block.lazy.essence_converter"].asString)
         assertEquals("Target: %s", english["jade.lazy.essence_converter.target"].asString)
         assertEquals("目标：%s", chinese["jade.lazy.essence_converter.target"].asString)
-        assertEquals("Essence amount: %s", english["jade.lazy.essence_converter.output"].asString)
-        assertEquals("精华量：%s", chinese["jade.lazy.essence_converter.output"].asString)
+        assertEquals("Essence: %s • remainder: %s", english["jade.lazy.essence_converter.contents"].asString)
+        assertEquals("精华：%s • 余量：%s", chinese["jade.lazy.essence_converter.contents"].asString)
         assertFalse(chinese.entrySet().any { (_, value) -> value.asString.contains("Inferium 单位") })
     }
 

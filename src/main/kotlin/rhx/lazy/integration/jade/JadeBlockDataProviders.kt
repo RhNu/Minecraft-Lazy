@@ -2,36 +2,34 @@ package rhx.lazy.integration.jade
 
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
-import rhx.lazy.core.io.IoMode
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.feature.energy.EnergySourceBlockEntity
 import rhx.lazy.feature.itemcopier.ItemCopierBlockEntity
 import rhx.lazy.feature.repairer.RepairerBlockEntity
 import rhx.lazy.feature.simulation.SimulationChamberBlockEntity
-import snownee.jade.api.BlockAccessor
-import snownee.jade.api.StreamServerDataProvider
 
 internal data class BufferJadeData(
     val itemCount: Int,
     val fluidAmount: Int,
-    val networkOutput: Boolean,
-)
+    override val output: JadeOutputState,
+) : IoMachineJadeData
 
-internal object BufferJadeDataProvider : StreamServerDataProvider<BlockAccessor, BufferJadeData> {
-    override fun streamData(accessor: BlockAccessor): BufferJadeData? {
-        val blockEntity = accessor.blockEntity as? BufferBlockEntity ?: return null
-        return BufferJadeData(
-            itemCount = blockEntity.totalItemCount,
-            fluidAmount = blockEntity.totalFluidAmount,
-            networkOutput = blockEntity.ioController.mode == IoMode.NETWORK,
+internal object BufferJadeDataProvider :
+    IoMachineJadeDataProvider<BufferBlockEntity, BufferJadeData>(
+        BufferBlockEntity::class.java,
+        JadeProviderIds.buffer,
+        BufferJadeDataCodec,
+    ) {
+    override fun createData(
+        entity: BufferBlockEntity,
+        output: JadeOutputState,
+    ): BufferJadeData =
+        BufferJadeData(
+            itemCount = entity.totalItemCount,
+            fluidAmount = entity.totalFluidAmount,
+            output = output,
         )
-    }
-
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, BufferJadeData> = BufferJadeDataCodec
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.buffer
 }
 
 private object BufferJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, BufferJadeData> {
@@ -41,53 +39,50 @@ private object BufferJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, Buffer
     ) {
         buffer.writeVarInt(value.itemCount)
         buffer.writeVarInt(value.fluidAmount)
-        buffer.writeBoolean(value.networkOutput)
+        JadeOutputStateCodec.encode(buffer, value.output)
     }
 
     override fun decode(buffer: RegistryFriendlyByteBuf): BufferJadeData =
         BufferJadeData(
             itemCount = buffer.readVarInt(),
             fluidAmount = buffer.readVarInt(),
-            networkOutput = buffer.readBoolean(),
+            output = JadeOutputStateCodec.decode(buffer),
         )
 }
 
-internal object EnergySourceJadeDataProvider : StreamServerDataProvider<BlockAccessor, IoMode> {
-    override fun streamData(accessor: BlockAccessor): IoMode? = (accessor.blockEntity as? EnergySourceBlockEntity)?.ioController?.mode
-
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, IoMode> = IoModeCodec
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.energySource
-}
-
-private object IoModeCodec : StreamCodec<RegistryFriendlyByteBuf, IoMode> {
-    override fun encode(
-        buffer: RegistryFriendlyByteBuf,
-        value: IoMode,
+internal object EnergySourceJadeDataProvider :
+    IoMachineJadeDataProvider<EnergySourceBlockEntity, OutputOnlyJadeData>(
+        EnergySourceBlockEntity::class.java,
+        JadeProviderIds.energySource,
+        OutputOnlyJadeDataCodec,
     ) {
-        buffer.writeVarInt(value.ordinal)
-    }
-
-    override fun decode(buffer: RegistryFriendlyByteBuf): IoMode = IoMode.entries.getOrElse(buffer.readVarInt()) { IoMode.PASSIVE }
+    override fun createData(
+        entity: EnergySourceBlockEntity,
+        output: JadeOutputState,
+    ): OutputOnlyJadeData = OutputOnlyJadeData(output)
 }
 
 internal data class ItemCopierJadeData(
     val template: ItemStack,
     val intervalTicks: Int,
-)
+    override val output: JadeOutputState,
+) : IoMachineJadeData
 
-internal object ItemCopierJadeDataProvider : StreamServerDataProvider<BlockAccessor, ItemCopierJadeData> {
-    override fun streamData(accessor: BlockAccessor): ItemCopierJadeData? {
-        val blockEntity = accessor.blockEntity as? ItemCopierBlockEntity ?: return null
-        return ItemCopierJadeData(
-            template = blockEntity.getTemplate(),
-            intervalTicks = blockEntity.getGear().intervalTicks,
+internal object ItemCopierJadeDataProvider :
+    IoMachineJadeDataProvider<ItemCopierBlockEntity, ItemCopierJadeData>(
+        ItemCopierBlockEntity::class.java,
+        JadeProviderIds.itemCopier,
+        ItemCopierJadeDataCodec,
+    ) {
+    override fun createData(
+        entity: ItemCopierBlockEntity,
+        output: JadeOutputState,
+    ): ItemCopierJadeData =
+        ItemCopierJadeData(
+            template = entity.getTemplate(),
+            intervalTicks = entity.getGear().intervalTicks,
+            output = output,
         )
-    }
-
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, ItemCopierJadeData> = ItemCopierJadeDataCodec
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.itemCopier
 }
 
 private object ItemCopierJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, ItemCopierJadeData> {
@@ -97,47 +92,71 @@ private object ItemCopierJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, It
     ) {
         ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, value.template)
         buffer.writeVarInt(value.intervalTicks)
+        JadeOutputStateCodec.encode(buffer, value.output)
     }
 
     override fun decode(buffer: RegistryFriendlyByteBuf): ItemCopierJadeData =
         ItemCopierJadeData(
             template = ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer),
             intervalTicks = buffer.readVarInt(),
+            output = JadeOutputStateCodec.decode(buffer),
         )
 }
 
-internal object RepairerJadeDataProvider : StreamServerDataProvider<BlockAccessor, ItemStack> {
-    override fun streamData(accessor: BlockAccessor): ItemStack? =
-        (accessor.blockEntity as? RepairerBlockEntity)?.itemHandler?.getStackInSlot(0)
-
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, ItemStack> = ItemStack.OPTIONAL_STREAM_CODEC
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.repairer
+internal object RepairerJadeDataProvider :
+    MachineJadeDataProvider<RepairerBlockEntity, ItemStack>(
+        RepairerBlockEntity::class.java,
+        JadeProviderIds.repairer,
+        ItemStack.OPTIONAL_STREAM_CODEC,
+    ) {
+    override fun createData(entity: RepairerBlockEntity): ItemStack = entity.itemHandler.getStackInSlot(0)
 }
 
 internal data class SimulationChamberJadeData(
     val progress: Float,
     val speed: Int,
-    val output: Long,
+    val outputMultiplier: Long,
     val pending: Boolean,
-)
+    override val output: JadeOutputState,
+) : IoMachineJadeData
 
-internal object SimulationChamberJadeDataProvider : StreamServerDataProvider<BlockAccessor, SimulationChamberJadeData> {
-    override fun streamData(accessor: BlockAccessor): SimulationChamberJadeData? {
-        val entity = accessor.blockEntity as? SimulationChamberBlockEntity ?: return null
-        return SimulationChamberJadeData(entity.progress(), entity.speedMultiplier(), entity.outputMultiplier(), entity.hasWaitingOutputs())
+internal object SimulationChamberJadeDataProvider :
+    IoMachineJadeDataProvider<SimulationChamberBlockEntity, SimulationChamberJadeData>(
+        SimulationChamberBlockEntity::class.java,
+        JadeProviderIds.simulationChamber,
+        SimulationChamberJadeDataCodec,
+    ) {
+    override fun createData(
+        entity: SimulationChamberBlockEntity,
+        output: JadeOutputState,
+    ): SimulationChamberJadeData =
+        SimulationChamberJadeData(
+            entity.progress(),
+            entity.speedMultiplier(),
+            entity.outputMultiplier(),
+            entity.hasWaitingOutputs(),
+            output,
+        )
+}
+
+private object SimulationChamberJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, SimulationChamberJadeData> {
+    override fun encode(
+        buffer: RegistryFriendlyByteBuf,
+        value: SimulationChamberJadeData,
+    ) {
+        buffer.writeFloat(value.progress)
+        buffer.writeVarInt(value.speed)
+        buffer.writeVarLong(value.outputMultiplier)
+        buffer.writeBoolean(value.pending)
+        JadeOutputStateCodec.encode(buffer, value.output)
     }
 
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, SimulationChamberJadeData> =
-        StreamCodec.of(
-            { buffer, value ->
-                buffer.writeFloat(value.progress)
-                buffer.writeVarInt(value.speed)
-                buffer.writeVarLong(value.output)
-                buffer.writeBoolean(value.pending)
-            },
-            { buffer -> SimulationChamberJadeData(buffer.readFloat(), buffer.readVarInt(), buffer.readVarLong(), buffer.readBoolean()) },
+    override fun decode(buffer: RegistryFriendlyByteBuf): SimulationChamberJadeData =
+        SimulationChamberJadeData(
+            buffer.readFloat(),
+            buffer.readVarInt(),
+            buffer.readVarLong(),
+            buffer.readBoolean(),
+            JadeOutputStateCodec.decode(buffer),
         )
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.simulationChamber
 }

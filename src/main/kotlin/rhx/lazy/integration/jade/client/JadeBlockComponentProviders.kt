@@ -1,8 +1,7 @@
 package rhx.lazy.integration.jade.client
 
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
-import rhx.lazy.core.io.IoMode
+import net.minecraft.world.item.ItemStack
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.integration.jade.BufferJadeDataProvider
 import rhx.lazy.integration.jade.EnergySourceJadeDataProvider
@@ -10,19 +9,19 @@ import rhx.lazy.integration.jade.ItemCopierJadeDataProvider
 import rhx.lazy.integration.jade.JadeProviderIds
 import rhx.lazy.integration.jade.RepairerJadeDataProvider
 import rhx.lazy.integration.jade.SimulationChamberJadeDataProvider
-import snownee.jade.api.BlockAccessor
-import snownee.jade.api.IBlockComponentProvider
 import snownee.jade.api.ITooltip
-import snownee.jade.api.config.IPluginConfig
+import snownee.jade.api.ui.BoxStyle
 import snownee.jade.api.ui.IElementHelper
 
-internal object BufferJadeComponentProvider : IBlockComponentProvider {
-    override fun appendTooltip(
-        tooltip: ITooltip,
-        accessor: BlockAccessor,
-        config: IPluginConfig,
+internal object BufferJadeComponentProvider :
+    IoMachineJadeComponentProvider<rhx.lazy.integration.jade.BufferJadeData>(
+        BufferJadeDataProvider,
+        JadeProviderIds.buffer,
     ) {
-        val data = BufferJadeDataProvider.decodeFromData(accessor).orElse(null) ?: return
+    override fun appendBeforeOutput(
+        tooltip: ITooltip,
+        data: rhx.lazy.integration.jade.BufferJadeData,
+    ) {
         tooltip.add(
             Component.translatable(
                 "jade.lazy.buffer.contents",
@@ -32,66 +31,44 @@ internal object BufferJadeComponentProvider : IBlockComponentProvider {
                 BufferBlockEntity.TOTAL_FLUID_CAPACITY,
             ),
         )
-        tooltip.add(
-            Component.translatable(
-                "jade.lazy.buffer.network_output",
-                enabledState(data.networkOutput),
-            ),
-        )
     }
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.buffer
 }
 
-internal object EnergySourceJadeComponentProvider : IBlockComponentProvider {
-    override fun appendTooltip(
-        tooltip: ITooltip,
-        accessor: BlockAccessor,
-        config: IPluginConfig,
-    ) {
-        val mode = EnergySourceJadeDataProvider.decodeFromData(accessor).orElse(null) ?: return
-        tooltip.add(
-            Component.translatable(
-                "jade.lazy.energy_source.output_mode",
-                Component.translatable(mode.translationKey()),
-            ),
-        )
-    }
+internal object EnergySourceJadeComponentProvider :
+    IoMachineJadeComponentProvider<rhx.lazy.integration.jade.OutputOnlyJadeData>(
+        EnergySourceJadeDataProvider,
+        JadeProviderIds.energySource,
+    )
 
-    override fun getUid(): ResourceLocation = JadeProviderIds.energySource
-}
-
-internal object ItemCopierJadeComponentProvider : IBlockComponentProvider {
-    override fun appendTooltip(
-        tooltip: ITooltip,
-        accessor: BlockAccessor,
-        config: IPluginConfig,
+internal object ItemCopierJadeComponentProvider :
+    IoMachineJadeComponentProvider<rhx.lazy.integration.jade.ItemCopierJadeData>(
+        ItemCopierJadeDataProvider,
+        JadeProviderIds.itemCopier,
     ) {
-        val data = ItemCopierJadeDataProvider.decodeFromData(accessor).orElse(null) ?: return
+    override fun appendBeforeOutput(
+        tooltip: ITooltip,
+        data: rhx.lazy.integration.jade.ItemCopierJadeData,
+    ) {
         if (data.template.isEmpty) {
-            tooltip.add(Component.translatable("gui.lazy.item_copier.template.empty"))
+            tooltip.add(Component.translatable("jade.lazy.item_copier.unmarked_output"))
         } else {
             tooltip.add(IElementHelper.get().smallItem(data.template))
-            tooltip.append(
-                Component.translatable(
-                    "jade.lazy.item_copier.template",
-                    data.template.hoverName,
-                ),
-            )
+            tooltip.append(data.template.hoverName)
         }
-        tooltip.add(Component.translatable("tooltip.lazy.item_copier.interval", data.intervalTicks))
+        tooltip.add(Component.translatable("jade.lazy.item_copier.generation_interval", data.intervalTicks))
     }
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.itemCopier
 }
 
-internal object RepairerJadeComponentProvider : IBlockComponentProvider {
+internal object RepairerJadeComponentProvider :
+    MachineJadeComponentProvider<ItemStack>(
+        RepairerJadeDataProvider,
+        JadeProviderIds.repairer,
+    ) {
     override fun appendTooltip(
         tooltip: ITooltip,
-        accessor: BlockAccessor,
-        config: IPluginConfig,
+        data: ItemStack,
     ) {
-        val stack = RepairerJadeDataProvider.decodeFromData(accessor).orElse(null) ?: return
+        val stack = data
         if (stack.isEmpty) return
 
         tooltip.add(IElementHelper.get().smallItem(stack))
@@ -106,32 +83,29 @@ internal object RepairerJadeComponentProvider : IBlockComponentProvider {
             )
         }
     }
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.repairer
 }
 
-internal object SimulationChamberJadeComponentProvider : IBlockComponentProvider {
-    override fun appendTooltip(
-        tooltip: ITooltip,
-        accessor: BlockAccessor,
-        config: IPluginConfig,
+internal object SimulationChamberJadeComponentProvider :
+    IoMachineJadeComponentProvider<rhx.lazy.integration.jade.SimulationChamberJadeData>(
+        SimulationChamberJadeDataProvider,
+        JadeProviderIds.simulationChamber,
     ) {
-        val data = SimulationChamberJadeDataProvider.decodeFromData(accessor).orElse(null) ?: return
-        tooltip.add(Component.translatable("jade.lazy.simulation_chamber.progress", (data.progress * 100).toInt()))
-        tooltip.add(Component.translatable("jade.lazy.simulation_chamber.multipliers", data.speed, data.output))
+    override fun appendBeforeOutput(
+        tooltip: ITooltip,
+        data: rhx.lazy.integration.jade.SimulationChamberJadeData,
+    ) {
+        val progress = data.progress.coerceIn(0f, 1f)
+        val elements = IElementHelper.get()
+        tooltip.add(
+            elements.progress(
+                progress,
+                Component.translatable("jade.lazy.simulation_chamber.progress", (progress * 100).toInt()),
+                elements.progressStyle(),
+                BoxStyle.getNestedBox(),
+                true,
+            ),
+        )
+        tooltip.add(Component.translatable("jade.lazy.simulation_chamber.multipliers", data.speed, data.outputMultiplier))
         if (data.pending) tooltip.add(Component.translatable("jade.lazy.simulation_chamber.pending"))
     }
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.simulationChamber
 }
-
-private fun IoMode.translationKey(): String = "gui.lazy.io.mode.${name.lowercase()}"
-
-internal fun enabledState(enabled: Boolean): Component =
-    Component.translatable(
-        if (enabled) {
-            "jade.lazy.enabled"
-        } else {
-            "jade.lazy.disabled"
-        },
-    )

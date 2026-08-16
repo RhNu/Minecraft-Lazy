@@ -442,15 +442,18 @@ internal object DataGeneration {
             add("config.jade.plugin_lazy.energy_source", "Energy Source status")
             add("config.jade.plugin_lazy.item_copier", "Item Copier status")
             add("config.jade.plugin_lazy.repairer", "Repairer status")
-            add("jade.lazy.enabled", "Enabled")
-            add("jade.lazy.disabled", "Disabled")
+            add("jade.lazy.output", "Output: %s")
+            add("jade.lazy.output.passive", "Passive")
+            add("jade.lazy.output.face", "Face output • eject %s")
+            add("jade.lazy.output.network", "Network")
+            add("jade.lazy.on", "On")
+            add("jade.lazy.off", "Off")
             add(
                 "jade.lazy.buffer.contents",
-                "Items: %s / %s · Fluids: %s / %s mB",
+                "Items: %s/%s • Fluid: %s/%s mB",
             )
-            add("jade.lazy.buffer.network_output", "Network output: %s")
-            add("jade.lazy.energy_source.output_mode", "Output mode: %s")
-            add("jade.lazy.item_copier.template", "Template: %s")
+            add("jade.lazy.item_copier.unmarked_output", "No output marked")
+            add("jade.lazy.item_copier.generation_interval", "Generation interval: %s ticks")
             add("jade.lazy.repairer.item", "Item: %s")
             add("jade.lazy.repairer.durability", "Durability: %s / %s")
             add("message.lazy.energy_battery.transfer", "Energy transferred: %s FE")
@@ -643,15 +646,18 @@ internal object DataGeneration {
             add("config.jade.plugin_lazy.energy_source", "能量源状态")
             add("config.jade.plugin_lazy.item_copier", "物品复制器状态")
             add("config.jade.plugin_lazy.repairer", "修复器状态")
-            add("jade.lazy.enabled", "开启")
-            add("jade.lazy.disabled", "关闭")
+            add("jade.lazy.output", "输出：%s")
+            add("jade.lazy.output.passive", "被动")
+            add("jade.lazy.output.face", "面输出 • 弹出 %s")
+            add("jade.lazy.output.network", "网络")
+            add("jade.lazy.on", "开")
+            add("jade.lazy.off", "关")
             add(
                 "jade.lazy.buffer.contents",
-                "物品：%s / %s · 流体：%s / %s mB",
+                "物品：%s/%s • 流体：%s/%s mB",
             )
-            add("jade.lazy.buffer.network_output", "网络输出：%s")
-            add("jade.lazy.energy_source.output_mode", "输出模式：%s")
-            add("jade.lazy.item_copier.template", "模板：%s")
+            add("jade.lazy.item_copier.unmarked_output", "未标记输出")
+            add("jade.lazy.item_copier.generation_interval", "生成间隔：%s 刻")
             add("jade.lazy.repairer.item", "物品：%s")
             add("jade.lazy.repairer.durability", "耐久：%s / %s")
             add("message.lazy.energy_battery.transfer", "已传输能量：%s FE")

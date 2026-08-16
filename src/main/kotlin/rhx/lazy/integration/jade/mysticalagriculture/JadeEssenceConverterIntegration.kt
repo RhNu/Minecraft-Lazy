@@ -2,12 +2,15 @@ package rhx.lazy.integration.jade.mysticalagriculture
 
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
-import net.minecraft.resources.ResourceLocation
+import rhx.lazy.integration.jade.IoMachineJadeData
+import rhx.lazy.integration.jade.IoMachineJadeDataProvider
+import rhx.lazy.integration.jade.JadeOutputState
+import rhx.lazy.integration.jade.JadeOutputStateCodec
 import rhx.lazy.integration.jade.JadeProviderIds
+import rhx.lazy.integration.jade.MachineStorageHiders
+import rhx.lazy.integration.mysticalagriculture.EssenceConverterBlock
 import rhx.lazy.integration.mysticalagriculture.EssenceConverterBlockEntity
-import snownee.jade.api.BlockAccessor
 import snownee.jade.api.IWailaCommonRegistration
-import snownee.jade.api.StreamServerDataProvider
 
 internal object JadeEssenceConverterIntegration {
     fun register(registration: IWailaCommonRegistration) {
@@ -15,6 +18,7 @@ internal object JadeEssenceConverterIntegration {
             EssenceConverterJadeDataProvider,
             EssenceConverterBlockEntity::class.java,
         )
+        registration.registerItemStorage(MachineStorageHiders.essenceConverterItems, EssenceConverterBlock::class.java)
     }
 }
 
@@ -22,33 +26,26 @@ internal data class EssenceConverterJadeData(
     val targetTier: String,
     val outputCount: Long,
     val remainderUnits: Int,
-    val outputMode: String,
-)
+    override val output: JadeOutputState,
+) : IoMachineJadeData
 
 internal object EssenceConverterJadeDataProvider :
-    StreamServerDataProvider<BlockAccessor, EssenceConverterJadeData> {
-    override fun streamData(accessor: BlockAccessor): EssenceConverterJadeData? {
-        val blockEntity = accessor.blockEntity as? EssenceConverterBlockEntity ?: return null
-        return EssenceConverterJadeData(
-            targetTier = blockEntity.targetTier?.serializedName.orEmpty(),
-            outputCount = blockEntity.outputCount,
-            remainderUnits = blockEntity.remainderUnits,
-            outputMode =
-                if (blockEntity.isNetworkOutputPaused) {
-                    NETWORK_PAUSED_MODE
-                } else {
-                    blockEntity.ioController.mode.name
-                        .lowercase()
-                },
+    IoMachineJadeDataProvider<EssenceConverterBlockEntity, EssenceConverterJadeData>(
+        EssenceConverterBlockEntity::class.java,
+        JadeProviderIds.essenceConverter,
+        EssenceConverterJadeDataCodec,
+    ) {
+    override fun createData(
+        entity: EssenceConverterBlockEntity,
+        output: JadeOutputState,
+    ): EssenceConverterJadeData =
+        EssenceConverterJadeData(
+            targetTier = entity.targetTier?.serializedName.orEmpty(),
+            outputCount = entity.outputCount,
+            remainderUnits = entity.remainderUnits,
+            output = output,
         )
-    }
-
-    override fun streamCodec(): StreamCodec<RegistryFriendlyByteBuf, EssenceConverterJadeData> = EssenceConverterJadeDataCodec
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.essenceConverter
 }
-
-private const val NETWORK_PAUSED_MODE = "network_paused"
 
 private object EssenceConverterJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, EssenceConverterJadeData> {
     override fun encode(
@@ -58,7 +55,7 @@ private object EssenceConverterJadeDataCodec : StreamCodec<RegistryFriendlyByteB
         buffer.writeUtf(value.targetTier)
         buffer.writeVarLong(value.outputCount)
         buffer.writeVarInt(value.remainderUnits)
-        buffer.writeUtf(value.outputMode)
+        JadeOutputStateCodec.encode(buffer, value.output)
     }
 
     override fun decode(buffer: RegistryFriendlyByteBuf): EssenceConverterJadeData =
@@ -66,6 +63,6 @@ private object EssenceConverterJadeDataCodec : StreamCodec<RegistryFriendlyByteB
             targetTier = buffer.readUtf(),
             outputCount = buffer.readVarLong(),
             remainderUnits = buffer.readVarInt(),
-            outputMode = buffer.readUtf(),
+            output = JadeOutputStateCodec.decode(buffer),
         )
 }

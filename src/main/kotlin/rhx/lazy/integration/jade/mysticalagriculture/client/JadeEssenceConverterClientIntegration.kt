@@ -1,16 +1,14 @@
 package rhx.lazy.integration.jade.mysticalagriculture.client
 
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
 import rhx.lazy.integration.jade.JadeProviderIds
+import rhx.lazy.integration.jade.client.IoMachineJadeComponentProvider
+import rhx.lazy.integration.jade.mysticalagriculture.EssenceConverterJadeData
 import rhx.lazy.integration.jade.mysticalagriculture.EssenceConverterJadeDataProvider
 import rhx.lazy.integration.mysticalagriculture.EssenceConverterBlock
 import rhx.lazy.integration.mysticalagriculture.EssenceTier
-import snownee.jade.api.BlockAccessor
-import snownee.jade.api.IBlockComponentProvider
 import snownee.jade.api.ITooltip
 import snownee.jade.api.IWailaClientRegistration
-import snownee.jade.api.config.IPluginConfig
 
 internal object JadeEssenceConverterClientIntegration {
     fun register(registration: IWailaClientRegistration) {
@@ -18,13 +16,15 @@ internal object JadeEssenceConverterClientIntegration {
     }
 }
 
-private object EssenceConverterJadeComponentProvider : IBlockComponentProvider {
-    override fun appendTooltip(
-        tooltip: ITooltip,
-        accessor: BlockAccessor,
-        config: IPluginConfig,
+private object EssenceConverterJadeComponentProvider :
+    IoMachineJadeComponentProvider<EssenceConverterJadeData>(
+        EssenceConverterJadeDataProvider,
+        JadeProviderIds.essenceConverter,
     ) {
-        val data = EssenceConverterJadeDataProvider.decodeFromData(accessor).orElse(null) ?: return
+    override fun appendBeforeOutput(
+        tooltip: ITooltip,
+        data: EssenceConverterJadeData,
+    ) {
         val target =
             if (data.targetTier.isEmpty()) {
                 Component.translatable("gui.lazy.essence_converter.target.unset")
@@ -33,21 +33,12 @@ private object EssenceConverterJadeComponentProvider : IBlockComponentProvider {
                     ?: Component.literal(data.targetTier)
             }
         tooltip.add(Component.translatable("jade.lazy.essence_converter.target", target))
-        tooltip.add(Component.translatable("jade.lazy.essence_converter.output", data.outputCount))
-        tooltip.add(Component.translatable("jade.lazy.essence_converter.remainder", data.remainderUnits))
         tooltip.add(
             Component.translatable(
-                "jade.lazy.essence_converter.output_mode",
-                Component.translatable(
-                    if (data.outputMode == "network_paused") {
-                        "gui.lazy.io.network_paused"
-                    } else {
-                        "gui.lazy.io.mode.${data.outputMode}"
-                    },
-                ),
+                "jade.lazy.essence_converter.contents",
+                data.outputCount,
+                data.remainderUnits,
             ),
         )
     }
-
-    override fun getUid(): ResourceLocation = JadeProviderIds.essenceConverter
 }

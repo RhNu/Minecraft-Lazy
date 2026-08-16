@@ -14,8 +14,16 @@ class JadeResourceTest {
 
         assertEquals("Buffer status", english["config.jade.plugin_lazy.buffer"].asString)
         assertEquals("缓冲器状态", chinese["config.jade.plugin_lazy.buffer"].asString)
-        assertEquals("Output mode: %s", english["jade.lazy.energy_source.output_mode"].asString)
-        assertEquals("输出模式：%s", chinese["jade.lazy.energy_source.output_mode"].asString)
+        assertEquals("Output: %s", english["jade.lazy.output"].asString)
+        assertEquals("输出：%s", chinese["jade.lazy.output"].asString)
+        assertEquals("Face output • eject %s", english["jade.lazy.output.face"].asString)
+        assertEquals("面输出 • 弹出 %s", chinese["jade.lazy.output.face"].asString)
+        assertEquals("Items: %s/%s • Fluid: %s/%s mB", english["jade.lazy.buffer.contents"].asString)
+        assertEquals("物品：%s/%s • 流体：%s/%s mB", chinese["jade.lazy.buffer.contents"].asString)
+        assertEquals("Generation interval: %s ticks", english["jade.lazy.item_copier.generation_interval"].asString)
+        assertEquals("生成间隔：%s 刻", chinese["jade.lazy.item_copier.generation_interval"].asString)
+        assertEquals("Essence: %s • remainder: %s", english["jade.lazy.essence_converter.contents"].asString)
+        assertEquals("精华：%s • 余量：%s", chinese["jade.lazy.essence_converter.contents"].asString)
     }
 
     @Test

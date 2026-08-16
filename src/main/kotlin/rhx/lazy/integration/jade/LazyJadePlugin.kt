@@ -31,7 +31,9 @@ class LazyJadePlugin : IWailaPlugin {
         registration.registerBlockDataProvider(ItemCopierJadeDataProvider, ItemCopierBlockEntity::class.java)
         registration.registerBlockDataProvider(RepairerJadeDataProvider, RepairerBlockEntity::class.java)
         registration.registerBlockDataProvider(SimulationChamberJadeDataProvider, SimulationChamberBlockEntity::class.java)
-        registration.registerEnergyStorage(EnergySourceStorageHider, EnergySourceBlock::class.java)
+        registration.registerFluidStorage(MachineStorageHiders.bufferFluid, BufferBlock::class.java)
+        registration.registerEnergyStorage(MachineStorageHiders.energySourceEnergy, EnergySourceBlock::class.java)
+        registration.registerFluidStorage(MachineStorageHiders.simulationChamberFluid, SimulationChamberBlock::class.java)
 
         if (ModList.get().isLoaded(MYSTICAL_AGRICULTURE_MOD_ID)) {
             JadeEssenceConverterIntegration.register(registration)
