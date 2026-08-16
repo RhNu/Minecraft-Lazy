@@ -1,6 +1,6 @@
 .lazy-simulation {
   width: 176;
-  height: 184;
+  height: 188;
   padding-all: 7;
   gap-row: 0;
   align-items: center;
@@ -15,7 +15,7 @@
 
 .lazy-simulation__machine {
   width: 162;
-  height: 60;
+  height: 64;
   gap-row: 3;
   align-items: center;
 }
@@ -41,10 +41,24 @@
   height: 16;
 }
 
-.lazy-simulation__actions {
+/*
+ * Tool row. Its 16 + 4 + 90 + 4 + 16 span matches the processing row exactly, so the IO trigger
+ * lands under the output multiplier icon and the pending warning under the speed one, while the
+ * three slots stay centred inside the 90 wide middle section.
+ */
+.lazy-simulation__tools {
   width: 162;
-  height: 16;
-  gap-column: 3;
+  height: 18;
+  gap-column: 4;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2;
+}
+
+.lazy-simulation__tool-slots {
+  width: 90;
+  height: 18;
+  gap-column: 4;
   justify-content: center;
 }
 
@@ -52,11 +66,6 @@
   width: 16;
   height: 16;
   padding-all: 1;
-}
-
-.lazy-simulation__action-placeholder {
-  width: 16;
-  height: 16;
 }
 
 .lazy-simulation__slot {

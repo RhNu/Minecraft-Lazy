@@ -11,6 +11,9 @@ import rhx.lazy.core.lazyId
 internal object SimulationTags {
     val plantTargets: TagKey<Item> = itemTag("simulation/target/plant")
     val duplicateSelfTargets: TagKey<Item> = itemTag("simulation/target/duplicate_self")
+    val weaponTools: TagKey<Item> = itemTag("simulation/tool/weapon")
+    val incineratorTools: TagKey<Item> = itemTag("simulation/tool/incinerator")
+    val incineratedOutputs: TagKey<Item> = itemTag("simulation/incinerated")
     val blacklist: TagKey<Item> = itemTag("simulation/blacklist/all")
     val dataModelBlacklist: TagKey<EntityType<*>> =
         TagKey.create(Registries.ENTITY_TYPE, lazyId("simulation/blacklist/data_model"))

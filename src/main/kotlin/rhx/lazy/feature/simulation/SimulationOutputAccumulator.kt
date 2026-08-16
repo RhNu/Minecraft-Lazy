@@ -4,7 +4,15 @@ import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.fluids.FluidStack
 import java.math.BigInteger
 
-internal class SimulationOutputAccumulator {
+/**
+ * Collects everything a batch tick produced, deduplicated by item and fluid.
+ *
+ * [acceptsItem] runs once per distinct item at [flush] rather than on every roll, so a tool that
+ * filters the output costs one tag lookup per produced kind instead of one per drop.
+ */
+internal class SimulationOutputAccumulator(
+    private val acceptsItem: (ItemStack) -> Boolean = { true },
+) {
     private val items = mutableListOf<ItemAmount>()
     private val fluids = mutableListOf<FluidAmount>()
 
@@ -35,7 +43,9 @@ internal class SimulationOutputAccumulator {
     }
 
     fun flush(router: SimulationOutputRouter) {
-        items.forEach { entry -> entry.amount.forEachLongChunk { router.enqueue(entry.template, it) } }
+        items.forEach { entry ->
+            if (acceptsItem(entry.template)) entry.amount.forEachLongChunk { router.enqueue(entry.template, it) }
+        }
         fluids.forEach { entry -> entry.amount.forEachLongChunk { router.enqueue(entry.template, it) } }
         items.clear()
         fluids.clear()

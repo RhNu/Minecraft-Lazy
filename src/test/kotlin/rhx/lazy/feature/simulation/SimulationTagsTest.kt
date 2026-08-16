@@ -33,6 +33,9 @@ class SimulationTagsTest {
         listOf(
             SimulationTags.plantTargets,
             SimulationTags.duplicateSelfTargets,
+            SimulationTags.weaponTools,
+            SimulationTags.incineratorTools,
+            SimulationTags.incineratedOutputs,
             SimulationTags.blacklist,
             SimulationTags.sourceBlacklist(TreeSimulationAdapter.SOURCE),
             SimulationTags.sourceBlacklist(CropSimulationAdapter.SOURCE),

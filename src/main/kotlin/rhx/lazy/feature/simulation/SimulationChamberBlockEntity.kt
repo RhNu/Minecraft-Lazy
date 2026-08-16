@@ -255,7 +255,9 @@ internal class SimulationChamberBlockEntity(
                     .get()
                     .toLong(),
             ).toInt()
-        val accumulator = SimulationOutputAccumulator()
+        // Tools are read per batch tick instead of captured at batch start, so swapping one takes effect at once.
+        val loadout = SimulationToolModules.loadout(inputs.subList(TOOL_SLOT_START, INPUT_SLOTS))
+        val accumulator = SimulationOutputAccumulator(loadout::acceptsOutput)
         when (active) {
             is SimulationBatch.Item -> {
                 repeat(budget) {
@@ -273,7 +275,7 @@ internal class SimulationChamberBlockEntity(
                 repeat(budget) {
                     if (active.rollLootTable) {
                         val entity = createTemporaryEntity(type, level) ?: return cancelBatch()
-                        SimulationLootRoller.roll(level, entity, active.lootTable.orElse(null), accumulator::add)
+                        SimulationLootRoller.roll(level, entity, active.lootTable.orElse(null), loadout.weapon, accumulator::add)
                     }
                 }
                 rollOutputs(level.random, active.itemOutputs, active.fluidOutputs, budget, accumulator)
@@ -350,7 +352,7 @@ internal class SimulationChamberBlockEntity(
     private fun inputLimit(
         slot: Int,
         stack: ItemStack,
-    ) = if (slot == TARGET_SLOT) 1 else min(64, stack.maxStackSize.coerceAtLeast(1))
+    ) = if (slot == CORE_SLOT) min(64, stack.maxStackSize.coerceAtLeast(1)) else 1
 
     private fun validInput(
         slot: Int,
@@ -359,6 +361,7 @@ internal class SimulationChamberBlockEntity(
         when (slot) {
             TARGET_SLOT -> level?.let { SimulationRecipeResolver.resolve(it, stack) } != null
             CORE_SLOT -> SimulationRegistries.coreTier(stack) != null
+            in TOOL_SLOT_START until INPUT_SLOTS -> SimulationToolModules.claims(stack)
             else -> false
         }
 
@@ -379,7 +382,9 @@ internal class SimulationChamberBlockEntity(
     companion object {
         const val TARGET_SLOT = 0
         const val CORE_SLOT = 1
-        const val INPUT_SLOTS = 2
+        const val TOOL_SLOT_START = 2
+        const val TOOL_SLOTS = 3
+        const val INPUT_SLOTS = TOOL_SLOT_START + TOOL_SLOTS
         private const val INPUTS_FIELD = "inputs"
         private const val PROGRESS_FIELD = "progressTicks"
         private const val BATCH_TAG = "lazySimulationBatch"

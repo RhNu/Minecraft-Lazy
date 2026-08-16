@@ -328,6 +328,11 @@ internal object DataGeneration {
             add("tooltip.lazy.simulation_chamber.contents", "Contains stored simulation data")
             add("gui.lazy.simulation_chamber.target", "Seed or simulation target")
             add("gui.lazy.simulation_chamber.core", "Simulation core")
+            add("gui.lazy.simulation_chamber.tool", "Tool")
+            add(
+                "gui.lazy.simulation_chamber.tool.hint",
+                "Weapon: kills the simulated entity with it · Lava bucket: melts gear out of the output",
+            )
             add("gui.lazy.simulation_chamber.progress", "Simulation progress")
             add("gui.lazy.simulation_chamber.pending", "Unable to output — simulation paused")
             add("gui.lazy.simulation_chamber.output_multiplier", "Output multiplier: ×%s")
@@ -537,6 +542,8 @@ internal object DataGeneration {
             add("tooltip.lazy.simulation_chamber.contents", "包含已保存的模拟内容")
             add("gui.lazy.simulation_chamber.target", "种子物品或模拟目标")
             add("gui.lazy.simulation_chamber.core", "模拟核心")
+            add("gui.lazy.simulation_chamber.tool", "工具")
+            add("gui.lazy.simulation_chamber.tool.hint", "武器：用它击杀模拟实体 · 岩浆桶：熔毁产出中的装备与工具")
             add("gui.lazy.simulation_chamber.progress", "模拟进度")
             add("gui.lazy.simulation_chamber.pending", "无法输出——模拟已暂停")
             add("gui.lazy.simulation_chamber.output_multiplier", "产出倍率：×%s")

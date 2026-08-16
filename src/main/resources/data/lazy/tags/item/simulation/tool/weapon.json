@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "#c:tools",
+    "#minecraft:enchantable/weapon",
+    "#minecraft:enchantable/mining"
+  ]
+}

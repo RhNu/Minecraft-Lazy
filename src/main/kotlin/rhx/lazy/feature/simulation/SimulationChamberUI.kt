@@ -66,20 +66,25 @@ internal object SimulationChamberUI {
                         }
                         speedMultiplier = multiplierIcon(Items.CLOCK)
                     }
-                    row({ cls = { +"lazy-simulation__actions" } }) {
+                    row({ cls = { +"lazy-simulation__tools" } }) {
                         installIo = IoPanelUI.addIoControl(this, model)
-                        element({ cls = { +"lazy-simulation__action-placeholder" } }) {
-                            pendingWarning =
-                                button({
-                                    visible = false
-                                    active = false
-                                    noText()
-                                    cls = { +"lazy-simulation__icon-button" }
-                                    style = { tooltips(Component.translatable("gui.lazy.simulation_chamber.pending")) }
-                                }).element.apply {
-                                    addPreIcon(ItemStackTexture(ItemStack(Items.BARRIER)))
-                                }
+                        row({ cls = { +"lazy-simulation__tool-slots" } }) {
+                            repeat(SimulationChamberBlockEntity.TOOL_SLOTS) { index ->
+                                toolSlot(model, SimulationChamberBlockEntity.TOOL_SLOT_START + index)
+                            }
                         }
+                        // Both ends of the row are the same 16×16 icon box as the processing row above,
+                        // which is what keeps the two rows the same width and the columns aligned.
+                        pendingWarning =
+                            button({
+                                visible = false
+                                active = false
+                                noText()
+                                cls = { +"lazy-simulation__icon-button" }
+                                style = { tooltips(Component.translatable("gui.lazy.simulation_chamber.pending")) }
+                            }).element.apply {
+                                addPreIcon(ItemStackTexture(ItemStack(Items.BARRIER)))
+                            }
                     }
                 }
                 label({
@@ -113,6 +118,26 @@ internal object SimulationChamberUI {
             withTooltips()
             acceptQuickMove()
             asXeiRecipeIngredient(IngredientIO.INPUT)
+        }
+    }
+
+    /** Tools are not recipe ingredients, so they stay out of the XEI ingredient lookup. */
+    private fun com.lowdragmc.lowdraglib2.gui.ui.UIContainer<*, *>.toolSlot(
+        model: Model,
+        slot: Int,
+    ) {
+        itemSlot({
+            bind(model.inputHandler, slot)
+            cls = { +"lazy-simulation__slot" }
+            style = {
+                tooltips(
+                    Component.translatable("gui.lazy.simulation_chamber.tool"),
+                    Component.translatable("gui.lazy.simulation_chamber.tool.hint"),
+                )
+            }
+        }) {
+            withTooltips()
+            acceptQuickMove()
         }
     }
 

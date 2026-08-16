@@ -96,6 +96,8 @@
   "gui.lazy.simulation_chamber.progress": "Simulation progress",
   "gui.lazy.simulation_chamber.speed_multiplier": "Speed multiplier: ×%s",
   "gui.lazy.simulation_chamber.target": "Seed or simulation target",
+  "gui.lazy.simulation_chamber.tool": "Tool",
+  "gui.lazy.simulation_chamber.tool.hint": "Weapon: kills the simulated entity with it · Lava bucket: melts gear out of the output",
   "item.lazy.configuration_card": "Configuration Card",
   "item.lazy.data_model": "Data Model",
   "item.lazy.energy_battery": "Energy Battery",

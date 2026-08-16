@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "#c:tools",
+    "#c:armors",
+    "#minecraft:enchantable/weapon",
+    "#minecraft:enchantable/armor",
+    "#minecraft:enchantable/mining"
+  ]
+}
