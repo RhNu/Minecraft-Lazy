@@ -2,23 +2,20 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "G": {
-      "tag": "c:glass_blocks"
-    },
-    "H": {
-      "item": "minecraft:hopper"
+    "C": {
+      "tag": "c:ingots/copper"
     },
     "M": {
       "item": "lazy:machine_casing"
     },
     "R": {
-      "tag": "c:storage_blocks/redstone"
+      "tag": "c:dusts/redstone"
     }
   },
   "pattern": [
-    "GRG",
-    "HMH",
-    "GRG"
+    "CCC",
+    "RMR",
+    "CCC"
   ],
   "result": {
     "count": 1,
