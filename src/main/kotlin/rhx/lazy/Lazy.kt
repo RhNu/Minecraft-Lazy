@@ -5,6 +5,7 @@ import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.common.NeoForge
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import rhx.lazy.core.MachineWrench
 import rhx.lazy.core.command.LazyCommands
 import rhx.lazy.core.registry.LazyRegistries
 import rhx.lazy.feature.protection.DamageCapHandler
@@ -36,6 +37,7 @@ object Lazy {
         NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onDatapackSync)
         NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onServerTick)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, DataModelInteractionHandler::onEntityInteract)
+        NeoForge.EVENT_BUS.addListener(MachineWrench::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onInvulnerabilityCheck)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onIncomingDamage)
         logger.info("Lazy mod initialized")

@@ -68,6 +68,8 @@ internal class EssenceConverterBlockEntity(
 
     fun hasContents(): Boolean = currentLedger().hasContents
 
+    override fun hasStoredContents(): Boolean = hasContents()
+
     fun selectTarget(tier: EssenceTier): Boolean {
         if (!tier.isAvailable()) return false
         val changed = currentLedger().withTarget(tier) ?: return false

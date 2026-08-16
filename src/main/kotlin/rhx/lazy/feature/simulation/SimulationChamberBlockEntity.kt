@@ -116,6 +116,8 @@ internal class SimulationChamberBlockEntity(
 
     fun hasContents(): Boolean = inputs.any { !it.isEmpty } || outputRouter.hasOutputs || batch != null || legacyBatch != null
 
+    override fun hasStoredContents(): Boolean = hasContents()
+
     override fun saveAdditional(
         tag: CompoundTag,
         registries: HolderLookup.Provider,

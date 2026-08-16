@@ -66,6 +66,8 @@ internal class BufferBlockEntity(
 
     fun hasContents(): Boolean = totalItemCount > 0 || totalFluidAmount > 0
 
+    override fun hasStoredContents(): Boolean = hasContents()
+
     fun clearContents(): Boolean {
         if (!hasContents()) return false
         clearWithoutNotification()

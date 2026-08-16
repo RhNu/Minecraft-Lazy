@@ -10,13 +10,13 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.items.IItemHandlerModifiable
-import rhx.lazy.core.ManagedBlockEntity
+import rhx.lazy.core.MachineBlockEntity
 
 internal class RepairerBlockEntity(
     pos: BlockPos,
     state: BlockState,
     private val itemRepairHook: ItemRepairHook = ItemRepairHooks,
-) : ManagedBlockEntity(RepairerRegistries.blockEntity.get(), pos, state) {
+) : MachineBlockEntity(RepairerRegistries.blockEntity.get(), pos, state) {
     @field:Persisted
     @field:LazyManaged
     private var storedItem = ItemStack.EMPTY
@@ -42,11 +42,12 @@ internal class RepairerBlockEntity(
         return true
     }
 
-    fun takeStoredItemForDrop(): ItemStack {
-        if (storedItem.isEmpty) return ItemStack.EMPTY
+    /** The item being repaired belongs to the player, not to the machine, so it drops on its own. */
+    override fun takeHeldItems(): List<ItemStack> {
+        if (storedItem.isEmpty) return emptyList()
         val dropped = storedItem.copy()
         clearStoredItem()
-        return dropped
+        return listOf(dropped)
     }
 
     override fun loadAdditional(

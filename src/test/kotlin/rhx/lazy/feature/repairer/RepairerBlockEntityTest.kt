@@ -168,12 +168,16 @@ class RepairerBlockEntityTest {
         val repairer = newRepairer()
         repairer.itemHandler.insertItem(0, damagedStack(Items.NETHERITE_HOE, damage = 42), false)
 
-        val dropped = repairer.takeStoredItemForDrop()
+        // The item being repaired belongs to the player, so it drops on its own instead of
+        // travelling inside the machine item.
+        assertFalse(repairer.hasStoredContents())
+
+        val dropped = repairer.takeHeldItems().single()
 
         assertEquals(Items.NETHERITE_HOE, dropped.item)
         assertEquals(42, dropped.damageValue)
         assertTrue(repairer.itemHandler.getStackInSlot(0).isEmpty)
-        assertTrue(repairer.takeStoredItemForDrop().isEmpty)
+        assertTrue(repairer.takeHeldItems().isEmpty())
     }
 
     private fun newRepairer(itemRepairHook: ItemRepairHook = ItemRepairHooks): RepairerBlockEntity =

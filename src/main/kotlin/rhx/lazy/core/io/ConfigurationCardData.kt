@@ -84,8 +84,8 @@ internal sealed interface ConfigurationCardSelection {
 /**
  * Copies a carried card onto a freshly placed machine.
  *
- * A machine that restored a configuration of its own — because it was broken and replaced while
- * configured — keeps it; the card only seeds machines that start from defaults.
+ * A dropped machine never carries its settings, so this is the only way a machine starts out
+ * configured; the guard still holds for the rare machine that somehow arrives non-default.
  */
 internal fun Level.applyConfigurationCardOnPlacement(
     pos: BlockPos,

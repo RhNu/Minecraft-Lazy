@@ -70,6 +70,8 @@ internal class ItemCopierBlockEntity(
 
     fun hasTemplate(): Boolean = !template.isEmpty
 
+    override fun hasStoredContents(): Boolean = hasTemplate()
+
     fun onServerTick() {
         if (template.isEmpty) return
         ioController.tick()

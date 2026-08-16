@@ -49,8 +49,10 @@ rhx.lazy
 - IO 由 `IoConfiguration`、`IoController` 与机器 `IoAdapter` 统一管理。三种互斥模式为被动、六面配置和网络输出：被动模式允许各面按机器自身输入/输出能力交互；六面配置按机器朝向保存上、左、前、右、下、后各面的禁用/输入/输出/双向状态，并可选择是否主动弹出；网络模式允许各面输入并把产物送往所选网络。
 - 模式分发、重试退避、暂停与结果映射只存在于 `IoController`；`IoAdapter` 只实现 `maintain`、`pushToFaces` 与 `pushToNetwork`，并用 `acceptsInput` 声明是否可接收输入。机器在自身逻辑之后调用 `IoController.tick()`，本刻产出的产物在同一刻送出，不会多占一刻显示为阻塞；`maintain` 在三种模式下都执行，网络未绑定、已暂停或处于退避期间缓冲仍继续消化。相邻方块能力缓存统一走 `NeighborCapabilities`，侧面能力注册统一走 `IoCapabilityRegistration`，放置时的配置卡应用统一走 `Level.applyConfigurationCardOnPlacement`。
 - `IoConfiguration` 视为不可变值：`NetworkTargetRef` 的不透明数据只在存取边界深拷贝，读取路径（侧面能力查询、每 tick 推送、界面绑定）不再复制 NBT。
-- 仅当配置非默认时才写入方块实体 NBT，因此未配置的机器掉落物仍可堆叠；配置非默认或存有内容的机器在掉落时保留自身状态。
+- 机器由 `core.MachineBlock` 与 `core.MachineBlockEntity` 两个基类收敛。`MachineBlock` 统一朝向状态、放置时的配置卡应用、界面有效性、交互顺序（配置卡优先于机器界面），以及唯一的掉落管线；`MachineBlockEntity` 只描述自己有什么：`hasStoredContents()` 表示内部存储需要随掉落物方块走，`takeHeldItems()` 表示只是替玩家保管、应当单独掉落的物品，`settingKeys()` 列出属于设置而非存储的持久化键。
+- 掉落顺序固定为「机器本体在前，代管物品在后」，全部由 `MachineBlock.onRemove` 生成，机器方块的战利品表一律为空表。内部存储写入掉落物方块，机器设置一律不写入：重新放置的机器总是回到默认配置，只能由放置时携带的配置卡重新播种。没有内容的机器不携带方块实体数据，掉落物仍可与全新机器堆叠。
 - `lazy:configuration_card` 保存完整 `IoConfiguration`。卡可直接打开同一套 IO 面板；右击机器应用配置，潜行右击复制机器配置；玩家携带唯一明确配置的卡放置默认状态机器时，机器复制该配置。AE2 只为这张通用卡增加无线接入点链接行为，Curios 只增加可装备的配置卡槽。
+- `c:tools/wrench` 标签的物品对机器生效：潜行右键拆除并优先放入玩家背包、放不下才落在玩家脚边；普通右键把机器顺时针转过一格。两个动作都在 `core.MachineWrench` 里判定，挂在 `PlayerInteractEvent.RightClickBlock` 上——潜行且手持物品时原版根本不会调用方块自身的 `useItemOn`，方块侧无法承载拆除。拆除先移除方块实体再销毁方块，`onRemove` 便自然不再重复掉落；旋转后显式 `invalidateCapabilities()`，因为同方块的状态变化不会自动失效邻居的能力缓存。
 - 网络输出由 `core.io.NetworkInsertCapability`、`NetworkPayload`、`NetworkOutputProvider` 与统一路由器组成。稳定能力 ID 为 `lazy:item`、`lazy:fluid` 与 `neoforge:energy`；机器和提供者只通过能力交集配对。提供者或能力暂时缺失时保留绑定并重试，目标数据损坏或 Beyond Dimensions 已确认网络永久不存在时才退回被动模式；无法确认提交结果时持久暂停，避免重复写入。
 - Beyond Dimensions 直接实现物品、流体和 FE 三项插入能力，并在集成包内保留网络 ID、`Long` 数量、模拟语义和异常保护，不再经过全局单提供者存储服务。
 - AE2 目标保存无线接入点的维度与方块坐标。每次输出只在目标区块已加载、接入点活动且 Grid 可用时，将物品或流体写入该 Grid 的 `MEStorage`；不创建区块票据，也不保存运行时 Grid 标识。Applied Flux 存在时，由后初始化的 `integration.appflux` 适配器增加 FE 能力并以 `FluxKey(FE)` 写入同一库存，禁止调用 AE2 网络供电缓存。

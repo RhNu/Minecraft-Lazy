@@ -284,11 +284,13 @@ internal object DataGeneration {
             registries: HolderLookup.Provider,
         ) : VanillaBlockLoot(registries) {
             override fun generate() {
+                // Machines hand out their own drops in MachineBlock.onRemove so that stored contents
+                // ride along; only the plain casing goes through a loot table.
                 dropSelf(MachineCasingRegistries.block.get())
                 add(BufferRegistries.block.get(), noDrop())
-                dropSelf(EnergyRegistries.sourceBlock.get())
+                add(EnergyRegistries.sourceBlock.get(), noDrop())
                 add(ItemCopierRegistries.block.get(), noDrop())
-                dropSelf(RepairerRegistries.block.get())
+                add(RepairerRegistries.block.get(), noDrop())
                 add(SimulationRegistries.block.get(), noDrop())
             }
 

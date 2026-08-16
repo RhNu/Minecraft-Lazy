@@ -87,7 +87,7 @@ class ItemCopierBlockEntityTest {
         source.setGear(ItemCopierGear.VERY_SLOW)
 
         val dropped = ItemStack(ItemCopierRegistries.item.get())
-        source.saveToItem(dropped, registries)
+        source.saveContentsToItem(dropped, registries)
         val blockEntityData = requireNotNull(dropped.get(DataComponents.BLOCK_ENTITY_DATA))
         val managed =
             blockEntityData

@@ -7,13 +7,13 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import rhx.lazy.core.ManagedBlockEntity
+import rhx.lazy.core.MachineBlockEntity
 
 internal abstract class IoManagedBlockEntity(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState,
-) : ManagedBlockEntity(type, pos, state) {
+) : MachineBlockEntity(type, pos, state) {
     private var ioConfiguration = IoConfiguration.DEFAULT
     private var ioNetworkPaused = false
 
@@ -68,6 +68,8 @@ internal abstract class IoManagedBlockEntity(
         ioController.resetBackoff()
         invalidateCapabilities()
     }
+
+    override fun settingKeys(): Set<String> = setOf(IO_CONFIGURATION_TAG, IO_NETWORK_PAUSED_TAG)
 
     private companion object {
         const val IO_CONFIGURATION_TAG = "lazyIoConfiguration"

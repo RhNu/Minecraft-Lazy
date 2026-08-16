@@ -81,7 +81,7 @@ class BufferBlockEntityPersistenceTest {
     }
 
     @Test
-    fun `buffer block item carries managed data for placement`() {
+    fun `buffer block item carries contents but never its io settings`() {
         val source = newBuffer()
         source.itemHandler.insertItem(0, ItemStack(Items.EMERALD, 180), false)
         source.fluidHandler.fill(
@@ -91,8 +91,10 @@ class BufferBlockEntityPersistenceTest {
         val provider = FakeNetworkOutputProvider(FakeNetworkStorage())
         source.ioController.setNetworkTarget(provider.target)
 
+        assertTrue(source.hasStoredContents())
+
         val dropped = ItemStack(BufferRegistries.item.get())
-        source.saveToItem(dropped, registries)
+        source.saveContentsToItem(dropped, registries)
         val blockEntityData = requireNotNull(dropped.get(DataComponents.BLOCK_ENTITY_DATA))
 
         val restored = newBuffer()
@@ -100,13 +102,17 @@ class BufferBlockEntityPersistenceTest {
 
         assertEquals(180, restored.getItemCount(0))
         assertEquals(32_000, restored.getFluid(0).amount)
-        assertEquals(IoMode.NETWORK, restored.ioController.mode)
-        assertEquals(
-            FakeNetworkStorage.TEST_NETWORK_ID.value,
-            restored.ioController.target
-                ?.data
-                ?.getInt("networkId"),
-        )
+        assertEquals(IoMode.PASSIVE, restored.ioController.mode)
+        assertEquals(null, restored.ioController.target)
+        assertTrue(restored.ioController.configuration.isDefault)
+    }
+
+    @Test
+    fun `empty buffer reports no stored contents so its drop stays stackable`() {
+        val source = newBuffer()
+        source.ioController.setNetworkTarget(FakeNetworkOutputProvider(FakeNetworkStorage()).target)
+
+        assertFalse(source.hasStoredContents())
     }
 
     private fun newBuffer(): BufferBlockEntity =
