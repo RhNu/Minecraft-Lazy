@@ -3,6 +3,7 @@ package rhx.lazy.feature.simulation
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
@@ -11,6 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class AutomaticSimulationAdaptersTest {
@@ -80,6 +82,99 @@ class AutomaticSimulationAdaptersTest {
         assertEquals(
             lazyId("automatic/material/self/minecraft/coal"),
             automaticId(TaggedMaterialAdapter.SOURCE, "self", "minecraft", "coal"),
+        )
+    }
+
+    @Test
+    fun `growth candidate sources merge evidence and deduplicate item block pairs`() {
+        val sink = AutomaticGrowthCandidateSink()
+        sink.add(
+            Items.WHEAT_SEEDS,
+            Blocks.WHEAT,
+            AutomaticGrowthEvidence.BLOCK_ITEM_MAPPING,
+        )
+        sink.add(
+            Items.WHEAT_SEEDS,
+            Blocks.WHEAT,
+            AutomaticGrowthEvidence.CROP_CLASS,
+        )
+        sink.addInputEvidence(Items.WHEAT_SEEDS, AutomaticGrowthEvidence.SEED_TAG)
+
+        val candidate = assertNotNull(sink.finish()[Items.WHEAT_SEEDS]).single()
+        assertSame(Blocks.WHEAT, candidate.block)
+        assertEquals(
+            setOf(
+                AutomaticGrowthEvidence.BLOCK_ITEM_MAPPING,
+                AutomaticGrowthEvidence.CROP_CLASS,
+                AutomaticGrowthEvidence.SEED_TAG,
+            ),
+            candidate.evidence,
+        )
+    }
+
+    @Test
+    fun `built in growth candidate sources reject duplicate registrations`() {
+        assertTrue(
+            runCatching {
+                AutomaticGrowthCandidateSources.register(lazyId("growth/block_item_mapping")) { }
+            }.exceptionOrNull() is IllegalArgumentException,
+        )
+    }
+
+    @Test
+    fun `growth candidate sources reject seed mappings without growth structure`() {
+        val sink = AutomaticGrowthCandidateSink()
+        sink.add(Items.WHEAT_SEEDS, Blocks.STONE, AutomaticGrowthEvidence.BLOCK_ITEM_MAPPING)
+        sink.addInputEvidence(Items.WHEAT_SEEDS, AutomaticGrowthEvidence.SEED_TAG)
+
+        assertNull(sink.finish()[Items.WHEAT_SEEDS])
+    }
+
+    @Test
+    fun `registered crop mapping is discoverable independently from primary block item`() {
+        val wheat =
+            assertNotNull(AutomaticGrowthCandidateSources.collect()[Items.WHEAT_SEEDS])
+                .single { it.block === Blocks.WHEAT }
+
+        assertTrue(AutomaticGrowthEvidence.BLOCK_ITEM_MAPPING in wheat.evidence)
+        assertTrue(AutomaticGrowthEvidence.CROP_CLASS in wheat.evidence)
+    }
+
+    @Test
+    fun `automatic adapters select one base and input claims outrank ordinary priorities`() {
+        val high = AutomaticSimulationCandidate(lazyId("high"), lazyId("high/recipe"), 20, 200)
+        val claimed = AutomaticSimulationCandidate(lazyId("claimed"), lazyId("claimed/recipe"), 20, 100, claimsInput = true)
+        val low = AutomaticSimulationCandidate(lazyId("low"), lazyId("low/recipe"), 20, 50)
+
+        assertSame(high, selectAutomaticSimulationCandidate(listOf(low, high)))
+        assertSame(claimed, selectAutomaticSimulationCandidate(listOf(high, claimed, low)))
+        assertNull(selectAutomaticSimulationCandidate(emptyList()))
+    }
+
+    @Test
+    fun `growth target selection prefers productive sustainable harvest variants`() {
+        val budding =
+            AutomaticGrowthTarget(
+                Blocks.WHEAT.defaultBlockState(),
+                listOf(ItemStack(Items.WHEAT_SEEDS)),
+                setOf(AutomaticGrowthEvidence.CROP_TAG),
+            )
+        val environmentalVariant =
+            AutomaticGrowthTarget(
+                Blocks.BEETROOTS.defaultBlockState(),
+                listOf(ItemStack(Items.WHEAT)),
+                setOf(AutomaticGrowthEvidence.CROP_CLASS, AutomaticGrowthEvidence.CROP_TAG),
+            )
+        val normal =
+            AutomaticGrowthTarget(
+                Blocks.CARROTS.defaultBlockState(),
+                listOf(ItemStack(Items.WHEAT), ItemStack(Items.WHEAT_SEEDS)),
+                setOf(AutomaticGrowthEvidence.CROP_CLASS, AutomaticGrowthEvidence.CROP_TAG),
+            )
+
+        assertSame(
+            normal,
+            selectAutomaticGrowthTarget(Items.WHEAT_SEEDS, listOf(budding, environmentalVariant, normal)),
         )
     }
 

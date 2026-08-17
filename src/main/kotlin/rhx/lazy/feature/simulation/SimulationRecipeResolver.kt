@@ -92,6 +92,8 @@ internal object SimulationRecipeResolver {
     @Synchronized
     fun invalidate() {
         indices.clear()
+        AutomaticGrowthIndex.invalidate()
+        SimulationLootDisplays.invalidate()
     }
 
     @Synchronized

@@ -56,9 +56,7 @@ internal object AutomaticSimulationAdapters {
             synchronized(this) { sources.values.toList() }
                 .filterNot { registration -> stack.`is`(registration.blacklist) }
                 .mapNotNull { registration -> registration.adapter.resolve(level, stack) }
-        val claimed = candidates.filter(AutomaticSimulationCandidate::claimsInput)
-        return (if (claimed.isEmpty()) candidates else listOf(claimed.maxWith(candidateComparator)))
-            .sortedWith(candidateComparator)
+        return selectAutomaticSimulationCandidate(candidates)?.let(::listOf).orEmpty()
     }
 
     fun settingsFingerprint(): List<Pair<ResourceLocation, Any?>> =
@@ -68,12 +66,17 @@ internal object AutomaticSimulationAdapters {
         val adapter: AutomaticSimulationAdapter,
         val blacklist: TagKey<Item>,
     )
-
-    private val candidateComparator =
-        compareByDescending<AutomaticSimulationCandidate>(AutomaticSimulationCandidate::priority)
-            .thenBy { it.source.toString() }
-            .thenBy { it.id.toString() }
 }
+
+internal fun selectAutomaticSimulationCandidate(candidates: List<AutomaticSimulationCandidate>): AutomaticSimulationCandidate? {
+    val claimed = candidates.filter(AutomaticSimulationCandidate::claimsInput)
+    return (if (claimed.isEmpty()) candidates else claimed).minWithOrNull(candidateComparator)
+}
+
+private val candidateComparator =
+    compareByDescending<AutomaticSimulationCandidate>(AutomaticSimulationCandidate::priority)
+        .thenBy { it.source.toString() }
+        .thenBy { it.id.toString() }
 
 /** Every automatic recipe id is `lazy:automatic/<source path>/<segments...>`. */
 internal fun automaticId(

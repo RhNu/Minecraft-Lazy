@@ -1,85 +1,75 @@
 package rhx.lazy.feature.simulation
 
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.mojang.serialization.DynamicOps
-import com.mojang.serialization.JsonOps
-import net.minecraft.core.registries.BuiltInRegistries
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.core.BlockPos
+import net.minecraft.core.component.DataComponentPatch
+import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
-import net.minecraft.tags.TagKey
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.storage.loot.LootTable
-import rhx.lazy.Lazy
+import net.minecraft.world.level.storage.loot.LootParams
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams
+import net.minecraft.world.phys.Vec3
+import java.util.WeakHashMap
 
 /**
- * Loot table candidates shown in previews. Production always rolls the loaded table instead,
- * so this only has to enumerate the items a table can hand out.
+ * Context-aware loot candidates shown in previews. Fixed probe seeds keep discovery deterministic,
+ * do not consume the world's random sequence, and let modded loot conditions/functions run through
+ * the same loaded table used by production.
  */
 internal object SimulationLootDisplays {
+    private val caches = WeakHashMap<MinecraftServer, MutableMap<PreviewKey, List<ItemStack>>>()
+
     fun items(
+        level: Level,
+        state: BlockState,
+        tool: ItemStack = ItemStack.EMPTY,
+    ): List<ItemStack> {
+        val serverLevel = level as? ServerLevel ?: return fallback(state)
+        val key = PreviewKey(state, tool.item, tool.componentsPatch)
+        val cache = synchronized(this) { caches.getOrPut(serverLevel.server, ::hashMapOf) }
+        synchronized(cache) { cache[key]?.let { return it.map(ItemStack::copy) } }
+
+        val discovered = sample(serverLevel, state, tool)
+        synchronized(cache) { cache[key] = discovered.map(ItemStack::copy) }
+        return discovered
+    }
+
+    @Synchronized
+    fun invalidate() {
+        caches.clear()
+    }
+
+    private fun sample(
         level: ServerLevel,
         state: BlockState,
+        tool: ItemStack,
     ): List<ItemStack> {
         val table = level.server.reloadableRegistries().getLootTable(state.block.lootTable)
-        val context = level.registryAccess().createSerializationContext(JsonOps.INSTANCE)
-        val json = encode(table, context) ?: return fallback(state)
-        val items = linkedMapOf<Item, ItemStack>()
-        collect(json, items)
-        return items.values.map(ItemStack::copy).ifEmpty { fallback(state) }
-    }
-
-    private fun encode(
-        table: LootTable,
-        ops: DynamicOps<JsonElement>,
-    ): JsonElement? =
-        LootTable.DIRECT_CODEC
-            .encodeStart(ops, table)
-            .resultOrPartial { message -> Lazy.logger.warn("Failed to inspect simulation loot table: {}", message) }
-            .orElse(null)
-
-    private fun collect(
-        element: JsonElement,
-        items: MutableMap<Item, ItemStack>,
-    ) {
-        when {
-            element.isJsonArray -> element.asJsonArray.forEach { collect(it, items) }
-            element.isJsonObject -> {
-                val objectValue = element.asJsonObject
-                when (objectValue.string("type")) {
-                    "minecraft:item" -> objectValue.string("name")?.let { addItem(it, items) }
-                    "minecraft:tag" -> objectValue.string("name")?.let { addTag(it, items) }
+        val params =
+            LootParams
+                .Builder(level)
+                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(BlockPos.ZERO))
+                .withParameter(LootContextParams.TOOL, tool)
+                .withParameter(LootContextParams.BLOCK_STATE, state)
+                .create(LootContextParamSets.BLOCK)
+        val found = mutableListOf<ItemStack>()
+        repeat(PREVIEW_PROBES) { probe ->
+            val seed = PROBE_STEP * (probe + 1L)
+            table
+                .getRandomItems(params, seed)
+                .asSequence()
+                .filterNot(ItemStack::isEmpty)
+                .forEach { stack ->
+                    if (found.none { ItemStack.isSameItemSameComponents(it, stack) }) {
+                        found += stack.copyWithCount(1)
+                    }
                 }
-                objectValue.entrySet().forEach { (_, child) -> collect(child, items) }
-            }
         }
-    }
-
-    private fun addItem(
-        rawId: String,
-        items: MutableMap<Item, ItemStack>,
-    ) {
-        val id = ResourceLocation.tryParse(rawId) ?: return
-        BuiltInRegistries.ITEM
-            .getOptional(id)
-            .orElse(null)
-            ?.takeUnless { it === Items.AIR }
-            ?.let { items.putIfAbsent(it, ItemStack(it)) }
-    }
-
-    private fun addTag(
-        rawId: String,
-        items: MutableMap<Item, ItemStack>,
-    ) {
-        val id = ResourceLocation.tryParse(rawId) ?: return
-        val tag = TagKey.create(BuiltInRegistries.ITEM.key(), id)
-        BuiltInRegistries.ITEM.getTag(tag).orElse(null)?.forEach { holder ->
-            holder.value().takeUnless { it === Items.AIR }?.let { items.putIfAbsent(it, ItemStack(it)) }
-        }
+        return found
     }
 
     private fun fallback(state: BlockState): List<ItemStack> =
@@ -89,7 +79,14 @@ internal object SimulationLootDisplays {
             ?.let { listOf(ItemStack(it)) }
             .orEmpty()
 
-    private fun JsonObject.string(name: String): String? = get(name)?.takeIf(JsonElement::isJsonPrimitive)?.asString
+    private data class PreviewKey(
+        val state: BlockState,
+        val tool: Item,
+        val components: DataComponentPatch,
+    )
+
+    private const val PREVIEW_PROBES = 128
+    private const val PROBE_STEP = -7046029254386353131L
 }
 
 internal fun blockLoot(
@@ -98,6 +95,6 @@ internal fun blockLoot(
     tool: ItemStack = ItemStack.EMPTY,
 ) = SimulationBlockLootOutput(
     state,
-    (level as? ServerLevel)?.let { SimulationLootDisplays.items(it, state) }.orEmpty(),
+    SimulationLootDisplays.items(level, state, tool),
     tool,
 )

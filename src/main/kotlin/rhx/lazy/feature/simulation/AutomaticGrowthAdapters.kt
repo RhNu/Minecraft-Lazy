@@ -74,13 +74,20 @@ internal object CropSimulationAdapter : AutomaticSimulationAdapter {
     ): AutomaticSimulationCandidate? {
         if (stack.`is`(Items.MELON_SEEDS)) return stem(level, stack, Items.MELON, Items.MELON_SEEDS, includeFruit = true)
         if (stack.`is`(Items.PUMPKIN_SEEDS)) return stem(level, stack, Items.PUMPKIN, Items.PUMPKIN_SEEDS, includeFruit = false)
-        val state = matureCropState(stack) ?: return null
+        val target = AutomaticGrowthIndex.resolve(level, stack.item) ?: return null
         return AutomaticSimulationCandidate(
             SOURCE,
             inputId(SOURCE, stack),
             SimulationConfigs.settings.defaultDuration.get(),
             PRIORITY,
-            blockLootOutputs = listOf(blockLoot(level, state)),
+            claimsInput = true,
+            blockLootOutputs =
+                listOf(
+                    SimulationBlockLootOutput(
+                        target.state,
+                        target.displayItems.map(ItemStack::copy),
+                    ),
+                ),
         )
     }
 
@@ -151,7 +158,11 @@ internal fun automaticTreePair(input: ResourceLocation): AutomaticTreePair? {
 }
 
 internal fun matureCropState(stack: ItemStack): BlockState? {
-    val crop = ((stack.item as? BlockItem)?.block as? CropBlock) ?: return null
+    val crop =
+        Item.BY_BLOCK
+            .asSequence()
+            .firstOrNull { (block, item) -> item === stack.item && block is CropBlock }
+            ?.key as? CropBlock ?: return null
     return crop.getStateForAge(crop.maxAge)
 }
 
