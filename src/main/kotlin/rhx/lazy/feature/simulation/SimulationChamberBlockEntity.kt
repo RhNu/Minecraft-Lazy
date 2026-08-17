@@ -25,6 +25,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.ManagedBlockEntity.Companion.MANAGED_DATA_KEY
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.io.IoPushResult
 import rhx.lazy.core.io.NeighborCapabilities
 import rhx.lazy.core.io.NetworkInsertCapabilities
@@ -248,13 +249,7 @@ internal class SimulationChamberBlockEntity(
 
     private fun processBatch(level: ServerLevel) {
         val active = batch ?: return
-        val budget =
-            min(
-                active.remaining,
-                SimulationConfigs.settings.maxRollsPerTick
-                    .get()
-                    .toLong(),
-            ).toInt()
+        val budget = simulationRollBudget(active.remaining, SimulationConfigs.settings.maxRollsPerTick.get(), ioController.mode)
         // Tools are read per batch tick instead of captured at batch start, so swapping one takes effect at once.
         val loadout = SimulationToolModules.loadout(inputs.subList(TOOL_SLOT_START, INPUT_SLOTS))
         val accumulator = SimulationOutputAccumulator(loadout::acceptsOutput)
@@ -450,6 +445,23 @@ internal class SimulationChamberBlockEntity(
         }
     }
 }
+
+/**
+ * A valid chamber batch cannot exceed 64 cores times the configured maximum output multiplier.
+ * Network mode deliberately settles that whole batch before its same-tick push; the other modes
+ * keep the configurable budget because their local or adjacent inventories are naturally bounded.
+ */
+internal fun simulationRollBudget(
+    remaining: Long,
+    configuredLimit: Int,
+    mode: IoMode,
+): Int {
+    if (remaining <= 0L) return 0
+    val limit = if (mode == IoMode.NETWORK) MAX_VALID_BATCH_ROLLS else configuredLimit.coerceAtLeast(1).toLong()
+    return min(remaining, limit).toInt()
+}
+
+private const val MAX_VALID_BATCH_ROLLS = 64L * 1024L
 
 private fun <T> MutableList<T>.resize(
     size: Int,

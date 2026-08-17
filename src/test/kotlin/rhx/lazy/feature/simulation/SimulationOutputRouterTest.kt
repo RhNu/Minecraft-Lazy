@@ -82,6 +82,26 @@ class SimulationOutputRouterTest {
     }
 
     @Test
+    fun `fully accepting network drains an oversized output in one push`() {
+        val fixture = Fixture()
+        var calls = 0
+        val provider =
+            TestProvider("full_batch") { payload ->
+                calls++
+                assertEquals(432, (payload as NetworkPayload.Items).amount)
+                NetworkTransferResult.Success(0)
+            }
+        NetworkOutputProviders.register(provider)
+        fixture.router.enqueue(ItemStack(Items.DIAMOND), 432)
+        fixture.changed = false
+
+        assertEquals(IoPushResult.Success, fixture.router.pushToNetwork(provider.target()))
+        assertEquals(1, calls)
+        assertFalse(fixture.router.hasOutputs)
+        assertTrue(fixture.changed)
+    }
+
+    @Test
     fun `partial network success is marked changed before target failure`() {
         val fixture = Fixture()
         var calls = 0

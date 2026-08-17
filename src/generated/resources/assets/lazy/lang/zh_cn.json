@@ -141,7 +141,7 @@
   "lazy.simulation": "模拟室",
   "lazy.simulation.defaultDuration": "默认周期时长",
   "lazy.simulation.desc": "由服务端控制的模拟室设置",
-  "lazy.simulation.maxRollsPerTick": "每刻最大抽取次数",
+  "lazy.simulation.maxRollsPerTick": "非网络模式每刻最大抽取次数",
   "lazy.simulation.t1OutputMultiplier": "T1 产出倍率",
   "lazy.simulation.t1SpeedMultiplier": "T1 速度倍率",
   "lazy.simulation.t2OutputMultiplier": "T2 产出倍率",

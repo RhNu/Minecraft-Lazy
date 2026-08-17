@@ -141,7 +141,7 @@
   "lazy.simulation": "Simulation Chamber",
   "lazy.simulation.defaultDuration": "Default cycle duration",
   "lazy.simulation.desc": "Server-authoritative simulation chamber settings",
-  "lazy.simulation.maxRollsPerTick": "Maximum rolls per tick",
+  "lazy.simulation.maxRollsPerTick": "Maximum non-network rolls per tick",
   "lazy.simulation.t1OutputMultiplier": "T1 output multiplier",
   "lazy.simulation.t1SpeedMultiplier": "T1 speed multiplier",
   "lazy.simulation.t2OutputMultiplier": "T2 output multiplier",
