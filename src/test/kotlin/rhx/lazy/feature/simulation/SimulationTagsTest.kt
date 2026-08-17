@@ -44,7 +44,7 @@ class SimulationTagsTest {
             SimulationTags.sourceBlacklist(lazyId("mystical")),
         ).forEach { tag -> assertResource(tag, "item") }
 
-        assertResource(SimulationTags.dataModelBlacklist, "entity_type")
+        assertResource(SimulationTags.entityTargetBlacklist, "entity_type")
     }
 
     private fun assertResource(

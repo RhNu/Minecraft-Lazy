@@ -32,7 +32,7 @@ internal class DataModelItem(
             clearBinding(stack, player)
             return InteractionResult.sidedSuccess(player.level().isClientSide)
         }
-        if (interactionTarget is Player || interactionTarget.type.`is`(SimulationTags.dataModelBlacklist)) {
+        if (interactionTarget is Player || !EntitySimulationTargets.isAllowed(interactionTarget.type)) {
             return InteractionResult.PASS
         }
         if (!player.level().isClientSide) {
@@ -87,6 +87,11 @@ internal class DataModelItem(
             stack
                 .takeIf { it.`is`(SimulationRegistries.dataModelItem.get()) }
                 ?.get(SimulationRegistries.entityTypeComponent.get())
+
+        fun boundTo(entityId: ResourceLocation): ItemStack =
+            ItemStack(SimulationRegistries.dataModelItem.get()).apply {
+                set(SimulationRegistries.entityTypeComponent.get(), entityId)
+            }
 
         private fun clearBinding(
             stack: ItemStack,

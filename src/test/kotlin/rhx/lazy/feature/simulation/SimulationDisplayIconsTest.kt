@@ -31,6 +31,15 @@ class SimulationDisplayIconsTest {
     }
 
     @Test
+    fun `a spawn egg shows the same entity icon as a bound data model`() {
+        val eggIcon = SimulationDisplayIcons.iconFor(ItemStack(Items.COW_SPAWN_EGG, 3))
+        val modelIcon = SimulationDisplayIcons.iconFor(dataModel(EntityType.COW))
+
+        assertTrue(ItemStack.isSameItemSameComponents(modelIcon, eggIcon))
+        assertEquals(1, eggIcon.count)
+    }
+
+    @Test
     fun `a blank data model stays the card`() {
         val icon = SimulationDisplayIcons.iconFor(ItemStack(SimulationRegistries.dataModelItem.get()))
 

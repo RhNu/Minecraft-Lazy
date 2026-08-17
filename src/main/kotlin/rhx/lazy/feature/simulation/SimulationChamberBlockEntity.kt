@@ -271,7 +271,7 @@ internal class SimulationChamberBlockEntity(
             }
             is SimulationBatch.Entity -> {
                 val type = BuiltInRegistries.ENTITY_TYPE.getOptional(active.entityId).orElse(null) ?: return cancelBatch()
-                if (type.`is`(SimulationTags.dataModelBlacklist)) return cancelBatch()
+                if (!EntitySimulationTargets.isAllowed(type)) return cancelBatch()
                 repeat(budget) {
                     if (active.rollLootTable) {
                         val entity = createTemporaryEntity(type, level) ?: return cancelBatch()

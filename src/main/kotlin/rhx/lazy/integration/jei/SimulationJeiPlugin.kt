@@ -25,6 +25,7 @@ import net.neoforged.neoforge.fluids.FluidStack
 import rhx.lazy.feature.simulation.AutomaticSimulationClientSnapshot
 import rhx.lazy.feature.simulation.AutomaticSimulationDisplay
 import rhx.lazy.feature.simulation.DataModelItem
+import rhx.lazy.feature.simulation.EntitySimulationTargets
 import rhx.lazy.feature.simulation.ResolvedSimulation
 import rhx.lazy.feature.simulation.SimulationFluidOutput
 import rhx.lazy.feature.simulation.SimulationItemOutput
@@ -86,12 +87,10 @@ internal class SimulationJeiPlugin : IModPlugin {
                 .getAllRecipesFor(SimulationRegistries.entityRecipeType.get())
                 .map { holder ->
                     val recipe = holder.value()
-                    val model = ItemStack(SimulationRegistries.dataModelItem.get())
-                    model.set(SimulationRegistries.entityTypeComponent.get(), recipe.entity)
                     val runtimeItems = recipe.itemOutputs.map(ItemOutputDisplay::from)
                     val runtimeFluids = recipe.fluidOutputs.map(FluidOutputDisplay::from)
                     EntityDisplay(
-                        model,
+                        EntitySimulationTargets.equivalentInputs(recipe.entity),
                         runtimeItems +
                             recipe.displayItemOutputs
                                 .filter { display -> runtimeItems.none { ItemStack.isSameItemSameComponents(it.stack, display) } }
@@ -211,7 +210,7 @@ internal class SimulationJeiPlugin : IModPlugin {
             recipe: EntityDisplay,
             focuses: IFocusGroup,
         ) {
-            builder.addInputSlot(INPUT_X, INPUT_Y).addItemStack(recipe.model)
+            builder.addInputSlot(INPUT_X, INPUT_Y).addItemStacks(recipe.inputs)
             addOutputs(builder, recipe.items, recipe.fluids)
         }
 
@@ -233,7 +232,7 @@ internal class SimulationJeiPlugin : IModPlugin {
     )
 
     private data class EntityDisplay(
-        val model: ItemStack,
+        val inputs: List<ItemStack>,
         val items: List<ItemOutputDisplay>,
         val fluids: List<FluidOutputDisplay>,
     )

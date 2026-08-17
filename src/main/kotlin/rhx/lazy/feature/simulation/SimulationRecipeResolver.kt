@@ -52,15 +52,19 @@ internal object SimulationRecipeResolver {
     ): ResolvedSimulation? {
         if (stack.isEmpty) return null
         val index = indexFor(level)
-        DataModelItem.entityTypeId(stack)?.let { entityId ->
-            val entityType = BuiltInRegistries.ENTITY_TYPE.getOptional(entityId).orElse(null) ?: return null
-            if (entityType.`is`(SimulationTags.dataModelBlacklist)) return null
-            val profile = index.entityRecipes[entityId]
-            return ResolvedSimulation.EntityProfile(
-                entityId,
-                profile,
-                profile?.value()?.durationTicks() ?: SimulationConfigs.settings.defaultDuration.get(),
-            )
+        when (val resolution = EntitySimulationTargets.resolve(stack)) {
+            EntitySimulationTargetResolution.InvalidEntityTarget -> return null
+            EntitySimulationTargetResolution.NotEntityTarget -> Unit
+            is EntitySimulationTargetResolution.Resolved -> {
+                val target = resolution.target
+                if (!target.isAllowed) return null
+                val profile = index.entityRecipes[target.id]
+                return ResolvedSimulation.EntityProfile(
+                    target.id,
+                    profile,
+                    profile?.value()?.durationTicks() ?: SimulationConfigs.settings.defaultDuration.get(),
+                )
+            }
         }
 
         explicitItemRecipe(index, stack)?.let { return applyInjections(index, stack, resolvedExplicit(it)) }

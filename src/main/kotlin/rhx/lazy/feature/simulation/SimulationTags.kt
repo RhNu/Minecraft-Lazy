@@ -15,7 +15,7 @@ internal object SimulationTags {
     val incineratorTools: TagKey<Item> = itemTag("simulation/tool/incinerator")
     val incineratedOutputs: TagKey<Item> = itemTag("simulation/incinerated")
     val blacklist: TagKey<Item> = itemTag("simulation/blacklist/all")
-    val dataModelBlacklist: TagKey<EntityType<*>> =
+    val entityTargetBlacklist: TagKey<EntityType<*>> =
         TagKey.create(Registries.ENTITY_TYPE, lazyId("simulation/blacklist/data_model"))
 
     /** `lazy:tree` becomes `lazy:simulation/blacklist/tree`; other namespaces keep their own segment. */
