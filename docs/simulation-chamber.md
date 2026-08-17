@@ -43,7 +43,7 @@
 }
 ```
 
-实体 profile 使用 `lazy:entity_simulation`，其输入可以是对应刷怪蛋或已绑定的数据模型，JEI 也会把两者作为同一配方的等价输入轮换显示。`roll_loot_table` 默认开启；`loot_table` 可覆盖实体实例选择的默认战利品表。模拟会收集战利品表、自定义死亡掉落及装备掉落，但不会触发生物死亡/掉落事件，也不会生成经验。`display_item_outputs` 和 `display_fluid_outputs` 只用于 JEI 预览。
+实体 profile 使用 `lazy:entity_simulation`，其输入可以是对应刷怪蛋或已绑定的数据模型，JEI 也会把两者作为同一配方的等价输入轮换显示。`roll_loot_table` 默认开启；`loot_table` 可覆盖实体实例选择的默认战利品表。模拟会收集战利品表、自定义死亡掉落及装备掉落，但不会触发生物死亡/掉落事件，也不会生成经验。初始化偶尔产生的鸡骑士、蜘蛛骑士等伴生实体会随模拟清理，不会进入世界，其自身掉落也不会成为模拟产物。`display_item_outputs` 和 `display_fluid_outputs` 只用于 JEI 预览。
 
 ```json
 {

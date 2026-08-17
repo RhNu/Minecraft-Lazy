@@ -318,7 +318,18 @@ internal class SimulationChamberBlockEntity(
         (type.create(level) as? LivingEntity)?.also { entity ->
             entity.setPos(blockPos.center)
             if (entity is Mob) {
-                EventHooks.finalizeMobSpawn(entity, level, level.getCurrentDifficultyAt(blockPos), MobSpawnType.MOB_SUMMONED, null)
+                val isolatedLevel = IsolatedServerLevelAccessor(level)
+                try {
+                    EventHooks.finalizeMobSpawn(
+                        entity,
+                        isolatedLevel,
+                        level.getCurrentDifficultyAt(blockPos),
+                        MobSpawnType.MOB_SUMMONED,
+                        null,
+                    )
+                } finally {
+                    isolatedLevel.discardCompanions(entity)
+                }
             }
         }
 
