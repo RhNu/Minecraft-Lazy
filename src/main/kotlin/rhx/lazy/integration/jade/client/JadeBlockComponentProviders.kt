@@ -97,9 +97,12 @@ internal object SimulationChamberJadeComponentProvider :
         val progress = data.progress.coerceIn(0f, 1f)
         val elements = IElementHelper.get()
         tooltip.add(
+            Component.translatable("jade.lazy.simulation_chamber.progress", (progress * 100).toInt()),
+        )
+        tooltip.add(
             elements.progress(
                 progress,
-                Component.translatable("jade.lazy.simulation_chamber.progress", (progress * 100).toInt()),
+                null,
                 elements.progressStyle(),
                 BoxStyle.getNestedBox(),
                 true,
