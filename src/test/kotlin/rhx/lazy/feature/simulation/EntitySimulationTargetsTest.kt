@@ -27,6 +27,17 @@ class EntitySimulationTargetsTest {
     }
 
     @Test
+    fun `dragon egg resolves to the ender dragon target`() {
+        val entityId = BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ENDER_DRAGON)
+
+        val resolution = EntitySimulationTargets.resolve(ItemStack(Items.DRAGON_EGG))
+
+        assertTrue(resolution is EntitySimulationTargetResolution.Resolved)
+        assertEquals(entityId, resolution.target.id)
+        assertEquals(EntityType.ENDER_DRAGON, resolution.target.type)
+    }
+
+    @Test
     fun `removed entity binding stays an invalid entity target`() {
         val model =
             DataModelItem.boundTo(
@@ -59,5 +70,15 @@ class EntitySimulationTargetsTest {
         assertEquals(1, inputs.size)
         assertTrue(inputs.single().`is`(SimulationRegistries.dataModelItem.get()))
         assertEquals(entityId, DataModelItem.entityTypeId(inputs.single()))
+    }
+
+    @Test
+    fun `ender dragon inputs include dragon egg and bound data model`() {
+        val entityId = BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ENDER_DRAGON)
+
+        val inputs = EntitySimulationTargets.equivalentInputs(entityId)
+
+        assertTrue(inputs.any { it.`is`(Items.DRAGON_EGG) })
+        assertEquals(entityId, DataModelItem.entityTypeId(inputs.last()))
     }
 }
