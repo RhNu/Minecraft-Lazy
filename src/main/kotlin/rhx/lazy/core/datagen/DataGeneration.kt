@@ -331,7 +331,7 @@ internal object DataGeneration {
             add("gui.lazy.simulation_chamber.tool", "Tool")
             add(
                 "gui.lazy.simulation_chamber.tool.hint",
-                "Weapon: kills the simulated entity with it · Lava bucket: melts gear out of the output",
+                "Weapon: kills the simulated entity with it · Lava bucket: melts gear · Dispenser: settles a full batch",
             )
             add("gui.lazy.simulation_chamber.progress", "Simulation progress")
             add("gui.lazy.simulation_chamber.pending", "Unable to output — simulation paused")
@@ -348,7 +348,7 @@ internal object DataGeneration {
             add("lazy.simulation", "Simulation Chamber")
             add("lazy.simulation.desc", "Server-authoritative simulation chamber settings")
             add("lazy.simulation.defaultDuration", "Default cycle duration")
-            add("lazy.simulation.maxRollsPerTick", "Maximum non-network rolls per tick")
+            add("lazy.simulation.maxRollsPerTick", "Maximum ordinary rolls per tick without a dispenser")
             add("lazy.simulation.taggedMaterials", "Tagged material recipes")
             add("lazy.simulation.taggedMaterialDuration", "Tagged material duration")
             add("lazy.simulation.taggedMaterialModPriority", "Tagged material mod priority")
@@ -543,7 +543,7 @@ internal object DataGeneration {
             add("gui.lazy.simulation_chamber.target", "种子物品或模拟目标")
             add("gui.lazy.simulation_chamber.core", "模拟核心")
             add("gui.lazy.simulation_chamber.tool", "工具")
-            add("gui.lazy.simulation_chamber.tool.hint", "武器：用它击杀模拟实体 · 岩浆桶：熔毁产出中的装备与工具")
+            add("gui.lazy.simulation_chamber.tool.hint", "武器：用它击杀模拟实体 · 岩浆桶：熔毁装备与工具 · 发射器：一次结算整批产出")
             add("gui.lazy.simulation_chamber.progress", "模拟进度")
             add("gui.lazy.simulation_chamber.pending", "无法输出——模拟已暂停")
             add("gui.lazy.simulation_chamber.output_multiplier", "产出倍率：×%s")
@@ -559,7 +559,7 @@ internal object DataGeneration {
             add("lazy.simulation", "模拟室")
             add("lazy.simulation.desc", "由服务端控制的模拟室设置")
             add("lazy.simulation.defaultDuration", "默认周期时长")
-            add("lazy.simulation.maxRollsPerTick", "非网络模式每刻最大抽取次数")
+            add("lazy.simulation.maxRollsPerTick", "未放入发射器时普通输出每刻最大抽取次数")
             add("lazy.simulation.taggedMaterials", "标签材料配方")
             add("lazy.simulation.taggedMaterialDuration", "标签材料周期时长")
             add("lazy.simulation.taggedMaterialModPriority", "标签材料模组优先级")

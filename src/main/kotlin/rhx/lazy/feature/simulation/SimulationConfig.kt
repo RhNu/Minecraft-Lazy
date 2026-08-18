@@ -18,7 +18,7 @@ internal class SimulationConfig : Config(lazyId("simulation")) {
     @Comment("Default simulation duration in ticks when a recipe does not specify one.")
     var defaultDuration = ValidatedInt(1200, 1..72_000)
 
-    @Comment("Maximum virtual output rolls processed by one non-networked chamber per server tick.")
+    @Comment("Maximum virtual output rolls processed by one ordinary chamber per server tick without a dispenser tool.")
     var maxRollsPerTick = ValidatedInt(16, 1..4096)
 
     @Comment("Allow automatic simulations from the c: material tag rules and the lazy:simulation/target/duplicate_self tag.")

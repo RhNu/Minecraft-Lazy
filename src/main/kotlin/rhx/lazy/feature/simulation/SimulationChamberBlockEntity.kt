@@ -249,9 +249,15 @@ internal class SimulationChamberBlockEntity(
 
     private fun processBatch(level: ServerLevel) {
         val active = batch ?: return
-        val budget = simulationRollBudget(active.remaining, SimulationConfigs.settings.maxRollsPerTick.get(), ioController.mode)
         // Tools are read per batch tick instead of captured at batch start, so swapping one takes effect at once.
         val loadout = SimulationToolModules.loadout(inputs.subList(TOOL_SLOT_START, INPUT_SLOTS))
+        val budget =
+            simulationRollBudget(
+                active.remaining,
+                SimulationConfigs.settings.maxRollsPerTick.get(),
+                ioController.mode,
+                loadout.settlesBatchImmediately,
+            )
         val accumulator = SimulationOutputAccumulator(loadout::acceptsOutput)
         when (active) {
             is SimulationBatch.Item -> {
@@ -448,16 +454,22 @@ internal class SimulationChamberBlockEntity(
 
 /**
  * A valid chamber batch cannot exceed 64 cores times the configured maximum output multiplier.
- * Network mode deliberately settles that whole batch before its same-tick push; the other modes
- * keep the configurable budget because their local or adjacent inventories are naturally bounded.
+ * Network mode and the dispenser upgrade deliberately settle that whole batch before their
+ * same-tick IO cycle; ordinary local or adjacent inventories otherwise keep the configured budget.
  */
 internal fun simulationRollBudget(
     remaining: Long,
     configuredLimit: Int,
     mode: IoMode,
+    settlesBatchImmediately: Boolean = false,
 ): Int {
     if (remaining <= 0L) return 0
-    val limit = if (mode == IoMode.NETWORK) MAX_VALID_BATCH_ROLLS else configuredLimit.coerceAtLeast(1).toLong()
+    val limit =
+        if (mode == IoMode.NETWORK || settlesBatchImmediately) {
+            MAX_VALID_BATCH_ROLLS
+        } else {
+            configuredLimit.coerceAtLeast(1).toLong()
+        }
     return min(remaining, limit).toInt()
 }
 

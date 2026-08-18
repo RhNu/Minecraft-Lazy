@@ -21,4 +21,11 @@ class SimulationRollBudgetTest {
     fun `network mode bounds malformed legacy batches`() {
         assertEquals(65_536, simulationRollBudget(Long.MAX_VALUE, 16, IoMode.NETWORK))
     }
+
+    @Test
+    fun `dispenser upgrade settles ordinary IO modes in one tick`() {
+        assertEquals(432, simulationRollBudget(432, 16, IoMode.PASSIVE, true))
+        assertEquals(432, simulationRollBudget(432, 16, IoMode.FACE, true))
+        assertEquals(65_536, simulationRollBudget(Long.MAX_VALUE, 16, IoMode.PASSIVE, true))
+    }
 }
