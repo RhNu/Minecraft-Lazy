@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger
 import rhx.lazy.core.MachineWrench
 import rhx.lazy.core.command.LazyCommands
 import rhx.lazy.core.registry.LazyRegistries
+import rhx.lazy.feature.energy.EnergyBatteryInteractions
 import rhx.lazy.feature.protection.DamageCapHandler
 import rhx.lazy.feature.repairer.RepairerConfigs
 import rhx.lazy.feature.simulation.DataModelInteractionHandler
@@ -38,6 +39,7 @@ object Lazy {
         NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onServerTick)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, DataModelInteractionHandler::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(MachineWrench::onRightClickBlock)
+        NeoForge.EVENT_BUS.addListener(EnergyBatteryInteractions::onLeftClickBlock)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onInvulnerabilityCheck)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, DamageCapHandler::onIncomingDamage)
         logger.info("Lazy mod initialized")
