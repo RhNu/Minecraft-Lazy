@@ -61,7 +61,6 @@ internal object ItemCopierUI {
                                 style = {
                                     tooltips(
                                         Component.translatable("gui.lazy.item_copier.template.empty"),
-                                        Component.translatable("gui.lazy.item_copier.template.description"),
                                     )
                                 }
                                 onServerClick = { event ->
@@ -88,13 +87,6 @@ internal object ItemCopierUI {
                                         ItemCopierGear.DEFAULT.intervalTicks,
                                     )
                                 cls = { +"lazy-item-copier__gear" }
-                                style = {
-                                    tooltips(
-                                        Component.translatable(
-                                            "gui.lazy.item_copier.interval.description",
-                                        ),
-                                    )
-                                }
                                 onServerClick = { event ->
                                     if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
                                         model.cycleGear()
@@ -134,7 +126,6 @@ internal object ItemCopierUI {
                             template.hoverName,
                         )
                     },
-                    Component.translatable("gui.lazy.item_copier.template.description"),
                 )
             }
         }

@@ -51,8 +51,8 @@ internal object SimulationChamberUI {
                 })
                 column({ cls = { +"lazy-simulation__machine" } }) {
                     row({ cls = { +"lazy-simulation__inputs" } }) {
-                        inputSlot(model, SimulationChamberBlockEntity.TARGET_SLOT, "gui.lazy.simulation_chamber.target")
-                        inputSlot(model, SimulationChamberBlockEntity.CORE_SLOT, "gui.lazy.simulation_chamber.core")
+                        inputSlot(model, SimulationChamberBlockEntity.TARGET_SLOT)
+                        inputSlot(model, SimulationChamberBlockEntity.CORE_SLOT)
                     }
                     row({ cls = { +"lazy-simulation__processing" } }) {
                         outputMultiplier = multiplierIcon(Items.CHEST)
@@ -60,7 +60,6 @@ internal object SimulationChamberUI {
                             range(0f, 1f)
                             label(Component.empty())
                             cls = { +"lazy-simulation__progress" }
-                            style = { tooltips(Component.translatable("gui.lazy.simulation_chamber.progress")) }
                         }) {
                             bind(DataBindingBuilder.floatValS2C(model::progress).initialValue(0f).build())
                         }
@@ -108,12 +107,10 @@ internal object SimulationChamberUI {
     private fun com.lowdragmc.lowdraglib2.gui.ui.UIContainer<*, *>.inputSlot(
         model: Model,
         slot: Int,
-        tooltip: String,
     ) {
         itemSlot({
             bind(model.inputHandler, slot)
             cls = { +"lazy-simulation__slot" }
-            style = { tooltips(Component.translatable(tooltip)) }
         }) {
             withTooltips()
             acceptQuickMove()
@@ -129,12 +126,6 @@ internal object SimulationChamberUI {
         itemSlot({
             bind(model.inputHandler, slot)
             cls = { +"lazy-simulation__slot" }
-            style = {
-                tooltips(
-                    Component.translatable("gui.lazy.simulation_chamber.tool"),
-                    Component.translatable("gui.lazy.simulation_chamber.tool.hint"),
-                )
-            }
         }) {
             withTooltips()
             acceptQuickMove()

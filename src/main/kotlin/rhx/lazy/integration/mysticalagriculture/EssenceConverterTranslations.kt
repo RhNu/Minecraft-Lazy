@@ -11,7 +11,6 @@ internal object EssenceConverterTranslations {
         add("gui.lazy.essence_converter.unavailable", "Essence Converter is no longer available", "精华转换器已不可用")
         add("gui.lazy.essence_converter.amount.tooltip", "Essence amount: %s / %s", "精华量：%s / %s")
         add("gui.lazy.essence_converter.remainder.tooltip", "Remainder: %s / %s essence", "余数：%s / %s 精华量")
-        add("gui.lazy.essence_converter.input.tooltip", "Insert essence", "放入精华")
         add("gui.lazy.essence_converter.clear", "Clear all stored essence", "清空全部精华")
         add("gui.lazy.essence_converter.clear.confirm", "Destroy all stored essence?", "销毁全部已存精华？")
         add("gui.lazy.essence_converter.clear.accept", "Clear", "清空")

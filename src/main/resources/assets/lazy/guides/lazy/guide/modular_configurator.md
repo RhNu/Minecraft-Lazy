@@ -9,6 +9,8 @@ item_ids:
 
 # Modular Configurator
 
+<ItemImage id="lazy:modular_configurator" scale="1.4" />
+
 The Modular Configurator is a general-purpose integration tool. The item and its 18 storage slots always belong to Lazy; installed integrations decide which materials those slots accept and what happens when the tool is used on another mod's block. Each slot holds up to 1024 matching items.
 
 ## Controls

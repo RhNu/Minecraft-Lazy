@@ -133,9 +133,6 @@ internal object EssenceConverterUI {
                             {
                                 bind(model.inputHandler, 0)
                                 cls = { +"lazy-essence-converter__slot" }
-                                style = {
-                                    tooltips(Component.translatable("gui.lazy.essence_converter.input.tooltip"))
-                                }
                             },
                         ) {
                             withTooltips()
