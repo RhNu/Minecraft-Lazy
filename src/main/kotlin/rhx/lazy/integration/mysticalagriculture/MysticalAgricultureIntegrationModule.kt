@@ -13,7 +13,6 @@ internal object MysticalAgricultureIntegrationModule : IntegrationModule {
 
     override fun initialize(context: IntegrationContext) {
         MysticalAgricultureSimulationAdapter.register()
-        EssenceConverterConfigs.init()
         EssenceConverterRegistries.register(context.modBus)
         EssenceConverterTranslations.register()
         context.modBus.addListener(EssenceConverterCapabilities::registerCapabilities)

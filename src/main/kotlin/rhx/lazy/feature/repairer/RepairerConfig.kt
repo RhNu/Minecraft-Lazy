@@ -1,27 +1,32 @@
 package rhx.lazy.feature.repairer
 
-import me.fzzyhmstrs.fzzy_config.annotations.Comment
-import me.fzzyhmstrs.fzzy_config.annotations.Version
-import me.fzzyhmstrs.fzzy_config.annotations.WithPerms
-import me.fzzyhmstrs.fzzy_config.api.ConfigApi
-import me.fzzyhmstrs.fzzy_config.api.RegisterType
-import me.fzzyhmstrs.fzzy_config.config.Config
-import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedInt
-import rhx.lazy.core.lazyId
+import net.neoforged.fml.ModContainer
+import rhx.lazy.core.config.LazyConfigBuilder
+import rhx.lazy.core.config.LazyConfigDefinition
 
-@Version(1)
-@WithPerms(opLevel = 2)
-internal class RepairerConfig : Config(lazyId("repairer")) {
-    @Comment("Minimum percentage of an item's maximum durability repaired per button press.")
-    var minimumRepairPercent = ValidatedInt(5, 1..100)
+internal class RepairerConfig(
+    builder: LazyConfigBuilder,
+) {
+    val minimumRepairPercent =
+        builder.int(
+            "minimumRepairPercent",
+            5,
+            1..100,
+            "Minimum percentage of an item's maximum durability repaired per button press.",
+        )
 
-    @Comment("Maximum percentage of an item's maximum durability repaired per button press.")
-    var maximumRepairPercent = ValidatedInt(15, 1..100)
+    val maximumRepairPercent =
+        builder.int(
+            "maximumRepairPercent",
+            15,
+            1..100,
+            "Maximum percentage of an item's maximum durability repaired per button press.",
+        )
 }
 
 internal object RepairerConfigs {
-    val settings: RepairerConfig =
-        ConfigApi.registerAndLoadConfig(::RepairerConfig, RegisterType.BOTH)
+    private val definition = LazyConfigDefinition.create(::RepairerConfig)
+    val settings: RepairerConfig = definition.settings
 
-    fun init() = Unit
+    fun register(container: ModContainer) = definition.registerServer(container, "lazy-repairer.toml")
 }

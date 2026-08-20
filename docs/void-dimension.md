@@ -2,8 +2,8 @@
 
 ## 运行时配置
 
-传送器使用 Fzzy Config，服务端与客户端都必须安装 `fzzy_config`。首次启动后会生成
-`config/lazy/teleporter.toml`，包含以下设置：
+传送器使用 NeoForge 的服务器配置系统，不需要额外的配置库。首次打开世界后会在该世界的
+`serverconfig/lazy-teleporter.toml` 生成以下设置：
 
 - `chargeTicks`：蓄力游戏刻，默认 `20`，范围 `1..72000`。
 - `cooldownSeconds`：成功后的冷却秒数，默认 `5`，范围 `0..3600`。
@@ -13,7 +13,7 @@
 传送器首版内置维度黑名单 `compactmachines:compact_world`。玩家处于该维度时，手持传送器
 和 Curios 槽位中的传送器均不可激活，并会收到本地化提示。
 
-配置由服务器同步，默认要求权限等级 2 才能在 Fzzy Config 界面中修改。世界生成参数不从
+配置由 NeoForge 同步给客户端；当前不提供游戏内配置界面或远程修改入口。世界生成参数不从
 该文件读取。
 
 ## 数据包配置网格

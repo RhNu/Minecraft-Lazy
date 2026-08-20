@@ -179,13 +179,6 @@ repositories {
         }
     }
     maven {
-        name = "FzzyMaven"
-        url = uri("https://maven.fzzyhmstrs.me/")
-        content {
-            includeGroup("me.fzzyhmstrs")
-        }
-    }
-    maven {
         name = "LatvianDev"
         url = uri("https://maven.latvian.dev/releases")
         content {
@@ -239,7 +232,6 @@ dependencies {
     implementation(
         "com.lowdragmc.ldlib2:ldlib2-neoforge-${property("minecraft_version")}:${property("ldlib2_version")}:all",
     )
-    implementation("me.fzzyhmstrs:fzzy_config:${property("fzzy_config_version")}")
     compileOnly(
         "top.theillusivec4.curios:curios-neoforge:${property("curios_version")}:api",
     )
@@ -367,7 +359,6 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "mod_authors" to project.property("mod_authors"),
             "mod_description" to project.property("mod_description"),
             "ldlib2_version_range" to project.property("ldlib2_version_range"),
-            "fzzy_config_version_range" to project.property("fzzy_config_version_range"),
             "curios_version_range" to project.property("curios_version_range"),
             "jade_version_range" to project.property("jade_version_range"),
             "jei_version_range" to project.property("jei_version_range"),

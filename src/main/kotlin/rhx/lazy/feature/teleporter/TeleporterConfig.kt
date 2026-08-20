@@ -1,32 +1,47 @@
 package rhx.lazy.feature.teleporter
 
-import me.fzzyhmstrs.fzzy_config.annotations.Comment
-import me.fzzyhmstrs.fzzy_config.annotations.WithPerms
-import me.fzzyhmstrs.fzzy_config.api.ConfigApi
-import me.fzzyhmstrs.fzzy_config.api.RegisterType
-import me.fzzyhmstrs.fzzy_config.config.Config
-import me.fzzyhmstrs.fzzy_config.validation.misc.ValidatedBoolean
-import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedInt
-import rhx.lazy.core.lazyId
+import net.neoforged.fml.ModContainer
+import rhx.lazy.core.config.LazyConfigBuilder
+import rhx.lazy.core.config.LazyConfigDefinition
 
-@WithPerms(opLevel = 2)
-internal class TeleporterConfig : Config(lazyId("teleporter")) {
-    @Comment("Ticks the teleporter must be charged before it activates.")
-    var chargeTicks = ValidatedInt(20, 1..72_000)
+internal class TeleporterConfig(
+    builder: LazyConfigBuilder,
+) {
+    val chargeTicks =
+        builder.int(
+            "chargeTicks",
+            20,
+            1..72_000,
+            "Ticks the teleporter must be charged before it activates.",
+        )
 
-    @Comment("Cooldown in seconds after a successful teleport.")
-    var cooldownSeconds = ValidatedInt(5, 0..3_600)
+    val cooldownSeconds =
+        builder.int(
+            "cooldownSeconds",
+            5,
+            0..3_600,
+            "Cooldown in seconds after a successful teleport.",
+        )
 
-    @Comment("Horizontal radius searched for a safe destination.")
-    var safeSearchRadius = ValidatedInt(8, 0..16)
+    val safeSearchRadius =
+        builder.int(
+            "safeSearchRadius",
+            8,
+            0..16,
+            "Horizontal radius searched for a safe destination.",
+        )
 
-    @Comment("Allow the teleporter to add a small platform in the void dimension.")
-    var createVoidSafetyPlatform = ValidatedBoolean(true)
+    val createVoidSafetyPlatform =
+        builder.boolean(
+            "createVoidSafetyPlatform",
+            true,
+            "Allow the teleporter to add a small platform in the void dimension.",
+        )
 }
 
 internal object TeleporterConfigs {
-    val settings: TeleporterConfig =
-        ConfigApi.registerAndLoadConfig(::TeleporterConfig, RegisterType.BOTH)
+    private val definition = LazyConfigDefinition.create(::TeleporterConfig)
+    val settings: TeleporterConfig = definition.settings
 
-    fun init() = Unit
+    fun register(container: ModContainer) = definition.registerServer(container, "lazy-teleporter.toml")
 }

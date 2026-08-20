@@ -1,19 +1,19 @@
 package rhx.lazy.integration.mysticalagriculture
 
-import me.fzzyhmstrs.fzzy_config.annotations.Comment
-import me.fzzyhmstrs.fzzy_config.annotations.Version
-import me.fzzyhmstrs.fzzy_config.annotations.WithPerms
-import me.fzzyhmstrs.fzzy_config.api.ConfigApi
-import me.fzzyhmstrs.fzzy_config.api.RegisterType
-import me.fzzyhmstrs.fzzy_config.config.Config
-import me.fzzyhmstrs.fzzy_config.validation.number.ValidatedLong
-import rhx.lazy.core.lazyId
+import net.neoforged.fml.ModContainer
+import rhx.lazy.core.config.LazyConfigBuilder
+import rhx.lazy.core.config.LazyConfigDefinition
 
-@Version(1)
-@WithPerms(opLevel = 2)
-internal class EssenceConverterConfig : Config(lazyId("essence_converter")) {
-    @Comment("Maximum complete target essences stored by one Essence Converter.")
-    var maxStoredEssence = ValidatedLong(DEFAULT_CAPACITY, 1L..Long.MAX_VALUE)
+internal class EssenceConverterConfig(
+    builder: LazyConfigBuilder,
+) {
+    val maxStoredEssence =
+        builder.long(
+            "maxStoredEssence",
+            DEFAULT_CAPACITY,
+            1L..Long.MAX_VALUE,
+            "Maximum complete target essences stored by one Essence Converter.",
+        )
 
     companion object {
         const val DEFAULT_CAPACITY = 1_000_000_000_000L
@@ -21,8 +21,8 @@ internal class EssenceConverterConfig : Config(lazyId("essence_converter")) {
 }
 
 internal object EssenceConverterConfigs {
-    val settings: EssenceConverterConfig =
-        ConfigApi.registerAndLoadConfig(::EssenceConverterConfig, RegisterType.BOTH)
+    private val definition = LazyConfigDefinition.create(::EssenceConverterConfig)
+    val settings: EssenceConverterConfig = definition.settings
 
-    fun init() = Unit
+    fun register(container: ModContainer) = definition.registerServer(container, "lazy-essence-converter.toml")
 }

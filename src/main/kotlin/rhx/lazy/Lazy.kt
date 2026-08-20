@@ -1,6 +1,8 @@
 package rhx.lazy
 
 import net.neoforged.bus.api.EventPriority
+import net.neoforged.fml.ModList
+import net.neoforged.fml.ModLoadingContext
 import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.common.NeoForge
 import org.apache.logging.log4j.LogManager
@@ -17,6 +19,7 @@ import rhx.lazy.feature.simulation.SimulationNetworking
 import rhx.lazy.feature.simulation.SimulationRecipeReloads
 import rhx.lazy.feature.teleporter.TeleporterConfigs
 import rhx.lazy.integration.LazyIntegrations
+import rhx.lazy.integration.mysticalagriculture.EssenceConverterConfigs
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 internal const val MOD_ID = "lazy"
@@ -26,9 +29,13 @@ object Lazy {
     internal val logger: Logger = LogManager.getLogger(MOD_ID)
 
     init {
-        TeleporterConfigs.init()
-        RepairerConfigs.init()
-        SimulationConfigs.init()
+        val modContainer = ModLoadingContext.get().activeContainer
+        TeleporterConfigs.register(modContainer)
+        RepairerConfigs.register(modContainer)
+        SimulationConfigs.register(modContainer)
+        if (ModList.get().isLoaded("mysticalagriculture")) {
+            EssenceConverterConfigs.register(modContainer)
+        }
         net.neoforged.neoforge.common.NeoForgeMod
             .enableMilkFluid()
         LazyRegistries.register(MOD_BUS)
