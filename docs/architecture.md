@@ -15,6 +15,7 @@ rhx.lazy
 ├─ Lazy.kt
 ├─ core
 │  ├─ command
+│  ├─ configurator
 │  ├─ datagen
 │  ├─ io
 │  ├─ registry
@@ -47,6 +48,7 @@ rhx.lazy
    │     └─ client
    ├─ jei
    ├─ kubejs
+├─ mekanism
    ├─ mysticalagriculture
    └─ silentgear
 ```
@@ -63,6 +65,8 @@ rhx.lazy
 - 机器由 `core.MachineBlock` 与 `core.MachineBlockEntity` 两个基类收敛。`MachineBlock` 统一朝向状态、放置时的配置卡应用、界面有效性、交互顺序（配置卡优先于机器界面），以及唯一的掉落管线；`MachineBlockEntity` 只描述自己有什么：`hasStoredContents()` 表示内部存储需要随掉落物方块走，`takeHeldItems()` 表示只是替玩家保管、应当单独掉落的物品，`settingKeys()` 列出属于设置而非存储的持久化键，`computeDisplayState()` 表示要在世界里显示什么。
 - 掉落顺序固定为「机器本体在前，代管物品在后」，全部由 `MachineBlock.onRemove` 生成，机器方块的战利品表一律为空表。内部存储写入掉落物方块，机器设置一律不写入：重新放置的机器总是回到默认配置，只能由放置时携带的配置卡重新播种。没有内容的机器不携带方块实体数据，掉落物仍可与全新机器堆叠。
 - `lazy:configuration_card` 保存完整 `IoConfiguration`。卡可直接打开同一套 IO 面板；右击机器应用配置，潜行右击复制机器配置；玩家携带唯一明确配置的卡放置默认状态机器时，机器复制该配置。AE2 只为这张通用卡增加无线接入点链接行为，Curios 只增加可装备的配置卡槽。
+- `lazy:modular_configurator` 由 `core.configurator` 注册并保存 18 个最高 1024 件的材料槽以及按模块 ID 隔离的不透明数据。Core 只提供模块注册、材料过滤、交互分发、持久化和服务端权威 GUI，不引用任何第三方类型。可选集成按确定的注册顺序宣告可用材料和方块交互；重复模块 ID 必须使启动失败。
+- `integration.mekanism` 只在 Mekanism 存在时注册模块。它经配置卡能力与升级接口复制配置及已安装升级，粘贴时严格比对配置数据类型，并仅从工具槽位中按差额补齐升级。Mekanism API 类型不得越过该包的类加载边界。
 - `c:tools/wrench` 标签的物品对机器生效：潜行右键拆除并优先放入玩家背包、放不下才落在玩家脚边；普通右键把机器顺时针转过一格。两个动作都在 `core.MachineWrench` 里判定，挂在 `PlayerInteractEvent.RightClickBlock` 上——潜行且手持物品时原版根本不会调用方块自身的 `useItemOn`，方块侧无法承载拆除。拆除先移除方块实体再销毁方块，`onRemove` 便自然不再重复掉落；旋转后显式 `invalidateCapabilities()`，因为同方块的状态变化不会自动失效邻居的能力缓存。
 - 网络输出由 `core.io.NetworkInsertCapability`、`NetworkPayload`、`NetworkOutputProvider` 与统一路由器组成。稳定能力 ID 为 `lazy:item`、`lazy:fluid` 与 `neoforge:energy`；机器和提供者只通过能力交集配对。提供者或能力暂时缺失时保留绑定并重试，目标数据损坏或 Beyond Dimensions 已确认网络永久不存在时才退回被动模式；无法确认提交结果时持久暂停，避免重复写入。
 - Beyond Dimensions 直接实现物品、流体和 FE 三项插入能力，并在集成包内保留网络 ID、`Long` 数量、模拟语义和异常保护，不再经过全局单提供者存储服务。

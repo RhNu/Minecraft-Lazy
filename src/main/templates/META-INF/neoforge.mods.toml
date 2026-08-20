@@ -122,11 +122,19 @@ reason="Enables Forge Energy output into Applied Flux ME storage"
 
 [[dependencies.${mod_id}]]
 modId="guideme"
-type="optional"
+type="required"
 versionRange="${guideme_version_range}"
 ordering="AFTER"
 side="BOTH"
-reason="Provides the guide framework used by the tested AE2 integration stack"
+reason="Provides the in-game Lazy guide and contextual item documentation"
+
+[[dependencies.${mod_id}]]
+modId="mekanism"
+type="optional"
+versionRange="${mekanism_version_range}"
+ordering="AFTER"
+side="BOTH"
+reason="Enables Modular Configurator support for Mekanism machines and upgrades"
 
 [[dependencies.${mod_id}]]
 modId="glodium"

@@ -6,6 +6,7 @@ import rhx.lazy.integration.ae2.Ae2IntegrationModule
 import rhx.lazy.integration.appflux.AppliedFluxIntegrationModule
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
+import rhx.lazy.integration.mekanism.MekanismIntegrationModule
 import rhx.lazy.integration.mysticalagriculture.MysticalAgricultureIntegrationModule
 import rhx.lazy.integration.silentgear.SilentGearIntegrationModule
 
@@ -20,6 +21,7 @@ internal object LazyIntegrations {
                     SilentGearIntegrationModule,
                     CuriosIntegrationModule,
                     MysticalAgricultureIntegrationModule,
+                    MekanismIntegrationModule,
                 ),
             isModLoaded = { modId -> ModList.get().isLoaded(modId) },
         )

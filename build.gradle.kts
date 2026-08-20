@@ -214,6 +214,13 @@ repositories {
             includeGroup("curse.maven")
         }
     }
+    maven {
+        name = "ModMaven"
+        url = uri("https://modmaven.dev")
+        content {
+            includeGroup("mekanism")
+        }
+    }
 }
 
 ktlint {
@@ -249,9 +256,8 @@ dependencies {
     compileOnly(
         "org.appliedenergistics:appliedenergistics2:${property("ae2_version")}:api",
     )
-    compileOnly(
-        "org.appliedenergistics:guideme:${property("guideme_version")}",
-    )
+    compileOnly("org.appliedenergistics:guideme:${property("guideme_version")}:api")
+    compileOnly("mekanism:Mekanism:${property("mekanism_version")}")
     compileOnly(
         "io.github.glodblock:Glodium:${property("glodium_version")}",
     )
@@ -269,9 +275,10 @@ dependencies {
     integrationsRuntime(
         "org.appliedenergistics:appliedenergistics2:${property("ae2_version")}",
     )
-    integrationsRuntime(
+    localRuntime(
         "org.appliedenergistics:guideme:${property("guideme_version")}",
     )
+    integrationsRuntime("mekanism:Mekanism:${property("mekanism_version")}")
     integrationsRuntime(
         "io.github.glodblock:Glodium:${property("glodium_version")}",
     )
@@ -290,6 +297,9 @@ dependencies {
     integrationsRuntime("dev.latvian.mods:kubejs-neoforge:${property("kubejs_version")}")
 
     testImplementation(kotlin("test"))
+    testRuntimeOnly(
+        "org.appliedenergistics:guideme:${property("guideme_version")}",
+    )
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -366,6 +376,7 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
             "beyond_dimensions_version_range" to project.property("beyond_dimensions_version_range"),
             "ae2_version_range" to project.property("ae2_version_range"),
             "guideme_version_range" to project.property("guideme_version_range"),
+            "mekanism_version_range" to project.property("mekanism_version_range"),
             "glodium_version_range" to project.property("glodium_version_range"),
             "applied_flux_version_range" to project.property("applied_flux_version_range"),
             "mystical_agriculture_version_range" to project.property("mystical_agriculture_version_range"),

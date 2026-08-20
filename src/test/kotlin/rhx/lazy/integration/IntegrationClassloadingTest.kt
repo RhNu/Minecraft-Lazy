@@ -8,6 +8,7 @@ import rhx.lazy.integration.ae2.Ae2IntegrationModule
 import rhx.lazy.integration.appflux.AppliedFluxIntegrationModule
 import rhx.lazy.integration.beyonddimensions.BeyondDimensionsIntegrationModule
 import rhx.lazy.integration.curios.CuriosIntegrationModule
+import rhx.lazy.integration.mekanism.MekanismIntegrationModule
 import rhx.lazy.integration.mysticalagriculture.MysticalAgricultureIntegrationModule
 import rhx.lazy.integration.silentgear.SilentGearIntegrationModule
 import kotlin.test.Test
@@ -30,6 +31,7 @@ class IntegrationClassloadingTest {
                     SilentGearIntegrationModule,
                     CuriosIntegrationModule,
                     MysticalAgricultureIntegrationModule,
+                    MekanismIntegrationModule,
                 ),
             ) { false }
         val bus = BusBuilder.builder().build()
@@ -63,8 +65,8 @@ class IntegrationClassloadingTest {
                 "mysticalagradditions",
                 "ae2",
                 "appflux",
-                "guideme",
                 "glodium",
+                "mekanism",
             )
         val OPTIONAL_API_CLASSES =
             listOf(
@@ -76,8 +78,8 @@ class IntegrationClassloadingTest {
                 "com.blakebr0.mysticalagradditions.MysticalAgradditions",
                 "appeng.api.features.GridLinkables",
                 "com.glodblock.github.appflux.common.me.key.FluxKey",
-                "guideme.Guide",
                 "com.glodblock.github.glodium.Glodium",
+                "mekanism.api.IConfigCardAccess",
             )
     }
 }

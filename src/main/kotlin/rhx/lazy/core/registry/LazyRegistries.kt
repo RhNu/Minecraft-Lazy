@@ -1,6 +1,7 @@
 package rhx.lazy.core.registry
 
 import net.neoforged.bus.api.IEventBus
+import rhx.lazy.core.configurator.ModularConfiguratorRegistries
 import rhx.lazy.core.io.ConfigurationCardRegistries
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
@@ -18,6 +19,7 @@ internal object LazyRegistries {
         listOf(
             MachineCasingRegistries,
             ConfigurationCardRegistries,
+            ModularConfiguratorRegistries,
             BufferRegistries,
             TeleporterRegistries,
             EnergyRegistries,

@@ -25,6 +25,7 @@ import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
+import rhx.lazy.core.configurator.ModularConfiguratorRegistries
 import rhx.lazy.core.io.ConfigurationCardRegistries
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
@@ -99,6 +100,18 @@ internal object DataGeneration {
                 .define('P', Items.PAPER)
                 .define('C', Items.COMPARATOR)
                 .unlockedBy("has_comparator", has(Items.COMPARATOR))
+                .save(output)
+            ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ModularConfiguratorRegistries.item.get())
+                .pattern("IGI")
+                .pattern("RCR")
+                .pattern("IBI")
+                .define('I', Tags.Items.INGOTS_IRON)
+                .define('G', Tags.Items.INGOTS_GOLD)
+                .define('R', Tags.Items.DUSTS_REDSTONE)
+                .define('C', ConfigurationCardRegistries.item.get())
+                .define('B', Items.CHEST)
+                .unlockedBy("has_configuration_card", has(ConfigurationCardRegistries.item.get()))
                 .save(output)
             ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, TeleporterRegistries.item.get())
@@ -216,6 +229,8 @@ internal object DataGeneration {
             withExistingParent("machine_casing", modLoc("block/machine_casing"))
             withExistingParent("configuration_card", mcLoc("item/generated"))
                 .texture("layer0", modLoc("item/icon/configuration_card"))
+            withExistingParent("modular_configurator", mcLoc("item/generated"))
+                .texture("layer0", modLoc("item/icon/modular_configurator"))
             withExistingParent("buffer", modLoc("block/buffer"))
             withExistingParent("teleporter", mcLoc("item/generated"))
                 .texture("layer0", modLoc("item/icon/teleporter"))
@@ -312,6 +327,7 @@ internal object DataGeneration {
         override fun addTranslations() {
             addBlock({ MachineCasingRegistries.block.get() }, "Machine Casing")
             addItem({ ConfigurationCardRegistries.item.get() }, "Configuration Card")
+            addItem({ ModularConfiguratorRegistries.item.get() }, "Modular Configurator")
             addBlock({ BufferRegistries.block.get() }, "Buffer")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "Energy Source")
             addBlock({ ItemCopierRegistries.block.get() }, "Item Copier")
@@ -403,6 +419,42 @@ internal object DataGeneration {
             add("message.lazy.configuration_card.applied", "Applied IO configuration: %s")
             add("message.lazy.configuration_card.copied", "Copied the machine's IO configuration")
             add("message.lazy.configuration_card.incompatible", "This machine cannot use the card's network target")
+            add("message.lazy.modular_configurator.cleared", "Cleared all integration configurations")
+            add("message.lazy.modular_configurator.nothing_to_clear", "There are no integration configurations to clear")
+            add("message.lazy.modular_configurator.mekanism.security_failed", "Mekanism access denied; nothing was changed")
+            add(
+                "message.lazy.modular_configurator.mekanism.nothing_to_paste",
+                "No copied Mekanism configuration is available to paste",
+            )
+            add("message.lazy.modular_configurator.mekanism.invalid_data", "The saved Mekanism configuration is invalid")
+            add(
+                "message.lazy.modular_configurator.mekanism.machine_mismatch",
+                "Configuration is for %s, not %s",
+            )
+            add(
+                "message.lazy.modular_configurator.mekanism.copied_no_upgrades",
+                "Copied %s configuration; no upgrades are installed",
+            )
+            add("message.lazy.modular_configurator.mekanism.copied", "Copied %s configuration and upgrades: %s")
+            add("message.lazy.modular_configurator.mekanism.copy_failed", "Failed to copy the Mekanism configuration")
+            add(
+                "message.lazy.modular_configurator.mekanism.apply_failed",
+                "Failed to apply the Mekanism configuration; no upgrades were used",
+            )
+            add("message.lazy.modular_configurator.mekanism.applied_no_upgrades", "Configuration applied; no upgrades were recorded")
+            add(
+                "message.lazy.modular_configurator.mekanism.applied_satisfied",
+                "Configuration applied; installed upgrades already satisfy the template",
+            )
+            add("message.lazy.modular_configurator.mekanism.applied_complete", "Configuration applied; installed upgrades: %s")
+            add(
+                "message.lazy.modular_configurator.mekanism.applied_partial",
+                "Configuration applied; installed %s; missing %s",
+            )
+            add("message.lazy.modular_configurator.mekanism.applied_none", "Configuration applied; no upgrades installed; missing %s")
+            add("message.lazy.modular_configurator.mekanism.upgrade_entry", "%s ×%s")
+            add("message.lazy.modular_configurator.mekanism.unknown_machine", "Unknown machine")
+            add("guide.lazy.name", "Lazy Guide")
             add("gui.lazy.io.network_paused", "Network output paused; select a target again")
             add("gui.lazy.io.network.unbound", "No network target")
             add("gui.lazy.io.network.bound", "Connected: %s")
@@ -525,6 +577,7 @@ internal object DataGeneration {
         override fun addTranslations() {
             addBlock({ MachineCasingRegistries.block.get() }, "机器外壳")
             addItem({ ConfigurationCardRegistries.item.get() }, "配置卡")
+            addItem({ ModularConfiguratorRegistries.item.get() }, "模块化配置器")
             addBlock({ BufferRegistries.block.get() }, "缓冲器")
             addBlock({ EnergyRegistries.sourceBlock.get() }, "能量源")
             addBlock({ ItemCopierRegistries.block.get() }, "物品复制器")
@@ -613,6 +666,24 @@ internal object DataGeneration {
             add("message.lazy.configuration_card.applied", "已应用 IO 配置：%s")
             add("message.lazy.configuration_card.copied", "已复制该机器的 IO 配置")
             add("message.lazy.configuration_card.incompatible", "该机器无法使用配置卡上的网络目标")
+            add("message.lazy.modular_configurator.cleared", "已清除全部联动配置")
+            add("message.lazy.modular_configurator.nothing_to_clear", "没有可清除的联动配置")
+            add("message.lazy.modular_configurator.mekanism.security_failed", "没有 Mekanism 访问权限，未进行任何修改")
+            add("message.lazy.modular_configurator.mekanism.nothing_to_paste", "尚未复制 Mekanism 配置，无法粘贴")
+            add("message.lazy.modular_configurator.mekanism.invalid_data", "保存的 Mekanism 配置无效")
+            add("message.lazy.modular_configurator.mekanism.machine_mismatch", "保存的是 %s 配置，不能用于 %s")
+            add("message.lazy.modular_configurator.mekanism.copied_no_upgrades", "已复制 %s 配置；该机器未安装升级")
+            add("message.lazy.modular_configurator.mekanism.copied", "已复制 %s 配置与升级：%s")
+            add("message.lazy.modular_configurator.mekanism.copy_failed", "复制 Mekanism 配置失败")
+            add("message.lazy.modular_configurator.mekanism.apply_failed", "应用 Mekanism 配置失败；未消耗升级")
+            add("message.lazy.modular_configurator.mekanism.applied_no_upgrades", "配置已应用；没有记录升级")
+            add("message.lazy.modular_configurator.mekanism.applied_satisfied", "配置已应用；目标机器的升级已经满足模板")
+            add("message.lazy.modular_configurator.mekanism.applied_complete", "配置已应用；已安装升级：%s")
+            add("message.lazy.modular_configurator.mekanism.applied_partial", "配置已应用；已安装 %s；缺少 %s")
+            add("message.lazy.modular_configurator.mekanism.applied_none", "配置已应用；未安装升级；缺少 %s")
+            add("message.lazy.modular_configurator.mekanism.upgrade_entry", "%s ×%s")
+            add("message.lazy.modular_configurator.mekanism.unknown_machine", "未知机器")
+            add("guide.lazy.name", "Lazy 指南")
             add("gui.lazy.io.network_paused", "网络输出已暂停；请重新选择目标")
             add("gui.lazy.io.network.unbound", "尚未绑定网络")
             add("gui.lazy.io.network.bound", "已连接：%s")

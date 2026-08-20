@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:chest"
+    },
+    "C": {
+      "item": "lazy:configuration_card"
+    },
+    "G": {
+      "tag": "c:ingots/gold"
+    },
+    "I": {
+      "tag": "c:ingots/iron"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    }
+  },
+  "pattern": [
+    "IGI",
+    "RCR",
+    "IBI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lazy:modular_configurator"
+  }
+}
