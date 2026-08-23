@@ -8,7 +8,6 @@ import net.minecraft.world.level.biome.Biome
 import net.minecraft.world.level.biome.BiomeGenerationSettings
 import net.minecraft.world.level.biome.BiomeSpecialEffects
 import net.minecraft.world.level.biome.MobSpawnSettings
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes
 import net.minecraft.world.level.dimension.DimensionType
 import net.minecraft.world.level.dimension.LevelStem
@@ -51,8 +50,8 @@ internal object VoidWorldBootstrap {
                 true,
                 false,
                 -64,
-                384,
-                384,
+                192,
+                192,
                 BlockTags.INFINIBURN_OVERWORLD,
                 BuiltinDimensionTypes.OVERWORLD_EFFECTS,
                 0.0f,
@@ -64,16 +63,7 @@ internal object VoidWorldBootstrap {
     fun bootstrapLevelStem(context: BootstrapContext<LevelStem>) {
         val biomes = context.lookup(Registries.BIOME)
         val dimensionTypes = context.lookup(Registries.DIMENSION_TYPE)
-        val generator =
-            GridChunkGenerator(
-                GridGeneratorSettings(
-                    layerHeight = 128,
-                    gridChunkSize = 3,
-                    biome = biomes.getOrThrow(VoidWorldKeys.voidBiome),
-                    borderBlock = Blocks.STONE_BRICKS,
-                    innerBlock = Blocks.SMOOTH_STONE,
-                ),
-            )
+        val generator = VoidChunkGenerator(biomes.getOrThrow(VoidWorldKeys.voidBiome))
         context.register(
             VoidWorldKeys.voidLevelStem,
             LevelStem(dimensionTypes.getOrThrow(VoidWorldKeys.voidDimensionType), generator),

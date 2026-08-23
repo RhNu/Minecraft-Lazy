@@ -10,10 +10,10 @@ import java.util.function.Supplier
 internal object VoidWorldRegistries : RegistryModule {
     private val chunkGenerators = DeferredRegister.create(Registries.CHUNK_GENERATOR, MOD_ID)
 
-    val gridGenerator =
+    val voidGenerator =
         chunkGenerators.register(
-            "grid_generator",
-            Supplier { GridChunkGenerator.MAP_CODEC },
+            "void_generator",
+            Supplier { VoidChunkGenerator.MAP_CODEC },
         )
 
     override fun register(bus: IEventBus) {

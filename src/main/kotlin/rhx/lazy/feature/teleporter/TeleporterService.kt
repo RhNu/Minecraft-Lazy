@@ -8,7 +8,7 @@ import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.portal.DimensionTransition
 import net.minecraft.world.phys.Vec3
-import rhx.lazy.feature.voidworld.GridChunkGenerator
+import rhx.lazy.feature.voidworld.VoidChunkGenerator
 import rhx.lazy.feature.voidworld.VoidWorldKeys
 
 internal data class TeleporterSettings(
@@ -74,12 +74,13 @@ internal class TeleporterService(
     private fun ServerPlayer.defaultReturnLocation(): SavedLocation =
         SavedLocation(Level.OVERWORLD, server.overworld().sharedSpawnPos, yRot, xRot)
 
-    private fun ServerPlayer.defaultVoidLocation(): SavedLocation {
-        val level = server.getLevel(VoidWorldKeys.voidLevel)
-        val generator = level?.chunkSource?.generator as? GridChunkGenerator
-        val landingY = generator?.settings?.layerHeight?.plus(1) ?: DEFAULT_VOID_Y
-        return SavedLocation(VoidWorldKeys.voidLevel, BlockPos(0, landingY, 0), yRot, xRot)
-    }
+    private fun ServerPlayer.defaultVoidLocation(): SavedLocation =
+        SavedLocation(
+            VoidWorldKeys.voidLevel,
+            BlockPos(0, VoidChunkGenerator.PLATFORM_Y + 1, 0),
+            yRot,
+            xRot,
+        )
 
     private fun ServerPlayer.teleportTo(
         targetLevel: ServerLevel,
@@ -106,7 +107,6 @@ internal class TeleporterService(
     }
 
     private companion object {
-        const val DEFAULT_VOID_Y = 129
         const val NO_SAFE_RETURN = "message.lazy.teleporter.no_safe_return"
         const val DIMENSION_MISSING = "message.lazy.teleporter.dimension_missing"
         const val NO_SAFE_DESTINATION = "message.lazy.teleporter.no_safe_destination"

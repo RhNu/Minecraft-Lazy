@@ -16,33 +16,29 @@
 配置由 NeoForge 同步给客户端；当前不提供游戏内配置界面或远程修改入口。世界生成参数不从
 该文件读取。
 
-## 数据包配置网格
+## 数据包配置
 
-内置维度位于 `data/lazy/dimension/void.json`。数据包可用同一路径覆盖它，例如：
+内置维度位于 `data/lazy/dimension/void.json`。维度使用 `lazy:void_generator`，除原点处的
+5×5 平台外不生成任何方块。平台中心为 `(0, 0)`，方块高度为 `y=64`；边框使用石砖，内部
+使用平滑石。世界下边界为 `y=-64`，上限为 `y=128`（可放置方块为 `-64..127`）。
+
+数据包可用同一路径覆盖维度的群系配置，例如：
 
 ```json
 {
   "type": "lazy:void",
   "generator": {
-    "type": "lazy:grid_generator",
-    "settings": {
-      "biome": "lazy:void",
-      "border_block": "minecraft:stone_bricks",
-      "grid_chunk_size": 3,
-      "inner_block": "minecraft:smooth_stone",
-      "layer_height": 128
-    }
+    "type": "lazy:void_generator",
+    "biome": "lazy:void"
   }
 }
 ```
 
-`layer_height` 允许 `-64..317`，`grid_chunk_size` 允许 `1..64`，两种方块必须是有效的注册
-方块 ID。修改后需要退出并重新进入世界；已生成区块不会重写，只有新区块使用新设置，因此
-变更方块或周期可能在新旧区块边界形成接缝。
+修改后需要退出并重新进入世界；已生成区块不会重写，只有新区块使用新设置。
 
 ## 传送语义
 
-每件传送器独立保存外界返回点和虚空目标点。首次进入使用 `(0, layer_height + 1, 0)`，
+每件传送器独立保存外界返回点和虚空目标点。首次进入使用 `(0, 65, 0)`，
 首次从虚空返回使用主世界出生点。安全搜索失败、目标维度不存在或跨维度切换失败时，物品
 数据与冷却均保持不变。传送器不会修改外界方块；只有虚空端可按配置补建 3×3 落脚平台。
 
