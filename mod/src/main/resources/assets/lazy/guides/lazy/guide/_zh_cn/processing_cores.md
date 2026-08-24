@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: tools.md
   title: 处理核心
   icon: lazy:processing_core_t1
-  position: 110
+  position: 60
 item_ids:
   - lazy:processing_core_t1
   - lazy:processing_core_t2
@@ -13,9 +13,18 @@ item_ids:
 
 # 处理核心
 
-<ItemImage id="lazy:processing_core_t1" scale="1.4" />
+<ItemGrid>
+  <ItemIcon id="lazy:processing_core_t1" />
+  <ItemIcon id="lazy:processing_core_t2" />
+  <ItemIcon id="lazy:processing_core_t3" />
+  <ItemIcon id="lazy:processing_core_t4" />
+</ItemGrid>
 
-处理核心是机器共用的组件。在模拟室中，处理核心控制速度和产出倍率。模拟室最多接受 64 个核心，运行过程中不会消耗核心。
+处理核心可以为支持它的机器提供对应等级的效果。
+
+## 模拟室
+
+放置在[模拟室](simulation_chamber.md)中时，处理核心会提高模拟室的速度和产出。模拟室最多放入 64 个，工作时不会消耗核心。
 
 | 核心 | 速度 | 产出 |
 | --- | ---: | ---: |
@@ -24,4 +33,14 @@ item_ids:
 | <ItemLink id="lazy:processing_core_t3" /> | ×6 | ×12 |
 | <ItemLink id="lazy:processing_core_t4" /> | ×18 | ×36 |
 
-这些数值由服务端配置控制。每个核心贡献自身的速度和产出倍率，因此增加核心会同时提高模拟速度和虚拟产出抽取次数。
+表中为默认数值，服务器可以调整。每个放入的核心都会提供对应等级的速度和产出。
+
+## 配方
+
+<Recipe id="lazy:processing_core_t1" />
+
+<Recipe id="lazy:processing_core_t2" />
+
+<Recipe id="lazy:processing_core_t3" />
+
+<Recipe id="lazy:processing_core_t4" />

@@ -1,22 +1,26 @@
 ---
 navigation:
-  parent: index.md
+  parent: tools.md
   title: Energy Battery
   icon: lazy:energy_battery
-  position: 90
+  position: 20
 item_ids:
   - lazy:energy_battery
 ---
 
 # Energy Battery
 
-<ItemImage id="lazy:energy_battery" scale="1.4" />
+<Column alignItems="center" fullWidth={true}>
+  <ItemImage id="lazy:energy_battery" scale="1.4" />
+</Column>
 
 The Energy Battery is a portable, infinite FE source. It transfers up to 500,000,000 FE per interaction.
 
 ## Use
 
-- Attack an energy-capable block to transfer FE into the block. The action bar reports the amount transferred.
-- Sneak-use a block to insert the battery into the first accepting item-handler side, such as a buffer inventory.
+- Left-click a block that accepts FE to fill it. The action bar shows the amount transferred.
+- Sneak-right-click a block with an accessible item inventory to insert the battery into that inventory.
 
-The battery is also an item energy provider, so machines and compatible tools can draw from it through the normal item capability.
+Machines and compatible tools can draw FE directly from the battery while it is in an item slot.
+
+<Recipe id="lazy:energy_battery" />

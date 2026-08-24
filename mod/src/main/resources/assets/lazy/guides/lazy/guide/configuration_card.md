@@ -1,28 +1,34 @@
 ---
 navigation:
-  parent: index.md
+  parent: tools.md
   title: Configuration Card
   icon: lazy:configuration_card
-  position: 85
+  position: 10
 item_ids:
   - lazy:configuration_card
 ---
 
 # Configuration Card
 
-<ItemImage id="lazy:configuration_card" scale="1.4" />
+<Column alignItems="center" fullWidth={true}>
+  <ItemImage id="lazy:configuration_card" scale="1.4" />
+</Column>
 
-The Configuration Card stores one complete Lazy machine IO configuration. It can be reused for any compatible machine.
+The Configuration Card copies and reuses a Lazy machine's [IO settings](io.md).
 
 ## Controls
 
-- Right-click a machine to apply the card's configuration.
-- Sneak-right-click a machine to copy its current IO configuration onto the card.
-- Right-click the air while holding the card to open its IO panel directly.
-- Place a machine while carrying a configured card to seed the new machine with that configuration. Blank cards are ignored.
+- Right-click a machine to apply the card.
+- Sneak-right-click a machine to copy its settings.
+- Right-click the air to edit the card directly.
+- Place a machine while carrying one configured card to apply those settings immediately.
 
 ## Stored settings
 
-The card stores the IO mode, all six relative side modes, auto-eject, and the selected network target. A network target remains part of the card's link data, so it can be carried between machines without opening the source machine first.
+The card stores the mode, all six side settings, auto-eject, and the selected network target.
 
-If several carried cards contain different configurations, placement does not choose one automatically. Apply the intended card directly to the machine instead.
+Blank cards are ignored during placement. If carried cards contain different settings, the new machine stays at its defaults; apply the intended card directly instead.
+
+With Curios installed, a card in the Configuration Card slot also participates in automatic placement and network selection.
+
+<Recipe id="lazy:configuration_card" />

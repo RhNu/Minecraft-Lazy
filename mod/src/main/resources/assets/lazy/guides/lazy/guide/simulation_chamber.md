@@ -1,37 +1,36 @@
 ---
 navigation:
-  parent: index.md
+  parent: machines.md
   title: Simulation Chamber
   icon: lazy:simulation_chamber
-  position: 50
+  position: 70
 item_ids:
   - lazy:simulation_chamber
 ---
 
 # Simulation Chamber
 
-<BlockImage id="lazy:simulation_chamber" scale="8" />
+<Column alignItems="center" fullWidth={true}>
+  <BlockImage id="lazy:simulation_chamber" scale="8" />
+</Column>
 
-The Simulation Chamber runs data-driven item and entity simulations without spawning a permanent farm or mob. Results are stored in internal item and fluid outputs until IO can move them away.
+The Simulation Chamber produces farming and mob drops without building a farm or keeping the mob in the world.
 
 ## Inputs
 
-- **Target** accepts an item with an explicit or automatic simulation, a spawn egg, a bound <ItemLink id="lazy:data_model" />, or another supported entity carrier.
-- **Processing Core** accepts up to 64 cores. Each core contributes the tier's speed and output multiplier.
-- **Tools** provide optional behaviour. Three tool slots are read as the batch advances; tools are not consumed or damaged.
+- **Target:** a supported item, spawn egg, or bound <ItemLink id="lazy:data_model" />.
+- **Processing Core:** up to 64 cores. Better cores increase speed and output.
+- **Tools:** up to three optional tools. They are not consumed or damaged.
 
 ## Data Model
 
-Use a blank <ItemLink id="lazy:data_model" /> on a supported living entity to bind that entity to the model. Sneak-use a bound model to clear it. Players and targets rejected by the simulation rules cannot be bound.
-
-Core values and stacking behavior are documented on the [Processing Cores](processing_cores.md) page.
+Use a blank <ItemLink id="lazy:data_model" /> on a supported living entity, then place the bound model in the target slot. See [Processing Cores](processing_cores.md) for core values.
 
 ## Tool slots
 
-- A weapon is used as the simulated entity's killing tool. The first weapon slot wins.
-- A lava bucket filters outputs tagged as incinerated.
-- Roll work always obeys the server `rollBudgetPerTick`; IO mode only chooses where stored output is transported.
+- The first weapon is used as the simulated killing tool.
+- A lava bucket removes drops that would normally burn in lava.
 
-Recipes, automatic material rules, entity loot, output probabilities, and tool tags are data-driven. When output storage is full or output cannot be confirmed, the chamber pauses and shows a pending-output warning. Configure its item/fluid routing in the common [IO settings](io.md).
+JEI shows supported simulations and their possible results. If output storage is full, the chamber pauses until space is available. Use [IO settings](io.md) to move item and fluid results.
 
 <Recipe id="lazy:simulation_chamber" />

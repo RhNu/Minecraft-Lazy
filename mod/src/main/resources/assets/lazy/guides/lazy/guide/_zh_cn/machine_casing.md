@@ -1,17 +1,19 @@
 ---
 navigation:
-  parent: index.md
+  parent: machines.md
   title: 机器外壳
   icon: lazy:machine_casing
-  position: 1
+  position: 10
 item_ids:
   - lazy:machine_casing
 ---
 
 # 机器外壳
 
-<BlockImage id="lazy:machine_casing" scale="8" />
+<Column alignItems="center" fullWidth={true}>
+  <BlockImage id="lazy:machine_casing" scale="8" />
+</Column>
 
-机器外壳是 Lazy 各种机器共用的结构材料。它是没有库存和处理功能的普通方块。
+机器外壳是合成 Lazy 机器的基础材料。放置后没有库存和操作界面。
 
 <Recipe id="lazy:machine_casing" />

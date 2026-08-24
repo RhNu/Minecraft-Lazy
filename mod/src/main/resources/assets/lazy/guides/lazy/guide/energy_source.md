@@ -1,23 +1,27 @@
 ---
 navigation:
-  parent: index.md
+  parent: machines.md
   title: Energy Source
   icon: lazy:energy_source
-  position: 20
+  position: 30
 item_ids:
   - lazy:energy_source
 ---
 
 # Energy Source
 
-<BlockImage id="lazy:energy_source" scale="8" />
+<Column alignItems="center" fullWidth={true}>
+  <BlockImage id="lazy:energy_source" scale="8" />
+</Column>
 
-The Energy Source provides effectively infinite FE. It accepts no energy and can output up to 500,000,000 FE per tick to each transfer operation.
+The Energy Source provides unlimited FE. Each transfer can supply up to 500,000,000 FE.
 
 ## Output
 
-The source exposes energy to adjacent blocks and can also send FE through a compatible network provider. Select the output mode and sides in the common [IO settings](io.md).
+- Adjacent machines can draw FE from it directly.
+- Face output can push FE into selected sides.
+- Network output can send FE to a supported storage network.
 
-Right-click opens the IO panel. Stored configuration can be copied or applied with a <ItemLink id="lazy:configuration_card" />.
+Right-click to open [IO settings](io.md). A <ItemLink id="lazy:configuration_card" /> can copy or apply the same settings.
 
 <Recipe id="lazy:energy_source" />

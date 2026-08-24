@@ -1,21 +1,29 @@
 ---
 navigation:
-  parent: index.md
+  parent: machines.md
   title: 修复器
   icon: lazy:repairer
-  position: 40
+  position: 50
 item_ids:
   - lazy:repairer
 ---
 
 # 修复器
 
-<BlockImage id="lazy:repairer" scale="8" />
+<Column alignItems="center" fullWidth={true}>
+  <BlockImage id="lazy:repairer" scale="8" />
+</Column>
 
-修复器一次修复一个已损坏且具有耐久度的物品，不需要材料，也不会消耗物品。
+修复器一次修复一个有耐久损耗的物品，不需要修复材料或能量。
 
-将物品放入输入槽并按下铁砧按钮。每次操作会在配置的最小值和最大值之间随机修复物品最大耐久度的百分比。默认范围是 5%–15%；两个值都由服务端配置控制，并限制在 1%–100%。
+## 用法
 
-输入物品属于玩家而不是机器；破坏或拆除修复器时，它会作为单独掉落物返回。兼容联动可以在修复后执行处理；安装 Silent Gear 时会重新计算其装备数据。
+- 把损坏的物品放入输入槽。
+- 点击铁砧按钮进行修复。
+- 每次默认恢复最大耐久度的 5%–15%，服务器可以调整这个范围。
+
+安装 Silent Gear 后，修好的装备会自动更新自身数据。
+
+破坏或拆除修复器时，输入物品会单独掉落。
 
 <Recipe id="lazy:repairer" />

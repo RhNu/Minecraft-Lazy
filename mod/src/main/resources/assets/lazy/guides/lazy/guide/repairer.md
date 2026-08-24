@@ -1,21 +1,29 @@
 ---
 navigation:
-  parent: index.md
+  parent: machines.md
   title: Repairer
   icon: lazy:repairer
-  position: 40
+  position: 50
 item_ids:
   - lazy:repairer
 ---
 
 # Repairer
 
-<BlockImage id="lazy:repairer" scale="8" />
+<Column alignItems="center" fullWidth={true}>
+  <BlockImage id="lazy:repairer" scale="8" />
+</Column>
 
-The Repairer restores durability to one damaged, damageable item at a time. It does not require an ingredient or consume the item.
+The Repairer restores durability to one damaged item at a time. It needs no repair material or energy.
 
-Place the item in the input slot and press the anvil button. Each press repairs a random percentage of the item's maximum durability between the configured minimum and maximum values. The defaults are 5%–15%; both values are server configuration settings and are clamped to 1%–100%.
+## Use
 
-The input belongs to the player rather than the machine. It is returned as a separate drop when the Repairer is broken or dismantled. Compatible integrations can run a post-repair hook; Silent Gear uses this to recalculate its gear data.
+- Put a damaged item in the input slot.
+- Press the anvil button to repair it.
+- Each press restores 5%–15% of its maximum durability by default. The server may change this range.
+
+When Silent Gear is installed, repaired gear is recalculated automatically.
+
+The input item drops separately when the Repairer is broken or dismantled.
 
 <Recipe id="lazy:repairer" />

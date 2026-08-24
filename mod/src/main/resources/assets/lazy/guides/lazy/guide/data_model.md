@@ -1,23 +1,27 @@
 ---
 navigation:
-  parent: index.md
+  parent: tools.md
   title: Data Model
   icon: lazy:data_model
-  position: 100
+  position: 50
 item_ids:
   - lazy:data_model
 ---
 
 # Data Model
 
-<ItemImage id="lazy:data_model" scale="1.4" />
+<Column alignItems="center" fullWidth={true}>
+  <ItemImage id="lazy:data_model" scale="1.4" />
+</Column>
 
-The Data Model stores one supported living entity as a simulation target.
+The Data Model stores one living entity for the [Simulation Chamber](simulation_chamber.md).
 
 ## Controls
 
-- Use a blank model on a supported living entity to bind it.
-- Sneak-use a bound model to clear its target.
-- Players and entities rejected by the simulation rules cannot be bound.
+- Right-click a supported living entity with a blank model to bind it.
+- Sneak-right-click with a bound model to clear it.
+- Players and unsupported entities cannot be bound.
 
-Put a bound model in the Simulation Chamber's target slot. The chamber uses the stored entity type instead of requiring a spawn egg or another entity carrier.
+Place the bound model in the chamber's target slot. The model is not consumed.
+
+<Recipe id="lazy:data_model" />

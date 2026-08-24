@@ -1,24 +1,35 @@
 ---
 navigation:
+  parent: machines.md
   title: Shaper
   icon: lazy:shaper
-  parent: index.md
+  position: 60
 item_ids:
   - lazy:shaper
 ---
 
 # Shaper
 
-<BlockImage id="lazy:shaper" scale="8" />
+<Column alignItems="center" fullWidth={true}>
+  <BlockImage id="lazy:shaper" scale="8" />
+</Column>
 
-The Shaper converts common forms of the same material without consuming material or energy. Put the desired form in the phantom sample slot, then load nuggets, ingots, gems, dusts, raw materials, plates, rods, wires, gears, or storage blocks into its shared input store.
+The Shaper converts a material between common forms without losing material or using energy.
+
+## Use
+
+- Click the ghost sample slot with the form you want to produce.
+- Add matching nuggets, ingots, gems, dusts, raw materials, plates, rods, wires, gears, or storage blocks.
+- Click the sample slot with an empty cursor to clear it.
+
+Conversions use whole, lossless amounts. For example, nine nuggets become one ingot, one ingot becomes nine nuggets, and one plate becomes two rods. Leftovers stay in the input storage until a complete conversion is possible.
+
+## Storage and output
+
+- Input and output each hold up to eight item types.
+- [IO settings](io.md) control side input, automatic output, and network output.
+- JEI lists the available conversions for each material.
+
+Input and output remain in the dropped machine. The selected sample and IO settings reset when it is placed again.
 
 <Recipe id="lazy:shaper" />
-
-The input store holds up to eight exact item identities with Long quantities. Conversions complete immediately in the smallest lossless whole-item trade: nine nuggets become one ingot, one ingot becomes nine nuggets, and one plate becomes two rods. Items that cannot complete a whole trade remain visible in the input store.
-
-The output store holds up to eight exact product identities. Matching products merge before an empty entry is used; one full identity does not block conversions that merge into another existing product.
-
-The sample is a setting, not storage. Clicking it with an item selects a form without consuming the item; clicking it with an empty cursor clears it. The sample resets when the machine is dismantled, while input and output contents stay with the dropped machine item.
-
-Use [IO and automation](io.md) for face input, automatic output, and network output. JEI lists lossless conversions around one base form for each material. Material packs can extend the synced `lazy:material_form` datapack registry, and pack authors can use the Shaper blacklist tags to disable unsafe inputs or outputs.

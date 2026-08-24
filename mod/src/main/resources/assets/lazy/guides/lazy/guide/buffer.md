@@ -1,30 +1,35 @@
 ---
 navigation:
-  parent: index.md
+  parent: machines.md
   title: Buffer
   icon: lazy:buffer
-  position: 10
+  position: 20
 item_ids:
   - lazy:buffer
 ---
 
 # Buffer
 
-<BlockImage id="lazy:buffer" scale="8" />
+<Column alignItems="center" fullWidth={true}>
+  <BlockImage id="lazy:buffer" scale="8" />
+</Column>
 
-The Buffer is a large mixed item-and-fluid storage machine. It is useful as a local cache or as a shared hand-off point between machines.
+The Buffer stores large amounts of items and fluids in one block.
 
 ## Storage
 
-- 8 item slots hold one item type per slot, up to 256 items in each slot.
-- 4 fluid tanks hold one fluid type per tank, up to 64,000 mB in each tank.
-- Both inventories are exposed to adjacent capabilities. Item slots also support normal click,
-  split, drag, and shift-click interaction in the machine screen.
+- 8 item slots, each holding one item type and up to 256 items.
+- 4 fluid tanks, each holding one fluid type and up to 64,000 mB.
+- The item slots support normal clicking, splitting, dragging, and shift-clicking.
 
-Right-click opens the screen. Sneak-right-click reports the total stored items and fluid amount without opening it. The clear button destroys all stored contents after confirmation.
+- Right-click to open the screen.
+- Sneak-right-click to show the total stored items and fluids in the action bar.
+- The clear button destroys all stored contents after confirmation.
 
 ## Automation
 
-The Buffer can accept and emit items and fluids through the common [IO settings](io.md). Stored contents remain in the dropped machine item when the Buffer is broken or dismantled.
+Adjacent machines can insert or extract contents. Use [IO settings](io.md) for automatic output.
+
+Stored items and fluids remain inside the dropped Buffer when it is broken or dismantled. IO settings reset when it is placed again.
 
 <Recipe id="lazy:buffer" />

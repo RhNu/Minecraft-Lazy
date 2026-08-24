@@ -1,33 +1,58 @@
 ---
 navigation:
-  parent: index.md
+  parent: automation.md
   title: IO and automation
   icon: lazy:configuration_card
-  position: 80
+  position: 10
 ---
 
 # IO and automation
 
-<ItemImage id="lazy:configuration_card" scale="1.4" />
+<Column alignItems="center">
+  <ItemImage id="lazy:configuration_card" scale="1.4" />
+</Column>
 
-The IO panel is shared by machines that move items, fluids, or FE. It keeps the machine's local inventory separate from the way outputs leave the machine.
+The IO panel controls how a machine accepts and sends items, fluids, and FE.
 
-## Modes
+## Output modes
 
-- **Passive** keeps automatic output disabled. The machine still exposes the capabilities it supports to adjacent blocks.
-- **Faces** lets each side be disabled, input, output, or both. Enable auto-eject to push stored outputs into sides marked as output.
-- **Network** sends supported outputs to the selected network provider. A provider may support items, fluids, FE, or a combination of them.
+- **Passive:** The machine does not send anything by itself. Pipes and nearby machines can still access supported contents.
+- **Faces:** Set each side to disabled, input, output, or both. Auto-eject sends stored outputs through sides marked as output.
+- **Network:** Send supported outputs to a selected network.
 
-Use the side buttons with the machine's front as the reference point. A machine can be rotated with a wrench; the face configuration follows its new facing.
+Side settings use the machine's front as their reference. They follow the machine when it is rotated with a wrench.
 
-The portable <ItemLink id="lazy:energy_battery" /> is documented on the [Energy Battery](energy_battery.md) page.
+## Select a network
 
-## Configuration Card
+### Applied Energistics 2
 
-<ItemLink id="lazy:configuration_card" /> stores the complete IO configuration. Right-click a machine to apply a card, or sneak-right-click to copy the machine's configuration back to it. The card can also be opened in hand to edit the same panel.
+1. Put a <ItemLink id="lazy:configuration_card" /> in the linking slot of an AE2 Wireless Access Point.
+2. Carry the linked card in your hand, inventory, or Curios slot.
+3. Open the machine's IO panel and select **AE2 ME Network**.
 
-When a configured card is used to place a machine, the machine starts with that configuration. Network targets remain linked through the card rather than being copied into the machine as a runtime network object.
+A card in your hand takes priority. If your inventory contains cards linked to different networks, hold the card you want before selecting the network.
 
-## Breaking machines
+AE2 accepts items and fluids. With Applied Flux installed, it can also accept FE.
 
-Breaking a machine preserves its stored contents in the dropped machine item. Items that the machine only holds for the player, such as the Repairer's input, are dropped separately. The same rules apply when a machine is dismantled with a wrench.
+### Beyond Dimensions
+
+1. Set the network you want as your primary Beyond Dimensions network.
+2. Open the machine's IO panel and select **Beyond Dimensions**.
+
+## Interrupted transfers
+
+- If the selected network is gone, the machine disconnects and returns to passive mode.
+- If a transfer cannot be confirmed, output pauses to avoid sending the same contents twice.
+- Check the destination before selecting **Resume**. Select **Disconnect** to return to passive mode instead.
+
+## Configuration cards
+
+The <ItemLink id="lazy:configuration_card" /> can copy, edit, and apply the complete IO setup. See [Configuration Card](configuration_card.md) for all controls and placement rules.
+
+## Breaking a machine
+
+- Stored outputs remain inside the dropped machine item.
+- Player-owned input, such as an item placed in the Repairer, drops separately.
+- IO mode, side settings, auto-eject, and network selection reset when the machine is placed again.
+
+The same rules apply when dismantling a machine with a wrench.
