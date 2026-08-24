@@ -1,0 +1,8 @@
+modLoader="kotlinforforge"
+loaderVersion="[5.12,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="lazy_test"
+version="1"
+displayName="Lazy Library Test Harness"

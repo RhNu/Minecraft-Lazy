@@ -1,0 +1,59 @@
+[versions]
+kotlin = "2.4.0"
+ksp = "2.3.11"
+ktlint-plugin = "14.2.0"
+ktlint = "1.5.0"
+moddev = "2.0.142"
+
+kotlin-for-forge = "5.12.0"
+ldlib2 = "2.2.29"
+curios = "9.5.1+1.21.1"
+jade = "15.10.5+neoforge"
+jei = "19.39.0.369"
+kubejs = "2101.7.2-build.368"
+silent-gear = "4.2.1.1"
+silent-lib = "10.6.0"
+beyond-dimensions = "0.7.26-1.21.1-neoforge"
+ae2 = "19.2.17"
+guideme = "21.1.1"
+mekanism = "1.21.1-10.7.19.85"
+glodium = "1.21-2.2-neoforge"
+cucumber = "8.0.16"
+mystical-agriculture = "8.0.27"
+mystical-agradditions = "8.0.14"
+applied-flux-file = "8204513"
+
+[libraries]
+kotlinforforge = { module = "thedarkcolour:kotlinforforge-neoforge", version.ref = "kotlin-for-forge" }
+ldlib2 = { module = "com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1", version.ref = "ldlib2" }
+curios-api = { module = "top.theillusivec4.curios:curios-neoforge", version.ref = "curios" }
+curios-runtime = { module = "top.theillusivec4.curios:curios-neoforge", version.ref = "curios" }
+jade = { module = "maven.modrinth:jade", version.ref = "jade" }
+jei = { module = "mezz.jei:jei-1.21.1-neoforge", version.ref = "jei" }
+kubejs = { module = "dev.latvian.mods:kubejs-neoforge", version.ref = "kubejs" }
+silent-gear = { module = "maven.modrinth:silent-gear", version.ref = "silent-gear" }
+silent-lib = { module = "maven.modrinth:silent-lib", version.ref = "silent-lib" }
+beyond-dimensions = { module = "maven.modrinth:beyonddimensions", version.ref = "beyond-dimensions" }
+ae2-api = { module = "org.appliedenergistics:appliedenergistics2", version.ref = "ae2" }
+guideme-api = { module = "org.appliedenergistics:guideme", version.ref = "guideme" }
+mekanism = { module = "mekanism:Mekanism", version.ref = "mekanism" }
+glodium = { module = "io.github.glodblock:Glodium", version.ref = "glodium" }
+cucumber = { module = "maven.modrinth:cucumber", version.ref = "cucumber" }
+mystical-agriculture = { module = "maven.modrinth:mystical-agriculture", version.ref = "mystical-agriculture" }
+mystical-agradditions = { module = "maven.modrinth:mystical-agradditions", version.ref = "mystical-agradditions" }
+applied-flux = { module = "curse.maven:applied-flux-965012", version.ref = "applied-flux-file" }
+ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+ksp-gradle-plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+ktlint-gradle-plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }
+moddev-gradle-plugin = { module = "net.neoforged:moddev-gradle", version.ref = "moddev" }
+batik-transcoder = { module = "org.apache.xmlgraphics:batik-transcoder", version = "1.18" }
+batik-codec = { module = "org.apache.xmlgraphics:batik-codec", version = "1.18" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
+moddev = { id = "net.neoforged.moddev", version.ref = "moddev" }

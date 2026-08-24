@@ -6,6 +6,32 @@ Lazy 固定面向 Minecraft 1.21.1 NeoForge。注册经 `DeferredRegister` 和�
 
 旧机器 BlockEntity NBT、旧物品 NBT、旧配置键和旧工作状态不迁移。方块与配方 ID 保持不变；读不到新结构时按空状态处理。
 
+## 多项目边界
+
+根项目只聚合任务。`runtime` 拥有 core、feature 和运行时注册；`integration-api` 拥有生命周期 SPI；每个 `integrations/*` project 只编译一个第三方集成；`mod` 拥有 `@Mod`、资源、元数据与发布；`datagen` 独占 Provider、语言贡献、模型 helper 和 `GatherDataEvent`；`codegen/*` 与 `build-logic` 负责关系声明和编译期治理。
+
+`runtime`、`integration-api` 与 integration 只生成内部 library JAR。`:mod:jar` 仅展开这些 project artifact，重复路径直接失败，并排除子模块 manifest 和签名。最终产物不含子模块 JAR、DataGen 类或第三方包。`:mod:sourcesJar` 聚合相同模块的源码；Maven publication 直接发布这两个聚合 artifact，不暴露内部 project 或可选 partner 依赖。
+
+跨模块声明必须显式 `public` 并在具体声明上标记 `@LazyInternalApi`；其余实现保持 `internal`，禁止使用文件级注解批量放大 API。`integration-api`、注解与 processor 等真正的契约模块启用 strict explicit API；实现模块通过编译各消费方验证边界，不使用 friend path 绕过模块可见性。
+
+Kotlin 文件的物理路径不复制无信息量的完整包名前缀：`runtime/src/*/kotlin` 直接从 `core`、`feature` 等领域目录开始，每个 integration 与 codegen 模块的源码直接位于自己的 source root。Kotlin `package` 和最终二进制包名保持 `rhx.lazy.*`，物理目录只表达模块内有意义的分组。
+
+## Integration 编译期治理
+
+每个 integration 的 `lazyIntegration` Gradle DSL 是 ID、owner、side、必需/可选 mod、integration 依赖和 DataGen 参与状态的唯一真相源。约定插件统一注入 runtime、annotations 与 processor，并生成规范化 descriptor artifact、KSP 参数和可选依赖元数据；partner API 由模块声明为 `compileOnly`，开发运行依赖由同模块的 `integrationRuntime` 导出，`:mod` 按 descriptor 选择 project configuration，不维护第三方坐标硬编码表。
+
+Lazy 管理的入口实现 `CommonIntegration`/`ClientIntegration`。context 显式提供 `ModContainer`、mod bus 和 game bus；integration 不直接读取全局总线或 `ModList`。本地 KSP 校验入口数量、接口、side 与 framework 注解，并生成能访问模块内 `internal` 实现的 public bridge。
+
+`:mod` 的聚合 KSP 对 descriptor 做重复 ID、未知/循环依赖、side 和硬依赖闭包校验，再生成 common/client 静态 catalog、`META-INF/lazy/integrations.json`、KubeJS 发现文件和 DataGen contribution catalog。common 路径不引用 client bridge；Jade、JEI、KubeJS 仍由第三方 lifecycle 发现。运行时不使用反射、`ServiceLoader` 或类路径扫描。
+
+入口只在所有 `requiredMod` 存在时按拓扑序安装。安装阶段异常携带 integration ID 和阶段立即终止。`run*Integrations` 使用同一 descriptor 图计算选择闭包；服务端显式选择 client-only 集成会在 Gradle 配置阶段失败。
+
+## DataGen 边界
+
+DataGen 只从 `runtime`、Curios 与 Mystical Agriculture 的窄 `DataGenExports` facade 获取 holder、资源 ID 和 bootstrap 回调。holder 只能在 Provider 执行阶段解析，继续禁止在注册阶段提前 `get()`。静态资源位于 `mod/src/main/resources`，生成结果写入并提交到 `mod/src/generated/resources`。
+
+普通 `build` 不执行 DataGen，也不会打包 `datagen` project。根 `runData` 转发到 `:datagen:runData`；该 profile 只加载声明参与且 Provider 实际需要的 partner 依赖。KSP 会在 DSL 的 DataGen 声明与 contribution 不一致时终止编译。
+
 ## 机器资源流水线
 
 资源机器统一分为三层：
