@@ -14,6 +14,8 @@ Lazy 固定面向 Minecraft 1.21.1 NeoForge。注册经 `DeferredRegister` 和�
 - `core.process`：`WorkProvider`、`WorkController`、`WorkStatus` 和唯一的 `PreparedCommit`。
 - `core.io`：`OutputSource`、每刻传输预算、面/网络调度、重试和结果未知暂停。
 
+机器共用 `processing_core_t1` 至 `processing_core_t4` 四级处理核心。核心物品与等级定义在通用机器模块中，各机器自行解释对应等级的速度、产出或其它效果。
+
 统一路径为：输入或设置生成工作，工作生成资源事务，事务写入唯一输出仓，随后 capability 被动抽取、主动面输出和网络输出都从同一仓扣账。工作预算与运输预算互不影响。
 
 每个工作机器的一刻顺序固定为：旧产物预输出 → 提交旧 `PreparedCommit` → 生成新工作 → 用同一运输预算输出新产物 → 更新显示。前后输出合计最多发起 64 次目标调用。
@@ -46,7 +48,7 @@ AE2、Applied Flux 和 Beyond Dimensions 都实现同一 `NetworkOutputProvider`
 
 ## 机器归属
 
-- 模拟室：28 个物品种类条目和 28 个流体种类条目，单种 `Long.MAX_VALUE`；活动作业快照配方、时长、核心与工具。
+- 模拟室：28 个物品种类条目和 28 个流体种类条目，单种 `Long.MAX_VALUE`；活动作业快照配方、时长、处理核心与工具。
 - 塑形机：最多 8 种输入和 8 种输出的共享大数仓；每个条目用一次整数换算提交全部可完成交易。
 - 缓冲器：通用 store，容量保持物品 8×256、流体 4×64,000 mB。
 - 精华转换器：领域余数账本加单条目大数输出仓。

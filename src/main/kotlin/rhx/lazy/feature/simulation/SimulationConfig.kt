@@ -3,6 +3,7 @@ package rhx.lazy.feature.simulation
 import net.neoforged.fml.ModContainer
 import rhx.lazy.core.config.LazyConfigBuilder
 import rhx.lazy.core.config.LazyConfigDefinition
+import rhx.lazy.feature.machine.ProcessingCoreTier
 
 internal class SimulationConfig(
     builder: LazyConfigBuilder,
@@ -54,3 +55,19 @@ internal object SimulationConfigs {
 
     fun register(container: ModContainer) = definition.registerServer(container, "lazy-simulation.toml")
 }
+
+internal fun ProcessingCoreTier.simulationSpeedMultiplier(): Int =
+    when (this) {
+        ProcessingCoreTier.T1 -> SimulationConfigs.settings.t1SpeedMultiplier.get()
+        ProcessingCoreTier.T2 -> SimulationConfigs.settings.t2SpeedMultiplier.get()
+        ProcessingCoreTier.T3 -> SimulationConfigs.settings.t3SpeedMultiplier.get()
+        ProcessingCoreTier.T4 -> SimulationConfigs.settings.t4SpeedMultiplier.get()
+    }
+
+internal fun ProcessingCoreTier.simulationOutputMultiplier(): Int =
+    when (this) {
+        ProcessingCoreTier.T1 -> SimulationConfigs.settings.t1OutputMultiplier.get()
+        ProcessingCoreTier.T2 -> SimulationConfigs.settings.t2OutputMultiplier.get()
+        ProcessingCoreTier.T3 -> SimulationConfigs.settings.t3OutputMultiplier.get()
+        ProcessingCoreTier.T4 -> SimulationConfigs.settings.t4OutputMultiplier.get()
+    }

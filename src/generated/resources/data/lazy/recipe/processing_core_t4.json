@@ -6,7 +6,7 @@
       "tag": "c:ingots/netherite"
     },
     "T": {
-      "item": "lazy:simulation_core_t3"
+      "item": "lazy:processing_core_t3"
     }
   },
   "pattern": [
@@ -16,6 +16,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "lazy:simulation_core_t4"
+    "id": "lazy:processing_core_t4"
   }
 }

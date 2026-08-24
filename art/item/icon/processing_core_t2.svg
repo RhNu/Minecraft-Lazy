@@ -3,7 +3,7 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Simulation core T2: gold frame, amber lens, 2/4 tier pips. -->
+    <!-- Processing core T2: gold frame, amber lens, 2/4 tier pips. -->
 
     <!-- Frame: shared core chassis in the tier metal. -->
     <path fill="#12171f" d="M3 2h10v1h1v10h-1v1H3v-1H2V3h1z" />

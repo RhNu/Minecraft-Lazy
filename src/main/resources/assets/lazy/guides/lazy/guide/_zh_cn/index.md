@@ -27,4 +27,4 @@ Lazy 是一套减少重复劳动的工具箱，便利性优先于平衡性。
 - [数据模型](data_model.md)
 - [能量电池](energy_battery.md)
 - [模块化配置器](modular_configurator.md)
-- [模拟核心](simulation_cores.md)
+- [处理核心](processing_cores.md)

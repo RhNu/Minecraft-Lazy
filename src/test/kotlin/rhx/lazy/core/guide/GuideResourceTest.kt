@@ -91,14 +91,14 @@ class GuideResourceTest {
                 ToolPage("energy_battery.md", listOf("lazy:energy_battery"), "lazy:energy_battery"),
                 ToolPage("modular_configurator.md", listOf("lazy:modular_configurator"), "lazy:modular_configurator"),
                 ToolPage(
-                    "simulation_cores.md",
+                    "processing_cores.md",
                     listOf(
-                        "lazy:simulation_core_t1",
-                        "lazy:simulation_core_t2",
-                        "lazy:simulation_core_t3",
-                        "lazy:simulation_core_t4",
+                        "lazy:processing_core_t1",
+                        "lazy:processing_core_t2",
+                        "lazy:processing_core_t3",
+                        "lazy:processing_core_t4",
                     ),
-                    "lazy:simulation_core_t1",
+                    "lazy:processing_core_t1",
                 ),
             )
 

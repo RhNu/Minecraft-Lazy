@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_t3_core": {
+    "has_redstone": {
       "conditions": {
         "items": [
           {
-            "items": "lazy:simulation_core_t3"
+            "items": "#c:dusts/redstone"
           }
         ]
       },
@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "lazy:simulation_core_t4"
+        "recipe": "lazy:processing_core_t1"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -21,12 +21,12 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_t3_core"
+      "has_redstone"
     ]
   ],
   "rewards": {
     "recipes": [
-      "lazy:simulation_core_t4"
+      "lazy:processing_core_t1"
     ]
   }
 }

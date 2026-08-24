@@ -38,11 +38,6 @@ internal object SimulationRegistries : RegistryModule {
             "data_model",
             Supplier { DataModelItem(Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)) },
         )
-    val coreT1 = core("simulation_core_t1", SimulationCoreTier.T1)
-    val coreT2 = core("simulation_core_t2", SimulationCoreTier.T2)
-    val coreT3 = core("simulation_core_t3", SimulationCoreTier.T3)
-    val coreT4 = core("simulation_core_t4", SimulationCoreTier.T4)
-
     val blockEntity =
         blockEntities.register(
             "simulation_chamber",
@@ -76,10 +71,6 @@ internal object SimulationRegistries : RegistryModule {
                 .networkSynchronized(ResourceLocation.STREAM_CODEC)
         }
 
-    fun coreTier(stack: net.minecraft.world.item.ItemStack): SimulationCoreTier? = (stack.item as? SimulationCoreItem)?.tier
-
-    fun allCoreItems(): List<Supplier<out Item>> = listOf(coreT1, coreT2, coreT3, coreT4)
-
     override fun register(bus: IEventBus) {
         blocks.register(bus)
         items.register(bus)
@@ -88,11 +79,6 @@ internal object SimulationRegistries : RegistryModule {
         recipeSerializers.register(bus)
         dataComponents.register(bus)
     }
-
-    private fun core(
-        name: String,
-        tier: SimulationCoreTier,
-    ) = items.register(name, Supplier { SimulationCoreItem(tier, Item.Properties().stacksTo(64)) })
 
     private val ITEM_RECIPE_ID = lazyId("item_simulation")
     private val ENTITY_RECIPE_ID = lazyId("entity_simulation")

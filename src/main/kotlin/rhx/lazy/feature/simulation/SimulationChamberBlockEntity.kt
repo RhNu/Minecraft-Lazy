@@ -33,6 +33,7 @@ import rhx.lazy.core.resource.ItemResourceKind
 import rhx.lazy.core.resource.ResourceFluidHandler
 import rhx.lazy.core.resource.ResourceItemHandler
 import rhx.lazy.core.resource.ResourceStore
+import rhx.lazy.feature.machine.ProcessingCoreRegistries
 import kotlin.math.min
 
 internal class SimulationChamberBlockEntity(
@@ -84,13 +85,18 @@ internal class SimulationChamberBlockEntity(
         return (job.progressTicks.toFloat() / job.duration).coerceIn(0f, 1f)
     }
 
-    fun speedMultiplier(): Int = activeJob?.speedMultiplier ?: SimulationRegistries.coreTier(inputs[CORE_SLOT])?.speedMultiplier() ?: 0
+    fun speedMultiplier(): Int =
+        activeJob?.speedMultiplier
+            ?: ProcessingCoreRegistries.tier(inputs[CORE_SLOT])?.simulationSpeedMultiplier()
+            ?: 0
 
     fun outputMultiplier(): Long =
         activeJob?.outputMultiplier
-            ?: SimulationRegistries
-                .coreTier(inputs[CORE_SLOT])
-                ?.let { tier -> Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.outputMultiplier().toLong()) }
+            ?: ProcessingCoreRegistries
+                .tier(inputs[CORE_SLOT])
+                ?.let { tier ->
+                    Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.simulationOutputMultiplier().toLong())
+                }
             ?: 0L
 
     fun hasWaitingOutputs(): Boolean = workController.status == WorkStatus.BLOCKED
@@ -174,15 +180,15 @@ internal class SimulationChamberBlockEntity(
 
     private fun startJob(level: ServerLevel) {
         val simulation = SimulationRecipeResolver.resolve(level, inputs[TARGET_SLOT]) ?: return
-        val tier = SimulationRegistries.coreTier(inputs[CORE_SLOT]) ?: return
-        val rolls = Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.outputMultiplier().toLong())
+        val tier = ProcessingCoreRegistries.tier(inputs[CORE_SLOT]) ?: return
+        val rolls = Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.simulationOutputMultiplier().toLong())
         if (rolls <= 0L) return
         activeJob =
             SimulationJob(
                 target = inputs[TARGET_SLOT],
                 batch = SimulationBatch.from(simulation, rolls),
                 duration = simulation.duration,
-                speedMultiplier = tier.speedMultiplier(),
+                speedMultiplier = tier.simulationSpeedMultiplier(),
                 outputMultiplier = rolls,
                 tools = inputs.subList(TOOL_SLOT_START, INPUT_SLOTS),
             )
@@ -328,7 +334,7 @@ internal class SimulationChamberBlockEntity(
     ): Boolean =
         when (slot) {
             TARGET_SLOT -> level?.let { SimulationRecipeResolver.resolve(it, stack) } != null
-            CORE_SLOT -> SimulationRegistries.coreTier(stack) != null
+            CORE_SLOT -> ProcessingCoreRegistries.tier(stack) != null
             in TOOL_SLOT_START until INPUT_SLOTS -> SimulationToolModules.claims(stack)
             else -> false
         }

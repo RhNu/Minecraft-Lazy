@@ -17,14 +17,14 @@ The Simulation Chamber runs data-driven item and entity simulations without spaw
 ## Inputs
 
 - **Target** accepts an item with an explicit or automatic simulation, a spawn egg, a bound <ItemLink id="lazy:data_model" />, or another supported entity carrier.
-- **Core** accepts up to 64 cores. Each core contributes the tier's speed and output multiplier.
+- **Processing Core** accepts up to 64 cores. Each core contributes the tier's speed and output multiplier.
 - **Tools** provide optional behaviour. Three tool slots are read as the batch advances; tools are not consumed or damaged.
 
 ## Data Model
 
 Use a blank <ItemLink id="lazy:data_model" /> on a supported living entity to bind that entity to the model. Sneak-use a bound model to clear it. Players and targets rejected by the simulation rules cannot be bound.
 
-Core values and stacking behavior are documented on the [Simulation Cores](simulation_cores.md) page.
+Core values and stacking behavior are documented on the [Processing Cores](processing_cores.md) page.
 
 ## Tool slots
 
