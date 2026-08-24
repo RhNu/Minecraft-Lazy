@@ -11,17 +11,14 @@
     "G": {
       "tag": "c:ingots/gold"
     },
-    "I": {
-      "tag": "c:ingots/iron"
-    },
     "R": {
       "tag": "c:dusts/redstone"
     }
   },
   "pattern": [
-    "IGI",
+    " G ",
     "RCR",
-    "IBI"
+    " B "
   ],
   "result": {
     "count": 1,

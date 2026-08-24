@@ -13,9 +13,9 @@
     }
   },
   "pattern": [
-    "PQP",
-    "QRQ",
-    "PQP"
+    " Q ",
+    "PRP",
+    " Q "
   ],
   "result": {
     "count": 1,

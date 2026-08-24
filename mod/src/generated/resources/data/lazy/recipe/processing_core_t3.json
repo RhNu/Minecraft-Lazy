@@ -5,14 +5,17 @@
     "D": {
       "tag": "c:gems/diamond"
     },
+    "E": {
+      "tag": "c:gems/emerald"
+    },
     "T": {
       "item": "lazy:processing_core_t2"
     }
   },
   "pattern": [
-    "DDD",
+    "EDE",
     "DTD",
-    "DDD"
+    "EDE"
   ],
   "result": {
     "count": 1,

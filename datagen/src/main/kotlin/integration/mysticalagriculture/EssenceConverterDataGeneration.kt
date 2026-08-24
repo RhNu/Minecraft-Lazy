@@ -83,11 +83,9 @@ internal object EssenceConverterDataGeneration {
                 .shaped(RecipeCategory.MISC, MysticalAgricultureDataGenExports.essenceConverterItem())
                 .pattern(" I ")
                 .pattern("HMH")
-                .pattern(" C ")
                 .define('I', masterCrystal)
                 .define('H', Items.HOPPER)
                 .define('M', DataGenExports.machineCasingItem())
-                .define('C', Items.CHEST)
                 .unlockedBy("has_machine_casing", has(DataGenExports.machineCasingItem()))
                 .save(consumingOutput)
         }

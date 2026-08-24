@@ -8,9 +8,6 @@
   "type": "lazy:consuming_shaped",
   "category": "misc",
   "key": {
-    "C": {
-      "item": "minecraft:chest"
-    },
     "H": {
       "item": "minecraft:hopper"
     },
@@ -23,8 +20,7 @@
   },
   "pattern": [
     " I ",
-    "HMH",
-    " C "
+    "HMH"
   ],
   "result": {
     "count": 1,

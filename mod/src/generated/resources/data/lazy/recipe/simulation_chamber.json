@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "C": {
-      "tag": "c:ingots/copper"
+      "item": "minecraft:cauldron"
     },
     "M": {
       "item": "lazy:machine_casing"
@@ -13,9 +13,8 @@
     }
   },
   "pattern": [
-    "CCC",
-    "RMR",
-    "CCC"
+    " C ",
+    "RMR"
   ],
   "result": {
     "count": 1,

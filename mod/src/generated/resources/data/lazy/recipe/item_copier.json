@@ -2,19 +2,22 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "tag": "c:storage_blocks/iron"
-    },
     "C": {
       "item": "minecraft:chest"
     },
+    "L": {
+      "item": "minecraft:lava_bucket"
+    },
     "M": {
       "item": "lazy:machine_casing"
+    },
+    "W": {
+      "item": "minecraft:water_bucket"
     }
   },
   "pattern": [
     " C ",
-    "BMB"
+    "LMW"
   ],
   "result": {
     "count": 1,

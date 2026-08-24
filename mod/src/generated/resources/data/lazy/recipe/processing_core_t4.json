@@ -5,14 +5,17 @@
     "N": {
       "tag": "c:ingots/netherite"
     },
+    "S": {
+      "item": "minecraft:netherite_scrap"
+    },
     "T": {
       "item": "lazy:processing_core_t3"
     }
   },
   "pattern": [
-    "NNN",
+    "SNS",
     "NTN",
-    "NNN"
+    "SNS"
   ],
   "result": {
     "count": 1,
