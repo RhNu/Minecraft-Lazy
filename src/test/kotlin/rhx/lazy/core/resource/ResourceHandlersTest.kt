@@ -28,6 +28,7 @@ class ResourceHandlersTest {
         val handler = ResourceItemHandler(store, allowInsert = false)
 
         assertEquals(64, handler.getStackInSlot(0).count)
+        assertEquals(Int.MAX_VALUE.toLong() + 20, handler.getAmountInSlot(0))
         assertEquals(64, handler.extractItem(0, Int.MAX_VALUE, false).count)
         assertEquals(Int.MAX_VALUE.toLong() + 20 - 64, store.amount(0))
     }

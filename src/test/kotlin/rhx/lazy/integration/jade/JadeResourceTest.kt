@@ -14,6 +14,10 @@ class JadeResourceTest {
 
         assertEquals("Buffer status", english["config.jade.plugin_lazy.buffer"].asString)
         assertEquals("缓冲器状态", chinese["config.jade.plugin_lazy.buffer"].asString)
+        assertEquals("Shaper items", english["config.jade.plugin_lazy.shaper_item_storage"].asString)
+        assertEquals("塑形机物品", chinese["config.jade.plugin_lazy.shaper_item_storage"].asString)
+        assertEquals("Simulation Chamber items", english["config.jade.plugin_lazy.simulation_chamber_item_storage"].asString)
+        assertEquals("模拟室物品", chinese["config.jade.plugin_lazy.simulation_chamber_item_storage"].asString)
         assertEquals("Output: %s", english["jade.lazy.output"].asString)
         assertEquals("输出：%s", chinese["jade.lazy.output"].asString)
         assertEquals("Face output • eject %s", english["jade.lazy.output.face"].asString)

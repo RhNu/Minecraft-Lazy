@@ -15,6 +15,9 @@ internal class ResourceItemHandler(
 ) : IItemHandlerModifiable {
     override fun getSlots(): Int = store.slots
 
+    /** Exact quantity behind the NeoForge-sized stack returned by [getStackInSlot]. */
+    fun getAmountInSlot(slot: Int): Long = store.amount(slot)
+
     override fun getStackInSlot(slot: Int): ItemStack {
         val variant = store.variant(slot) ?: return ItemStack.EMPTY
         val count =

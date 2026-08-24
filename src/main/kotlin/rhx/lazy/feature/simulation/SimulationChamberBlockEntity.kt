@@ -48,7 +48,7 @@ internal class SimulationChamberBlockEntity(
     private var activeJob: SimulationJob? = null
 
     val inputItemHandler: IItemHandlerModifiable = SimulationInputHandler(inputs, ::inputLimit, ::validInput, ::setInput)
-    val outputItemHandler: IItemHandlerModifiable = ResourceItemHandler(itemOutputs, allowInsert = false)
+    val outputItemHandler = ResourceItemHandler(itemOutputs, allowInsert = false)
     val outputFluidHandler: IFluidHandler = ResourceFluidHandler(fluidOutputs, allowInsert = false)
 
     private val workController =

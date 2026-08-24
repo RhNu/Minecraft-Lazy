@@ -8,7 +8,6 @@ import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
-import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
 import rhx.lazy.core.io.ResourceKinds
@@ -50,8 +49,8 @@ internal class ShaperBlockEntity(
     private val outputs = ResourceStore(ItemResourceKind, ENTRIES, ENTRY_CAPACITY, ::resourcesChanged)
     private val outputSource = StoredOutputSource(listOf(outputs))
 
-    val inputHandler: IItemHandlerModifiable = ResourceItemHandler(inputs, allowInsert = true, isValid = ::isValidInput)
-    val outputHandler: IItemHandlerModifiable = ResourceItemHandler(outputs, allowInsert = false)
+    val inputHandler = ResourceItemHandler(inputs, allowInsert = true, isValid = ::isValidInput)
+    val outputHandler = ResourceItemHandler(outputs, allowInsert = false)
 
     init {
         installIoAdapter(ShaperIoAdapter())

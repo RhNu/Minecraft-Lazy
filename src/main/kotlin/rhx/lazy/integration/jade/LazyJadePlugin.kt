@@ -9,11 +9,13 @@ import rhx.lazy.feature.itemcopier.ItemCopierBlock
 import rhx.lazy.feature.itemcopier.ItemCopierBlockEntity
 import rhx.lazy.feature.repairer.RepairerBlock
 import rhx.lazy.feature.repairer.RepairerBlockEntity
+import rhx.lazy.feature.shaping.ShaperBlock
 import rhx.lazy.feature.simulation.SimulationChamberBlock
 import rhx.lazy.feature.simulation.SimulationChamberBlockEntity
 import rhx.lazy.integration.jade.client.BufferJadeComponentProvider
 import rhx.lazy.integration.jade.client.EnergySourceJadeComponentProvider
 import rhx.lazy.integration.jade.client.ItemCopierJadeComponentProvider
+import rhx.lazy.integration.jade.client.LargeItemStorageClientProvider
 import rhx.lazy.integration.jade.client.RepairerJadeComponentProvider
 import rhx.lazy.integration.jade.client.SimulationChamberJadeComponentProvider
 import rhx.lazy.integration.jade.mysticalagriculture.JadeEssenceConverterIntegration
@@ -34,6 +36,8 @@ class LazyJadePlugin : IWailaPlugin {
         registration.registerFluidStorage(MachineStorageHiders.bufferFluid, BufferBlock::class.java)
         registration.registerEnergyStorage(MachineStorageHiders.energySourceEnergy, EnergySourceBlock::class.java)
         registration.registerFluidStorage(MachineStorageHiders.simulationChamberFluid, SimulationChamberBlock::class.java)
+        registration.registerItemStorage(LargeItemStorageProviders.shaper, ShaperBlock::class.java)
+        registration.registerItemStorage(LargeItemStorageProviders.simulationChamber, SimulationChamberBlock::class.java)
 
         if (ModList.get().isLoaded(MYSTICAL_AGRICULTURE_MOD_ID)) {
             JadeEssenceConverterIntegration.register(registration)
@@ -46,6 +50,8 @@ class LazyJadePlugin : IWailaPlugin {
         registration.registerBlockComponent(ItemCopierJadeComponentProvider, ItemCopierBlock::class.java)
         registration.registerBlockComponent(RepairerJadeComponentProvider, RepairerBlock::class.java)
         registration.registerBlockComponent(SimulationChamberJadeComponentProvider, SimulationChamberBlock::class.java)
+        registration.registerItemStorageClient(LargeItemStorageClientProvider(JadeProviderIds.shaperItemStorage))
+        registration.registerItemStorageClient(LargeItemStorageClientProvider(JadeProviderIds.simulationChamberItemStorage))
 
         if (ModList.get().isLoaded(MYSTICAL_AGRICULTURE_MOD_ID)) {
             JadeEssenceConverterClientIntegration.register(registration)
