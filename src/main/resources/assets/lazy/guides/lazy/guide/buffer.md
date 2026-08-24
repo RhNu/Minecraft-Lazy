@@ -18,7 +18,8 @@ The Buffer is a large mixed item-and-fluid storage machine. It is useful as a lo
 
 - 8 item slots hold one item type per slot, up to 256 items in each slot.
 - 4 fluid tanks hold one fluid type per tank, up to 64,000 mB in each tank.
-- Both inventories are exposed to adjacent capabilities and can be viewed in the machine screen.
+- Both inventories are exposed to adjacent capabilities. Item slots also support normal click,
+  split, drag, and shift-click interaction in the machine screen.
 
 Right-click opens the screen. Sneak-right-click reports the total stored items and fluid amount without opening it. The clear button destroys all stored contents after confirmation.
 

@@ -9,10 +9,10 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement
 import com.lowdragmc.lowdraglib2.gui.ui.column
 import com.lowdragmc.lowdraglib2.gui.ui.element
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue
+import com.lowdragmc.lowdraglib2.gui.ui.elements.acceptQuickMove
 import com.lowdragmc.lowdraglib2.gui.ui.elements.asXeiRecipeIngredient
 import com.lowdragmc.lowdraglib2.gui.ui.elements.button
 import com.lowdragmc.lowdraglib2.gui.ui.elements.fluidSlot
-import com.lowdragmc.lowdraglib2.gui.ui.elements.itemSlot
 import com.lowdragmc.lowdraglib2.gui.ui.elements.label
 import com.lowdragmc.lowdraglib2.gui.ui.elements.withTooltips
 import com.lowdragmc.lowdraglib2.gui.ui.layout.pct
@@ -31,6 +31,7 @@ import rhx.lazy.core.blockEntityOrNull
 import rhx.lazy.core.io.IoPanelModel
 import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
+import rhx.lazy.core.ui.largeItemSlot
 
 internal object BufferUI {
     private val stylesheet = lazyId("lss/buffer.lss")
@@ -75,15 +76,15 @@ internal object BufferUI {
                             ) {
                                 repeat(ITEM_SLOTS_PER_ROW) { columnIndex ->
                                     val slot = rowIndex * ITEM_SLOTS_PER_ROW + columnIndex
-                                    itemSlot(
-                                        {
+                                    largeItemSlot(
+                                        model.itemHandler,
+                                        slot,
+                                        spec = {
                                             cls = { +"lazy-buffer__item-slot" }
                                         },
                                     ) {
-                                        bind(
-                                            itemStackBinding { model.itemStack(slot) },
-                                        )
                                         withTooltips()
+                                        acceptQuickMove()
                                         asXeiRecipeIngredient(IngredientIO.NONE)
                                     }
                                 }
@@ -240,12 +241,8 @@ internal object BufferUI {
         val fluidHandler: IFluidHandler
             get() = blockEntity?.fluidHandler ?: EmptyFluidHandler
 
-        fun itemStack(slot: Int): ItemStack {
-            val entity = blockEntity ?: return ItemStack.EMPTY
-            val template = entity.getItemTemplate(slot)
-            val count = entity.getItemCount(slot)
-            return if (template.isEmpty || count <= 0) ItemStack.EMPTY else template.copyWithCount(count)
-        }
+        val itemHandler
+            get() = blockEntity?.itemHandler ?: EmptyItemHandler
 
         fun hasContents(): Boolean = blockEntity?.hasContents() == true
 
@@ -258,11 +255,6 @@ internal object BufferUI {
             return block.stillValid(holder)
         }
     }
-
-    private fun itemStackBinding(value: () -> ItemStack) =
-        DataBindingBuilder
-            .itemStackS2C { value() }
-            .build()
 
     private fun booleanBinding(value: () -> Boolean) =
         DataBindingBuilder
@@ -296,6 +288,36 @@ internal object BufferUI {
             maxDrain: Int,
             action: IFluidHandler.FluidAction,
         ): FluidStack = FluidStack.EMPTY
+    }
+
+    private object EmptyItemHandler : net.neoforged.neoforge.items.IItemHandlerModifiable {
+        override fun getSlots(): Int = BufferBlockEntity.ITEM_SLOT_COUNT
+
+        override fun getStackInSlot(slot: Int): ItemStack = ItemStack.EMPTY
+
+        override fun insertItem(
+            slot: Int,
+            stack: ItemStack,
+            simulate: Boolean,
+        ): ItemStack = stack
+
+        override fun extractItem(
+            slot: Int,
+            amount: Int,
+            simulate: Boolean,
+        ): ItemStack = ItemStack.EMPTY
+
+        override fun getSlotLimit(slot: Int): Int = BufferBlockEntity.ITEM_SLOT_CAPACITY
+
+        override fun isItemValid(
+            slot: Int,
+            stack: ItemStack,
+        ): Boolean = false
+
+        override fun setStackInSlot(
+            slot: Int,
+            stack: ItemStack,
+        ) = Unit
     }
 
     private const val ITEM_ROW_COUNT = 2

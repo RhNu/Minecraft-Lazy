@@ -30,6 +30,7 @@ import rhx.lazy.core.io.IoPanelModel
 import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
 import rhx.lazy.core.material.MaterialIndexes
+import rhx.lazy.core.ui.largeItemSlot
 
 internal object ShaperUI {
     private val stylesheet = lazyId("lss/shaper.lss")
@@ -169,9 +170,10 @@ internal object ShaperUI {
                 ) {
                     repeat(4) { columnIndex ->
                         val slot = rowIndex * 4 + columnIndex
-                        itemSlot(
-                            {
-                                bind(handler, slot)
+                        largeItemSlot(
+                            handler,
+                            slot,
+                            spec = {
                                 cls = { +"lazy-shaper__slot" }
                             },
                         ) {
