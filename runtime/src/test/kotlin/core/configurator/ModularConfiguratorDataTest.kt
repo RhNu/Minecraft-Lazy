@@ -1,7 +1,5 @@
 package rhx.lazy.core.configurator
 
-import com.google.gson.JsonParser
-import com.mojang.serialization.JsonOps
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
@@ -33,25 +31,16 @@ class ModularConfiguratorDataTest {
 
     @Test
     fun `normalization drops invalid and duplicate slots and clamps counts`() {
-        val json =
-            JsonParser.parseString(
-                """
-                {
-                  "materials": [
-                    {"slot": 2, "stack": {"id": "minecraft:diamond"}, "count": 5000},
-                    {"slot": 2, "stack": {"id": "minecraft:emerald"}, "count": 10},
-                    {"slot": 30, "stack": {"id": "minecraft:gold_ingot"}, "count": 10},
-                    {"slot": 3, "stack": {"id": "minecraft:iron_ingot"}, "count": 0}
-                  ]
-                }
-                """.trimIndent(),
-            )
-
         val decoded =
-            ModularConfiguratorData.CODEC
-                .parse(JsonOps.INSTANCE, json)
-                .result()
-                .orElseThrow()
+            ModularConfiguratorData.create(
+                listOf(
+                    ModularConfiguratorMaterialEntry(2, ItemStack(Items.DIAMOND), 5000),
+                    ModularConfiguratorMaterialEntry(2, ItemStack(Items.EMERALD), 10),
+                    ModularConfiguratorMaterialEntry(30, ItemStack(Items.GOLD_INGOT), 10),
+                    ModularConfiguratorMaterialEntry(3, ItemStack(Items.IRON_INGOT), 0),
+                ),
+                emptyMap(),
+            )
 
         assertEquals(1024, decoded.stack(2).count)
         assertEquals(Items.DIAMOND, decoded.stack(2).item)

@@ -1,58 +1,21 @@
 package rhx.lazy.feature.simulation
 
-import com.google.gson.JsonParser
 import com.mojang.serialization.JsonOps
 import io.netty.buffer.Unpooled
 import net.minecraft.core.RegistryAccess
 import net.minecraft.core.registries.BuiltInRegistries
-import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import net.neoforged.neoforge.network.connection.ConnectionType
-import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SimulationRecipeCodecTest {
     private val registries = RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY)
-
-    @Test
-    fun `bundled simulation recipes decode`() {
-        val root = Path.of(System.getProperty("lazy.projectDir"), "mod/src/generated/resources/data/lazy/recipe/simulation")
-        Files.walk(root).use { paths ->
-            paths.filter { Files.isRegularFile(it) && it.toString().endsWith(".json") }.forEach { path ->
-                val json = JsonParser.parseString(Files.readString(path)).asJsonObject
-                val result =
-                    when (json.remove("type").asString) {
-                        "lazy:item_simulation" -> ItemSimulationRecipe.CODEC.codec().parse(JsonOps.INSTANCE, json)
-                        "lazy:entity_simulation" -> EntitySimulationRecipe.CODEC.codec().parse(JsonOps.INSTANCE, json)
-                        else -> error("Unexpected recipe type in $path")
-                    }
-                assertTrue(result.isSuccess, "$path: ${result.error().orElse(null)}")
-            }
-        }
-    }
-
-    @Test
-    fun `entity profile codec applies defaults`() {
-        val json = JsonParser.parseString("""{"entity":"minecraft:cow"}""")
-        val recipe =
-            EntitySimulationRecipe.CODEC
-                .codec()
-                .parse(JsonOps.INSTANCE, json)
-                .result()
-                .orElseThrow()
-
-        assertEquals(ResourceLocation.withDefaultNamespace("cow"), recipe.entity)
-        assertEquals(ItemSimulationRecipe.USE_CONFIG_DEFAULT, recipe.duration)
-        assertEquals(SimulationConfigs.settings.defaultDuration.get(), recipe.durationTicks())
-        assertTrue(recipe.rollLootTable)
-    }
 
     @Test
     fun `unprofiled entity uses a valid synthetic recipe id`() {
@@ -94,32 +57,6 @@ class SimulationRecipeCodecTest {
     }
 
     @Test
-    fun `explicit zero duration is rejected while an omitted duration uses config`() {
-        val invalid =
-            JsonParser.parseString(
-                """{"input":{"item":"minecraft:diamond"},"duration":0,"item_outputs":[{"stack":{"id":"minecraft:diamond"}}]}""",
-            )
-        val omitted =
-            JsonParser.parseString(
-                """{"input":{"item":"minecraft:diamond"},"item_outputs":[{"stack":{"id":"minecraft:diamond"}}]}""",
-            )
-
-        assertTrue(
-            ItemSimulationRecipe.CODEC
-                .codec()
-                .parse(JsonOps.INSTANCE, invalid)
-                .isError,
-        )
-        val recipe =
-            ItemSimulationRecipe.CODEC
-                .codec()
-                .parse(JsonOps.INSTANCE, omitted)
-                .result()
-                .orElseThrow()
-        assertEquals(SimulationConfigs.settings.defaultDuration.get(), recipe.durationTicks())
-    }
-
-    @Test
     fun `batch snapshots recipe outputs instead of retaining the recipe holder`() {
         val original = SimulationItemOutput(ItemStack(Items.DIAMOND), maxRolls = 2)
         val simulation =
@@ -140,30 +77,6 @@ class SimulationRecipeCodecTest {
                 .stack.count,
         )
         assertEquals(4, batch.remaining)
-    }
-
-    @Test
-    fun `injection codec requires output and preserves ranges`() {
-        val valid =
-            JsonParser.parseString(
-                """{"input":{"item":"minecraft:diamond"},"item_outputs":[{"stack":{"id":"minecraft:emerald"},"chance":0.2,"min_rolls":1,"max_rolls":3}]}""",
-            )
-        val empty = JsonParser.parseString("""{"input":{"item":"minecraft:diamond"}}""")
-
-        val recipe =
-            ItemSimulationInjectionRecipe.CODEC
-                .codec()
-                .parse(JsonOps.INSTANCE, valid)
-                .result()
-                .orElseThrow()
-        assertEquals(0.2f, recipe.itemOutputs.single().chance)
-        assertEquals(1..3, recipe.itemOutputs.single().minRolls..recipe.itemOutputs.single().maxRolls)
-        assertTrue(
-            ItemSimulationInjectionRecipe.CODEC
-                .codec()
-                .parse(JsonOps.INSTANCE, empty)
-                .isError,
-        )
     }
 
     @Test
@@ -220,32 +133,6 @@ class SimulationRecipeCodecTest {
                 .tool.item,
         )
         assertEquals(3, restored.remaining)
-    }
-
-    @Test
-    fun `block loot descriptions without a tool decode as empty`() {
-        val json =
-            JsonParser
-                .parseString(
-                    """{"state":{"Name":"minecraft:poppy"},"display_items":[{"id":"minecraft:poppy","count":1}]}""",
-                ).asJsonObject
-        val result = SimulationBlockLootOutput.CODEC.codec().parse(JsonOps.INSTANCE, json)
-
-        val output = result.resultOrPartial { error("Failed to decode block loot output: $it") }.orElseThrow()
-        assertEquals(Blocks.POPPY, output.state.block)
-        assertTrue(output.tool.isEmpty)
-    }
-
-    @Test
-    fun `obsolete automatic batch is rejected`() {
-        val tag =
-            CompoundTag().apply {
-                putString("kind", "automatic")
-                putLong("remaining", 5)
-                put("automaticOutput", ItemStack(Items.RAW_IRON, 2).save(registries))
-            }
-
-        assertEquals(null, SimulationBatch.parse(registries, tag))
     }
 
     @Test

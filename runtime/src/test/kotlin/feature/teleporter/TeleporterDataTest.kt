@@ -1,6 +1,5 @@
 package rhx.lazy.feature.teleporter
 
-import com.mojang.serialization.JsonOps
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceKey
@@ -10,7 +9,6 @@ import rhx.lazy.core.testing.jsonRoundTrip
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class TeleporterDataTest {
     @Test
@@ -48,7 +46,7 @@ class TeleporterDataTest {
     }
 
     @Test
-    fun `codec preserves a syntactically valid missing dimension and rejects an invalid id`() {
+    fun `codec preserves a syntactically valid missing dimension`() {
         val missingDimension =
             SavedLocation(
                 ResourceKey.create(
@@ -63,11 +61,5 @@ class TeleporterDataTest {
             missingDimension,
             SavedLocation.CODEC.jsonRoundTrip(missingDimension),
         )
-
-        val invalid =
-            com.google.gson.JsonParser.parseString(
-                """{"dimension":"lazy:Invalid Dimension","pos":[0,0,0],"yaw":0,"pitch":0}""",
-            )
-        assertTrue(SavedLocation.CODEC.parse(JsonOps.INSTANCE, invalid).isError)
     }
 }

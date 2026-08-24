@@ -1,88 +1,91 @@
-# 架构约定
+# 架构
 
-## 版本与边界
+## 目标
 
-Lazy 固定面向 Minecraft 1.21.1 NeoForge。注册经 `DeferredRegister` 和延迟持有者完成；客户端代码与公共/服务端代码隔离，玩家可见文本全部本地化。当前机器与网络接口是模组内部 SPI，不承诺第三方兼容性。
+Lazy 将运行时、可选集成、发布入口和数据生成拆成独立编译边界。架构的核心目标是让可选依赖保持可选、让生成关系在编译期可验证，并让机器共享一致的资源与输出语义。
 
-旧机器 BlockEntity NBT、旧物品 NBT、旧配置键和旧工作状态不迁移。方块与配方 ID 保持不变；读不到新结构时按空状态处理。
+本文只描述跨模块约束和系统级数据流。功能清单见 [内容设计](content-design.md)，具体难点见 [规格目录](spec/)。
 
-## 多项目边界
+## 模块职责
 
-根项目只聚合任务。`runtime` 拥有 core、feature 和运行时注册；`integration-api` 拥有生命周期 SPI；每个 `integrations/*` project 只编译一个第三方集成；`mod` 拥有 `@Mod`、资源、元数据与发布；`datagen` 独占 Provider、语言贡献、模型 helper 和 `GatherDataEvent`；`codegen/*` 与 `build-logic` 负责关系声明和编译期治理。
+| 模块 | 拥有的内容 | 可依赖方向 |
+| --- | --- | --- |
+| `integration-api` | Integration context、生命周期接口、内部 API 标记 | 最小公共依赖 |
+| `runtime` | 核心设施、注册、内置内容、公共 SPI | `integration-api` |
+| `integrations/*` | 单一第三方模组适配与其专属 DataGen contribution | `runtime`、`integration-api`、声明的 Integration 依赖、partner API |
+| `mod` | 模组入口、资源、聚合 JAR、运行配置与发布 | 聚合运行时及选定 Integration 产物 |
+| `datagen` | DataGen 入口、Provider 和生成资源编排 | 窄 DataGen export 与声明参与的 Integration |
+| `codegen/*` | Integration 注解、descriptor 校验与 catalog 生成 | 独立编译期契约 |
+| `build-logic` | 约定插件、Integration DSL、打包与开发运行图 | Gradle 构建模型 |
 
-`runtime`、`integration-api` 与 integration 只生成内部 library JAR。`:mod:jar` 仅展开这些 project artifact，重复路径直接失败，并排除子模块 manifest 和签名。最终产物不含子模块 JAR、DataGen 类或第三方包。`:mod:sourcesJar` 聚合相同模块的源码；Maven publication 直接发布这两个聚合 artifact，不暴露内部 project 或可选 partner 依赖。
+根项目只提供聚合任务。最终发布物由 `mod` 聚合内部模块产物；内部模块不是独立发布 API。
 
-跨模块声明必须显式 `public` 并在具体声明上标记 `@LazyInternalApi`；其余实现保持 `internal`，禁止使用文件级注解批量放大 API。`integration-api`、注解与 processor 等真正的契约模块启用 strict explicit API；实现模块通过编译各消费方验证边界，不使用 friend path 绕过模块可见性。
+## API 边界
 
-Kotlin 文件的物理路径不复制无信息量的完整包名前缀：`runtime/src/*/kotlin` 直接从 `core`、`feature` 等领域目录开始，每个 integration 与 codegen 模块的源码直接位于自己的 source root。Kotlin `package` 和最终二进制包名保持 `rhx.lazy.*`，物理目录只表达模块内有意义的分组。
+| 范围 | Kotlin 可见性 | 标记 |
+| --- | --- | --- |
+| 模块内部实现 | `internal` | 无 |
+| Lazy 模块之间共享 | 显式 `public` | `@LazyInternalApi` |
+| 第三方兼容类型 | 留在对应 `integrations/*` | 按跨模块需要最小暴露 |
 
-## Integration 编译期治理
+`@LazyInternalApi` 表示 Lazy 自身的跨模块契约，不代表对外稳定 API。文件级批量标记不会表达真实边界，因此标记必须落在实际跨模块声明上。
 
-每个 integration 的 `lazyIntegration` Gradle DSL 是 ID、owner、side、必需/可选 mod、integration 依赖和 DataGen 参与状态的唯一真相源。约定插件统一注入 runtime、annotations 与 processor，并生成规范化 descriptor artifact、KSP 参数和可选依赖元数据；partner API 由模块声明为 `compileOnly`，开发运行依赖由同模块的 `integrationRuntime` 导出，`:mod` 按 descriptor 选择 project configuration，不维护第三方坐标硬编码表。
+## Integration 装配
 
-Lazy 管理的入口实现 `CommonIntegration`/`ClientIntegration`。context 显式提供 `ModContainer`、mod bus 和 game bus；integration 不直接读取全局总线或 `ModList`。本地 KSP 校验入口数量、接口、side 与 framework 注解，并生成能访问模块内 `internal` 实现的 public bridge。
+Integration 的声明、生成和安装形成一条编译期可追踪链路：
 
-`:mod` 的聚合 KSP 对 descriptor 做重复 ID、未知/循环依赖、side 和硬依赖闭包校验，再生成 common/client 静态 catalog、`META-INF/lazy/integrations.json`、KubeJS 发现文件和 DataGen contribution catalog。common 路径不引用 client bridge；Jade、JEI、KubeJS 仍由第三方 lifecycle 发现。运行时不使用反射、`ServiceLoader` 或类路径扫描。
+| 阶段 | 输入 | 结果 |
+| --- | --- | --- |
+| 模块声明 | `lazyIntegration` DSL | ID、owner、side、模组条件、依赖关系、DataGen 参与状态 |
+| 模块编译 | 入口实现与 KSP 注解 | 可访问模块内部实现的 bridge |
+| 聚合编译 | 所有 descriptor | 已校验依赖图与 common/client catalog |
+| 运行时 | catalog 与已安装模组 | 按依赖顺序安装满足条件的入口 |
+| DataGen | contribution catalog | 只加载参与当前生成任务的贡献 |
 
-入口只在所有 `requiredMod` 存在时按拓扑序安装。安装阶段异常携带 integration ID 和阶段立即终止。`run*Integrations` 使用同一 descriptor 图计算选择闭包；服务端显式选择 client-only 集成会在 Gradle 配置阶段失败。
+依赖图必须在配置或编译阶段完成闭包、side 与循环校验。第三方拥有入口生命周期的集成仍保持模块隔离，其发现方式见 [Integration 生命周期规格](spec/integration-lifecycles.md)。
 
-## DataGen 边界
+## DataGen 所有权
 
-DataGen 只从 `runtime`、Curios 与 Mystical Agriculture 的窄 `DataGenExports` facade 获取 holder、资源 ID 和 bootstrap 回调。holder 只能在 Provider 执行阶段解析，继续禁止在注册阶段提前 `get()`。静态资源位于 `mod/src/main/resources`，生成结果写入并提交到 `mod/src/generated/resources`。
+| 内容 | 所有者 |
+| --- | --- |
+| Provider、语言贡献、模型 helper | `datagen` 或 Integration 的 DataGen contribution |
+| 静态资源 | `mod/src/main/resources` |
+| 生成结果 | `mod/src/generated/resources` |
+| 可供 DataGen 使用的运行时标识 | 窄 `DataGenExports` facade |
 
-普通 `build` 不执行 DataGen，也不会打包 `datagen` project。根 `runData` 转发到 `:datagen:runData`；该 profile 只加载声明参与且 Provider 实际需要的 partner 依赖。KSP 会在 DSL 的 DataGen 声明与 contribution 不一致时终止编译。
+Provider 执行时才解析注册 holder。普通构建不隐式执行 DataGen；生成资源是否漂移由显式 `runData` 后的工作树差异判断。
 
-## 机器资源流水线
+## 机器运行时分层
 
-资源机器统一分为三层：
+| 层 | 责任 | 不承担的责任 |
+| --- | --- | --- |
+| `core.resource` | 资源身份、长数量、固定种类仓、事务、能力视图 | 工作调度与目标发现 |
+| `core.process` | 工作状态、待提交结果、提交顺序 | 对外传输 |
+| `core.io` | 被动访问、面输出、网络输出、预算与失败恢复 | 生成机器产物 |
+| `feature/*` | 输入解析、机器特有算法、UI 与显示状态 | 重复实现公共资源或传输循环 |
 
-- `core.resource`：不可变资源身份、大数数量、固定种类仓、事务和 NeoForge capability 视图。
-- `core.process`：`WorkProvider`、`WorkController`、`WorkStatus` 和唯一的 `PreparedCommit`。
-- `core.io`：`OutputSource`、每刻传输预算、面/网络调度、重试和结果未知暂停。
+处理机器遵循同一数据方向：
 
-机器共用 `processing_core_t1` 至 `processing_core_t4` 四级处理核心。核心物品与等级定义在通用机器模块中，各机器自行解释对应等级的速度、产出或其它效果。
+```text
+输入或设置 → 工作快照 → 资源事务 → 输出仓 → 被动抽取 / 面输出 / 网络输出
+```
 
-统一路径为：输入或设置生成工作，工作生成资源事务，事务写入唯一输出仓，随后 capability 被动抽取、主动面输出和网络输出都从同一仓扣账。工作预算与运输预算互不影响。
+工作预算与运输预算相互独立。资源只在事务成功后改变，所有输出路径从同一输出源扣账。涉及随机结果、背压和整数换算的细节见 [机器处理规格](spec/machine-processing.md)。
 
-每个工作机器的一刻顺序固定为：旧产物预输出 → 提交旧 `PreparedCommit` → 生成新工作 → 用同一运输预算输出新产物 → 更新显示。前后输出合计最多发起 64 次目标调用。
+## IO 边界
 
-## 资源模型
+机器通过 `IoController` 选择被动、面输出或网络输出。`OutputDispatcher` 负责固定预算内的公平调度；网络适配器通过统一结果类型报告已接受数量、可重试状态、目标状态和结果是否可确认。
 
-`ResourceKind<V>` 定义资源身份的规范化、精确匹配和 NBT 编解码。目前内置 `ItemVariant`、`FluidVariant` 和无模板的 `EnergyVariant`。物品和流体都按数据组件精确匹配。
+机器不持有第三方网络对象。可持久化目标只保存由 provider 定义的稳定引用，并在输出时重新解析。完整状态语义见 [IO 与网络输出规格](spec/io-and-network-output.md)。
 
-`ResourceAmount<V>` 保存不可变身份和正 `Long` 数量；`ResourceBundle` 表示一次工作的多种结果；`ResourceDelta` 表示一个事务中的扣除和增加。
+## 持久化与同步
 
-`ResourceStore<V>` 使用固定条目数组。插入先合并精确相同身份，再占用空条目；每条目有独立的 `Long` 容量。模拟插入、提取、容量查询和 `ResourceTransaction` 都只扫描固定条目数。所有模板防御性复制，产量合并和交易乘法使用溢出检查。
+| 数据 | 原则 |
+| --- | --- |
+| 实际输入、输出与账本 | 由方块实体作为服务端事实源持久化 |
+| 活动作业与待提交结果 | 与机器内容一起保存，恢复后不重新随机生成 |
+| IO 设置 | 独立于真实内容，由配置卡或界面重新应用 |
+| 世界正面显示 | 只同步渲染所需的紧凑状态 |
+| 菜单数据 | 初始快照加必要增量，服务端重新校验写操作 |
 
-NeoForge capability 只是仓的有界视图：物品一次只暴露或提取合法原版堆叠，流体按 `Int` 边界分块。大数 UI 单独同步模板和 `Long` 数量，不制造超大原版堆叠。
-
-## 工作生命周期
-
-`WorkController` 维护 `IDLE/RUNNING/BLOCKED/FAULTED`。随机工作一旦生成便封装为至多一份 `PreparedCommit`；提交失败时不允许生成下一份结果。待提交内容和工作单位数一起持久化，因此重载、输出堵塞或部分提交都不会重滚。
-
-当一次随机结果的种类超过当前空余条目时，`PreparedCommit` 可逐身份推进；工作游标只在整份结果提交完后前进。确定性机器使用 `ResourceTransaction` 同时扣输入并加输出。
-
-## IO 与网络
-
-`IoController` 保留被动、面和网络三种互斥模式。机器只提供 `StoredOutputSource` 或 `InfiniteOutputSource`，不再各自实现推送循环。
-
-`OutputDispatcher` 在资源身份、方向和资源类型之间轮转。面输出把物品限制为合法堆叠、把流体和 FE 限制在 `Int`；网络输出直接用 `ResourceAmount` 报价，由 provider 返回实际接受的 `Long` 数量。
-
-`TransferResult` 区分部分接受、暂时不可用、目标丢失、目标无效和结果未知。暂时不可用按 20 tick 退避；已确认目标丢失回到被动模式；结果未知会持久暂停，直到玩家明确恢复或重选目标。
-
-AE2、Applied Flux 和 Beyond Dimensions 都实现同一 `NetworkOutputProvider` SPI。AE2 直接向 `MEStorage` 发送 `Long` 数量；Applied Flux 增加 FE key；Beyond Dimensions 保留其网络 ID、长数量和异常保护。
-
-## 机器归属
-
-- 模拟室：28 个物品种类条目和 28 个流体种类条目，单种 `Long.MAX_VALUE`；活动作业快照配方、时长、处理核心与工具。
-- 塑形机：最多 8 种输入和 8 种输出的共享大数仓；每个条目用一次整数换算提交全部可完成交易。
-- 缓冲器：通用 store，容量保持物品 8×256、流体 4×64,000 mB。
-- 精华转换器：领域余数账本加单条目大数输出仓。
-- 物品复制器与能量源：定时或持续的 `InfiniteOutputSource`，不创建虚假库存。
-- 修复器：原地组件修改，不强行进入资源工作模型。
-
-## 持久化和验证
-
-新 store、活动作业和 `PreparedCommit` 使用各自统一的新 NBT 结构。机器设置不随掉落物保存；真实输入、输出和账本按 `MachineBlockEntity` 的内容管线写入方块物品。IO 配置只能用配置卡重新应用。
-
-世界正面显示仍走 `MachineDisplayState` 的原版更新包，只同步图标和活性，不复制整个机器状态。交付前运行 `./gradlew runData` 与 `./gradlew check`。
+持久化结构属于代码中的 codec/NBT 实现，本文不维护字段名清单。

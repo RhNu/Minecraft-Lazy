@@ -1,62 +1,100 @@
-# 开发与依赖
+# 开发指南
 
-## 固定工具链
+## 事实源
 
-项目使用 Java 21、Gradle 9.2.1、ModDevGradle 2.0.142、NeoForge 21.1.242、Parchment 2024.11.17、Kotlin 2.4.0、KSP2 2.3.11、KotlinForForge 5.12.0 和 LDLib2 2.2.29。插件与依赖坐标集中在 `gradle/libs.versions.toml`，游戏/元数据属性集中在 `gradle.properties`；构建脚本不得使用动态选择器。
+开发前先定位事实源，不在文档、测试或构建脚本之间复制同一份清单。
 
-Kotlin 插件版本与 KotlinForForge 5.12.0 捆绑的 Kotlin 运行库保持一致。模组元数据使用 `kotlinforforge` 语言加载器，并要求至少 5.12 版本。
+| 信息 | 事实源 |
+| --- | --- |
+| 插件与依赖版本 | `gradle/libs.versions.toml` |
+| 游戏与模组元数据属性 | `gradle.properties` |
+| 模块集合 | `settings.gradle.kts` |
+| Integration 条件与依赖 | 各 `integrations/*/build.gradle.kts` 的 `lazyIntegration` |
+| 注册内容与配置范围 | 对应运行时代码 |
+| 配方、标签、模型与翻译 | 静态或生成资源及其 Provider |
+| 玩家使用说明 | GuideME 资源 |
+| 跨模块约束 | [架构](architecture.md) |
+| 非显然算法与失败语义 | [规格目录](spec/) |
 
-LDLib2 是范围 `[2.2.29,2.3.0)`、双端必需的外部模组依赖，不打包进 Lazy JAR。其 `all` 构件从 FirstDark Maven 解析，Yoga、Taffy 与 Kotlin 传递依赖从 Maven Central 补齐。升级 KotlinForForge 或 LDLib2 时必须用 `dependencyInsight` 复查 Kotlin、Yoga 和 Taffy 的最终解析版本。
+依赖版本采用版本目录中的固定值。升级依赖时检查解析结果、Minecraft/NeoForge 兼容性、许可证、side 要求与 Maven 来源；只有涉及库 API 用法时才需要查询外部文档或已解析源码。
 
-Curios API 9.5.1+1.21.1 是范围 `[9.5.1+1.21.1,10.0.0)`、双端可选的兼容依赖，用于传送器装备槽位、自定义槽位校验与槽位物品查询。编译使用官方 API classifier，基础开发运行与发布环境不自动携带 Curios；未安装时只关闭装备槽、快捷键和对应 payload。payload 使用可选协商，客户端发送前检查服务端 channel，允许两侧安装状态不一致。
+## 常用任务
 
-Silent Gear 4.2.1.1 与 Beyond Dimensions 0.7.26 都是双端可选兼容依赖，版本范围分别为 `[4.2.1.1,4.3.0)` 与 `[0.7.26,0.8.0)`。三项集成统一使用 `compileOnly` 编译，只有 integrations 开发运行类路径加载完整模组及 SilentLib；Lazy 不打包或传递这些模组。兼容 bootstrap 只在检测到对应 mod id 后解析 adapter，第三方类型不得离开各自 integration 包。
+| 任务 | 命令 | 结果 |
+| --- | --- | --- |
+| 完整检查 | `./gradlew check` | 叶子项目、build logic、生成器测试与 ktlint |
+| 构建发布物 | `./gradlew build` | `mod` 聚合 JAR 与 sources JAR |
+| 生成数据 | `./gradlew runData` | 更新 `mod/src/generated/resources` |
+| 基础客户端/服务端 | `./gradlew runClient` / `./gradlew runServer` | 只加载基础运行依赖 |
+| 完整 Integration 环境 | `./gradlew runClientIntegrations` / `./gradlew runServerIntegrations` | 按 descriptor 解析 Integration 闭包 |
+| 渲染 SVG 资产 | `./gradlew renderArtTextures` | 更新资源目录中的 PNG |
 
-AE2 19.2.17 与 Applied Flux 1.21-2.1.5-neoforge 是双端可选网络输出依赖，integrations 运行环境同时固定 Glodium 1.21-2.2-neoforge。AE2 提供物品、流体存储 API 和无线接入点链接槽；Applied Flux 只在独立 `integration.appflux` 类加载边界内提供 `FluxKey(FE)`。模块列表必须保持 AE2 在 Applied Flux 之前，基础运行和发布 JAR 不携带这些模组。
+Integration 运行任务可通过 `-Plazy.integrations=<ids>` 选择子集。有效 ID 与依赖闭包由 descriptor 决定，文档不维护可选值列表。
 
-GuideME 21.1.1 是双端必需依赖，通过 `localRuntime` 进入所有开发运行配置，并从 `assets/lazy/guideme_guides` 和 `assets/lazy/guides` 读取 Lazy 指南。Mekanism 1.21.1-10.7.19.85 是双端可选依赖，只在 integrations 运行环境载入完整模组；配置卡能力、安全检查与升级 API 的直接引用必须留在 `integration.mekanism`。
+## 变更与验证
 
-Mystical Agriculture 8.0.27 与 Mystical Agradditions 8.0.14 是双端可选内容依赖，integrations 运行环境同时固定 Cucumber 8.0.16。Lazy 不直接链接它们的 Java API；精华、灌注水晶和配方材料均按资源 ID 解析。仅安装 Agriculture 时提供五档转换，Agradditions 存在时启用 Insanium。
+| 变更类型 | 最低验证 | 额外检查 |
+| --- | --- | --- |
+| Kotlin 或 Kotlin DSL | `./gradlew ktlintCheck` 与相关测试 | 跨模块改动运行 `./gradlew check` |
+| 注册、资源或 DataGen | `./gradlew runData`、`./gradlew check` | 检查生成差异是否只包含预期变化 |
+| Integration | 对应模块测试、`./gradlew check` | 在匹配 side 的 Integration 运行环境做烟雾测试 |
+| 打包与发布配置 | `./gradlew build` | 检查聚合 JAR 与 publication 元数据 |
+| UI、渲染与输入 | `./gradlew check` | 客户端实机检查缩放、交互、本地化与状态更新 |
+| 服务端行为或 capability | `./gradlew check` | 专用服务器或最小复现场景验证 |
 
-## 构建约定
+验证目标来自变更影响，不在文档中长期保存逐功能手工步骤。需要重复执行的验收应转化为稳定的行为测试或独立检查工具。
 
-`build-logic` 提供 `lazy.kotlin-library`、`lazy.neoforge-library`、`lazy.integration`、`lazy.mod` 和 `lazy.datagen`。新 integration 必须使用 `lazy.integration`，在本模块声明 `lazyIntegration` descriptor、partner `compileOnly` 与 `integrationRuntime`，不得修改 `Lazy` 入口或增加运行时扫描。runtime、annotations 和 processor 基础依赖由约定插件注入，不在每个模块重复声明。
+## 测试原则
 
-Kotlin source root 已压平：runtime 保留 `core`/`feature` 等领域目录，integration、codegen 与 build-logic 文件不再套 `rhx/lazy/...` 的单目录链。移动文件无需同步 package 路径；package 声明仍决定 JVM 名称。
+测试只维护代码契约，不成为内容数据的第二事实源。
 
-模块测试以合成的 `lazy_test` NeoForge mod 运行，并把 project 依赖的 main source set 合并到同一 mod classloader，模拟最终平铺 JAR。测试应验证新架构的公开契约、生成 catalog 与资源所有权，不保留旧 manager 的实现细节。
+### 应测试
 
-## 按需候选
+| 类型 | 示例 |
+| --- | --- |
+| 行为 | 选择优先级、权限判定、重试与暂停状态转换 |
+| 边界 | 容量、溢出、空值、无效输入、side 隔离 |
+| 事务 | 失败不扣账、随机结果不重滚、恢复后继续提交 |
+| 往返 | 对象经 codec 或持久化接口后保持语义等价 |
+| 生成器规则 | descriptor 图的重复、循环、闭包和 owner 校验 |
 
-- spark 适合分析服务器 tick、分配与卡顿，作为调查性能问题时的临时运行模组，不固定进基础环境。
-- EMI 可作为 JEI 的替代界面或兼容性测试对象，默认不与 JEI 同时固定加载。
-- Patchouli 只在确认需要游戏内手册后引入。
-- GeckoLib 只在确认存在复杂骨骼动画后引入。
-- YACL、Cloth Config 或相似配置 UI 库只在原生配置文件不足以满足交互需求后选择其一。
-- Lazy 不引入跨平台抽象层；多项目只用于 NeoForge 构建边界与编译期治理。
+### 不应测试
 
-## 界面实现
+| 断言对象 | 原因 | 替代方式 |
+| --- | --- | --- |
+| 具体配方内容、配方全集 | 与资源或 Provider 重复 | 验证配方算法、codec 能力或 DataGen 是否成功 |
+| JSON 原文、字段排列、整段生成资源 | 固定序列化表示 | 对象往返或结构性校验 |
+| 翻译和玩家文案原文 | 与语言资源重复 | 验证本地化 key 存在性的生成规则 |
+| 源码文本中的调用片段 | 绑定实现写法 | 抽出可调用边界并验证行为 |
+| 手写的注册项或 Integration ID 全集 | 与注册/descriptor 重复 | 从事实源派生输入后验证通用不变量 |
 
-GUI、HUD、UI binding/RPC 和方块实体托管优先使用 LDLib2。界面结构使用公共侧安全的 Kotlin DSL，外观通过资源包中的 LSS 定义，并优先继承 LDLib2 `mc.lss` 的原版 Minecraft 主题。公共 UI 代码不得引用 Minecraft 客户端类，确保专用服务器侧隔离。
+配方解析、组合和选择本身可以测试；测试数据应是用例内构造的最小对象，并只表达待验证规则。Codec 往返可以使用任意 `DynamicOps`，但不得断言编码后的文字表示。
 
-只读展示使用 S2C binding；会改变世界的操作使用 UI server event，并在处理时重新执行权限、距离和目标有效性校验。固定结构界面必须在两侧创建完全相同的元素树。
+## Integration 开发
 
-渲染器、Shader、编辑器和节点图仅在功能已经确认需要时引入，不预建空框架。
+新增或修改 Integration 时：
 
-引入任何候选前，应重新核对 Minecraft 1.21.1 与 NeoForge 的稳定版本、许可证、服务端兼容性和 Maven 来源。
+1. 在对应模块声明 `lazyIntegration` descriptor 与 partner 依赖。
+2. 使用 `integration-api` context 实现所需生命周期。
+3. 将第三方类型限制在该 Integration 的源码边界内。
+4. 通过生成 bridge/catalog 接入 `mod`，并为 DataGen 明确声明参与状态。
+5. 测试模块自身行为以及依赖图能够被聚合校验。
 
-## 常用流程
+生命周期模型与第三方发现入口见 [Integration 生命周期规格](spec/integration-lifecycles.md)。
 
-`./gradlew check` 覆盖所有叶子子项目、build-logic、KSP validator、NeoForge 单元测试与 ktlint。`./gradlew build` 生成 `:mod` 的唯一分发 JAR和聚合 sources JAR；普通构建不执行 DataGen。`./gradlew runData` 只使用独立 DataGen profile，输出到 `mod/src/generated/resources`，CI 应在执行后用 Git diff 检查漂移。
+## UI 与网络
 
-普通 `runClient`/`runServer` 只携带必需依赖。完整组合使用 `runClientIntegrations`/`runServerIntegrations`；`-Plazy.integrations=appflux,jade` 可选择子集，Gradle 会根据 descriptor 自动补齐 integration 依赖。未知 ID 立即失败；服务端显式选择 JEI 等 client-only 项会立即失败。AE 烟雾测试至少覆盖链接卡覆盖绑定、背包同目标去重/多目标歧义、接入点区块卸载后重载、Grid 拆分与合并，以及 FE Cell 只收到 `FluxKey(FE)`。Mekanism 烟雾测试覆盖复制/粘贴、安全拒绝、升级补齐和边界 capability 代理。
+GUI、HUD、binding/RPC 和方块实体托管优先使用 LDLib2。公共 UI 结构不能引用客户端专属类；两侧创建的固定界面必须具有一致元素树。
 
-发布前检查聚合 JAR 只有一个 `META-INF/neoforge.mods.toml`，包含 `META-INF/lazy/integrations.json` 与 `kubejs.plugins.txt`，且不含 `rhx/lazy/datagen`、第三方包、嵌套 JAR 或子模块 manifest。生成的 publication POM 不应包含 dependencies。
+| 操作 | 通道 | 服务端责任 |
+| --- | --- | --- |
+| 只读展示 | S2C binding 或紧凑快照 | 提供当前事实状态 |
+| 修改世界或机器 | UI server event / payload | 重新校验玩家、距离、目标和权限 |
+| 客户端渲染 | client-only 注册 | 不进入公共类加载路径 |
 
-## Kotlin 代码风格
+## 代码与提交
 
-项目通过 ktlint 自动校验 Kotlin 与 Kotlin DSL：`./gradlew check` 会包含 `ktlintCheck`，本地可用 `./gradlew ktlintFormat` 自动格式化。需要在提交前自动检查时，执行一次 `./gradlew addKtlintCheckGitPreCommitHook` 安装本地 Git hook；GitHub Actions 也会单独运行 `ktlintCheck`。
-
-GameTestServer 配置保留用于未来自动化游戏测试。在没有注册 GameTest 时，它可能按 NeoForge 的默认行为以失败退出，因此当前不作为验收命令。
-
-本地 Maven 发布输出到被忽略的 `repo` 目录。正式发布仓库、签名、更新检查和发布平台任务均不在当前脚手架范围内。
+- Kotlin 遵循官方风格；格式问题使用 `./gradlew ktlintFormat` 修复。
+- 可执行一次 `./gradlew addKtlintCheckGitPreCommitHook` 安装本地检查钩子。
+- 提交使用 Conventional Commits：`<type>(<scope>): <description>`。
+- 本地发布与临时输出保持在已忽略目录中。
