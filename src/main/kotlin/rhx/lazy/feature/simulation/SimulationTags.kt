@@ -13,7 +13,6 @@ internal object SimulationTags {
     val duplicateSelfTargets: TagKey<Item> = itemTag("simulation/target/duplicate_self")
     val weaponTools: TagKey<Item> = itemTag("simulation/tool/weapon")
     val incineratorTools: TagKey<Item> = itemTag("simulation/tool/incinerator")
-    val dispenserTools: TagKey<Item> = itemTag("simulation/tool/dispenser")
     val incineratedOutputs: TagKey<Item> = itemTag("simulation/incinerated")
     val blacklist: TagKey<Item> = itemTag("simulation/blacklist/all")
     val entityTargetBlacklist: TagKey<EntityType<*>> =

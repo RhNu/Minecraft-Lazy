@@ -6,6 +6,9 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -112,10 +115,10 @@ class IoPanelStateTest {
 
     @Test
     fun `compatibility marks only the providers that accept an output the machine has`() {
-        val items = FakeProvider("items", setOf(NetworkInsertCapabilities.ITEM))
-        val energy = FakeProvider("energy", setOf(NetworkInsertCapabilities.ENERGY))
+        val items = FakeProvider("items", setOf(ResourceKinds.ITEM))
+        val energy = FakeProvider("energy", setOf(ResourceKinds.ENERGY))
         val providers = listOf(items, energy)
-        val editor = FakeEditor(IoConfiguration.DEFAULT, capabilities = setOf(NetworkInsertCapabilities.ENERGY))
+        val editor = FakeEditor(IoConfiguration.DEFAULT, capabilities = setOf(ResourceKinds.ENERGY))
 
         val mask = IoPanelState.encodeCompatibility(editor, providers)
 
@@ -126,7 +129,7 @@ class IoPanelStateTest {
     private class FakeEditor(
         override val configuration: IoConfiguration,
         paused: Boolean = false,
-        override val capabilities: Set<NetworkInsertCapability> = NetworkInsertCapabilities.all,
+        override val capabilities: Set<ResourceKind<out ResourceVariant>> = ResourceKinds.all,
     ) : IoConfigurationEditor {
         override val networkPaused: Boolean = paused
 
@@ -143,7 +146,7 @@ class IoPanelStateTest {
 
     private class FakeProvider(
         name: String,
-        override val capabilities: Set<NetworkInsertCapability> = NetworkInsertCapabilities.all,
+        override val capabilities: Set<ResourceKind<out ResourceVariant>> = ResourceKinds.all,
     ) : NetworkOutputProvider {
         override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath("lazy", "test_$name")
         override val displayName: Component = Component.literal(name)
@@ -156,10 +159,10 @@ class IoPanelStateTest {
 
         override fun isTargetValid(target: NetworkTargetRef): Boolean = target.providerId == id
 
-        override fun insert(
+        override fun offer(
             target: NetworkTargetRef,
-            payload: NetworkPayload,
+            amount: ResourceAmount<out ResourceVariant>,
             simulate: Boolean,
-        ): NetworkTransferResult = NetworkTransferResult.TargetMissing
+        ): TransferResult = TransferResult.TargetMissing
     }
 }

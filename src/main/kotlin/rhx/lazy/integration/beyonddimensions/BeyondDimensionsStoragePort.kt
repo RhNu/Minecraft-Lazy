@@ -37,7 +37,8 @@ internal interface BeyondDimensionsStoragePort {
 
     fun insertFluid(
         networkId: BeyondDimensionsNetworkId,
-        stack: FluidStack,
+        template: FluidStack,
+        amount: Long,
         simulate: Boolean,
     ): BeyondDimensionsStorageResult<Long>
 

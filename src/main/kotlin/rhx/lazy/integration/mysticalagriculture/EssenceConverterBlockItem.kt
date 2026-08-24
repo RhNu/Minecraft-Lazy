@@ -8,7 +8,6 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.block.Block
-import rhx.lazy.core.ManagedBlockEntity
 
 internal class EssenceConverterBlockItem(
     block: Block,
@@ -22,13 +21,22 @@ internal class EssenceConverterBlockItem(
     ) {
         val data = stack.get(DataComponents.BLOCK_ENTITY_DATA)
         if (data != null && !data.isEmpty) {
-            val managed = data.copyTag().getCompound(ManagedBlockEntity.MANAGED_DATA_KEY)
+            val stored = data.copyTag()
             val tier =
                 EssenceTier.fromSerializedName(
-                    managed.getString(EssenceConverterBlockEntity.TARGET_TIER_FIELD),
+                    stored.getString(EssenceConverterBlockEntity.TARGET_TIER_FIELD),
                 )
-            val count = managed.getLong(EssenceConverterBlockEntity.STORED_OUTPUT_FIELD)
-            val remainder = managed.getInt(EssenceConverterBlockEntity.STORED_REMAINDER_FIELD)
+            val count =
+                stored
+                    .getList(
+                        EssenceConverterBlockEntity.OUTPUT_STORE_TAG,
+                        net.minecraft.nbt.Tag.TAG_COMPOUND
+                            .toInt(),
+                    ).firstOrNull()
+                    ?.let { it as? net.minecraft.nbt.CompoundTag }
+                    ?.getLong("amount")
+                    ?: 0L
+            val remainder = stored.getInt(EssenceConverterBlockEntity.STORED_REMAINDER_FIELD)
             if (tier != null && (count > 0L || remainder > 0)) {
                 tooltipComponents +=
                     Component

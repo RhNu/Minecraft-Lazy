@@ -7,6 +7,9 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import rhx.lazy.core.resource.EnergyVariant
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.feature.energy.ENERGY_TRANSFER_LIMIT
 import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.energy.EnergySourceBlockEntity
@@ -42,7 +45,7 @@ class IoControllerTest {
         NetworkOutputProviders.register(provider)
         val source = newSource()
         assertTrue(source.ioController.setNetworkTarget(provider.target("retry")))
-        provider.result = NetworkTransferResult.TemporarilyUnavailable
+        provider.result = TransferResult.TemporarilyUnavailable
 
         source.onServerTick()
         assertEquals(IoMode.NETWORK, source.ioController.mode)
@@ -50,7 +53,7 @@ class IoControllerTest {
         val attempts = provider.attempts
         repeat(19) { source.onServerTick() }
         assertEquals(attempts, provider.attempts)
-        provider.result = NetworkTransferResult.Success(0)
+        provider.result = TransferResult.Accepted(0)
         source.onServerTick()
         assertTrue(provider.attempts > attempts)
     }
@@ -61,7 +64,7 @@ class IoControllerTest {
         NetworkOutputProviders.register(provider)
         val source = newSource()
         assertTrue(source.ioController.setNetworkTarget(provider.target("missing")))
-        provider.result = NetworkTransferResult.TargetMissing
+        provider.result = TransferResult.TargetMissing
 
         source.onServerTick()
 
@@ -75,63 +78,18 @@ class IoControllerTest {
         val source = newSource()
         val target = provider.target("unknown")
         assertTrue(source.ioController.setNetworkTarget(target))
-        provider.result = NetworkTransferResult.OutcomeUnknown
+        provider.result = TransferResult.OutcomeUnknown
 
         source.onServerTick()
         assertTrue(source.ioController.networkPaused)
         val attempts = provider.attempts
-        provider.result = NetworkTransferResult.Success(0)
+        provider.result = TransferResult.Accepted(0)
         source.onServerTick()
         assertEquals(attempts, provider.attempts)
 
         assertTrue(source.ioController.setNetworkTarget(target))
         source.onServerTick()
         assertFalse(source.ioController.networkPaused)
-    }
-
-    @Test
-    fun `passive mode still runs adapter maintenance`() {
-        val entity = MaintainingEntity()
-
-        entity.ioController.tick()
-
-        assertEquals(1, entity.maintenanceTicks)
-    }
-
-    @Test
-    fun `network mode maintains a buffered adapter while nothing is bound`() {
-        val entity = MaintainingEntity()
-        assertTrue(entity.ioController.applyConfiguration(IoConfiguration(mode = IoMode.NETWORK)))
-
-        entity.ioController.tick()
-
-        assertEquals(1, entity.maintenanceTicks)
-        assertEquals(0, entity.pushes)
-    }
-
-    @Test
-    fun `network back-off skips the push but keeps maintaining`() {
-        val entity = MaintainingEntity()
-        entity.result = IoPushResult.Retry
-        assertTrue(entity.ioController.applyConfiguration(networkTo("backoff")))
-
-        repeat(5) { entity.ioController.tick() }
-
-        assertEquals(5, entity.maintenanceTicks)
-        assertEquals(1, entity.pushes)
-    }
-
-    @Test
-    fun `paused network keeps maintaining until the player picks a target again`() {
-        val entity = MaintainingEntity()
-        entity.result = IoPushResult.OutcomeUnknown
-        assertTrue(entity.ioController.applyConfiguration(networkTo("paused")))
-
-        repeat(3) { entity.ioController.tick() }
-
-        assertTrue(entity.ioController.networkPaused)
-        assertEquals(3, entity.maintenanceTicks)
-        assertEquals(1, entity.pushes)
     }
 
     @Test
@@ -180,20 +138,13 @@ class IoControllerTest {
             EnergyRegistries.sourceBlock.get().defaultBlockState(),
         )
 
-    /** A target whose provider is never registered, so the controller keeps it without a capability check. */
-    private fun networkTo(name: String) =
-        IoConfiguration(
-            mode = IoMode.NETWORK,
-            networkTarget = NetworkTargetRef(ResourceLocation.fromNamespaceAndPath("lazy", "unregistered_$name"), CompoundTag()),
-        )
-
     private class RecordingProvider(
         suffix: String,
     ) : NetworkOutputProvider {
         override val id = ResourceLocation.fromNamespaceAndPath("lazy", "test_io_$suffix")
         override val displayName: Component = Component.literal("Test $suffix")
-        override val capabilities = setOf(NetworkInsertCapabilities.ENERGY)
-        var result: NetworkTransferResult = NetworkTransferResult.Success(0)
+        override val capabilities = setOf(ResourceKinds.ENERGY)
+        var result: TransferResult? = null
         var attempts = 0
         var energyAmount = 0L
 
@@ -203,45 +154,19 @@ class IoControllerTest {
 
         override fun isTargetValid(target: NetworkTargetRef) = target.providerId == id && target.data.getString("opaque").isNotBlank()
 
-        override fun insert(
+        override fun offer(
             target: NetworkTargetRef,
-            payload: NetworkPayload,
+            amount: ResourceAmount<out ResourceVariant>,
             simulate: Boolean,
-        ): NetworkTransferResult {
+        ): TransferResult {
             attempts++
-            if (payload is NetworkPayload.Energy && !simulate) energyAmount += payload.amount
-            return result
+            val response = result ?: TransferResult.Accepted(amount.amount)
+            if (amount.variant == EnergyVariant && response is TransferResult.Accepted && !simulate) {
+                energyAmount += response.accepted.coerceIn(0L, amount.amount)
+            }
+            return response
         }
 
         fun target(value: String) = NetworkTargetRef(id, CompoundTag().apply { putString("opaque", value) })
-    }
-
-    private class MaintainingEntity :
-        IoManagedBlockEntity(
-            EnergyRegistries.sourceBlockEntity.get(),
-            BlockPos.ZERO,
-            EnergyRegistries.sourceBlock.get().defaultBlockState(),
-        ) {
-        var maintenanceTicks = 0
-        var pushes = 0
-        var result: IoPushResult = IoPushResult.Success
-
-        init {
-            installIoAdapter(
-                object : IoAdapter {
-                    override val capabilities: Set<NetworkInsertCapability> = emptySet()
-                    override val maintainsWhenIdle = true
-
-                    override fun maintain() {
-                        maintenanceTicks++
-                    }
-
-                    override fun pushToNetwork(target: NetworkTargetRef): IoPushResult {
-                        pushes++
-                        return result
-                    }
-                },
-            )
-        }
     }
 }

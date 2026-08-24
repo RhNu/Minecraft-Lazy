@@ -4,6 +4,8 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.RegistryAccess
 import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
@@ -11,6 +13,10 @@ import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import rhx.lazy.core.io.IoMode
+import rhx.lazy.core.resource.FluidResourceKind
+import rhx.lazy.core.resource.FluidVariant
+import rhx.lazy.core.resource.ItemResourceKind
+import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
@@ -47,36 +53,40 @@ class BufferBlockEntityPersistenceTest {
     }
 
     @Test
-    fun `buffer normalizes malformed managed collection lengths and capacities`() {
+    fun `buffer ignores malformed new store entries`() {
         val source = newBuffer()
-        mutableField<ItemStack>(source, "itemTemplates").apply {
-            clear()
-            add(ItemStack(Items.STONE, 2))
-        }
-        mutableField<Int>(source, "itemCounts").apply {
-            clear()
-            add(999)
-            add(-20)
-            repeat(10) { add(42) }
-        }
-        mutableField<FluidStack>(source, "fluids").apply {
-            clear()
-            add(FluidStack(Fluids.WATER, 100_000))
-        }
+        val saved = source.saveWithFullMetadata(registries)
+        saved.put(
+            "resourcesItems",
+            ListTag().apply {
+                add(storeEntry(0, ItemResourceKind.save(registries, requireNotNull(ItemVariant.of(ItemStack(Items.STONE)))), 999L))
+                add(storeEntry(99, ItemResourceKind.save(registries, requireNotNull(ItemVariant.of(ItemStack(Items.DIAMOND)))), 1L))
+            },
+        )
+        saved.put(
+            "resourcesFluids",
+            ListTag().apply {
+                add(
+                    storeEntry(
+                        0,
+                        FluidResourceKind.save(registries, requireNotNull(FluidVariant.of(FluidStack(Fluids.WATER, 1)))),
+                        100_000L,
+                    ),
+                )
+            },
+        )
 
         val restored = newBuffer()
-        restored.loadWithComponents(source.saveWithFullMetadata(registries), registries)
+        restored.loadWithComponents(saved, registries)
 
-        assertEquals(BufferBlockEntity.ITEM_SLOT_CAPACITY, restored.getItemCount(0))
+        assertEquals(0, restored.getItemCount(0))
         assertEquals(0, restored.getItemCount(1))
-        assertEquals(BufferBlockEntity.FLUID_TANK_CAPACITY, restored.getFluid(0).amount)
+        assertEquals(0, restored.getFluid(0).amount)
         repeat(BufferBlockEntity.ITEM_SLOT_COUNT) { restored.getItemCount(it) }
         repeat(BufferBlockEntity.FLUID_TANK_COUNT) { restored.getFluid(it) }
-        assertEquals(BufferBlockEntity.ITEM_SLOT_CAPACITY, restored.totalItemCount)
-        assertEquals(BufferBlockEntity.FLUID_TANK_CAPACITY, restored.totalFluidAmount)
+        assertEquals(0, restored.totalItemCount)
+        assertEquals(0, restored.totalFluidAmount)
 
-        assertTrue(restored.clearContents())
-        assertFalse(restored.hasContents())
         assertFalse(restored.clearContents())
     }
 
@@ -121,13 +131,13 @@ class BufferBlockEntityPersistenceTest {
             BufferRegistries.block.get().defaultBlockState(),
         )
 
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> mutableField(
-        owner: Any,
-        name: String,
-    ): MutableList<T> {
-        val field = owner.javaClass.getDeclaredField(name)
-        field.isAccessible = true
-        return field.get(owner) as MutableList<T>
+    private fun storeEntry(
+        slot: Int,
+        variant: CompoundTag,
+        amount: Long,
+    ) = CompoundTag().apply {
+        putInt("slot", slot)
+        put("variant", variant)
+        putLong("amount", amount)
     }
 }

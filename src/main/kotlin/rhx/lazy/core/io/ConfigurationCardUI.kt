@@ -3,6 +3,8 @@ package rhx.lazy.core.io
 import com.lowdragmc.lowdraglib2.gui.factory.HeldItemUIMenuType
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import net.minecraft.world.item.ItemStack
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 
 /** The card's own screen is the IO panel and nothing else: it holds no items to interact with. */
 internal object ConfigurationCardUI {
@@ -23,8 +25,8 @@ internal object ConfigurationCardUI {
         override val configuration: IoConfiguration
             get() = ConfigurationCardData.get(stack)
 
-        override val capabilities: Set<NetworkInsertCapability>
-            get() = NetworkInsertCapabilities.all
+        override val capabilities: Set<ResourceKind<out ResourceVariant>>
+            get() = ResourceKinds.all
 
         override fun setMode(mode: IoMode) {
             update(configuration.copy(mode = mode))

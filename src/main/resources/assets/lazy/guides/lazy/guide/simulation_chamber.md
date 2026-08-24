@@ -30,7 +30,7 @@ Core values and stacking behavior are documented on the [Simulation Cores](simul
 
 - A weapon is used as the simulated entity's killing tool. The first weapon slot wins.
 - A lava bucket filters outputs tagged as incinerated.
-- A dispenser settles a completed batch immediately, allowing ordinary face output to finish it in one tick.
+- Roll work always obeys the server `rollBudgetPerTick`; IO mode only chooses where stored output is transported.
 
 Recipes, automatic material rules, entity loot, output probabilities, and tool tags are data-driven. When output storage is full or output cannot be confirmed, the chamber pauses and shows a pending-output warning. Configure its item/fluid routing in the common [IO settings](io.md).
 

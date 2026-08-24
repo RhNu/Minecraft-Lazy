@@ -25,14 +25,12 @@ internal interface SimulationToolModule {
  */
 internal class SimulationToolLoadout private constructor(
     val weapon: ItemStack,
-    val settlesBatchImmediately: Boolean,
     private val rejects: List<(ItemStack) -> Boolean>,
 ) {
     fun acceptsOutput(stack: ItemStack): Boolean = rejects.none { reject -> reject(stack) }
 
     class Builder {
         private var weapon: ItemStack = ItemStack.EMPTY
-        private var settlesBatchImmediately = false
         private val rejects = mutableListOf<(ItemStack) -> Boolean>()
 
         /** First one wins: later tool slots holding a weapon are inert rather than overriding. */
@@ -44,20 +42,16 @@ internal class SimulationToolLoadout private constructor(
             rejects += filter
         }
 
-        fun settleBatchImmediately() {
-            settlesBatchImmediately = true
-        }
-
         fun build(): SimulationToolLoadout =
-            if (weapon.isEmpty && !settlesBatchImmediately && rejects.isEmpty()) {
+            if (weapon.isEmpty && rejects.isEmpty()) {
                 EMPTY
             } else {
-                SimulationToolLoadout(weapon, settlesBatchImmediately, rejects.toList())
+                SimulationToolLoadout(weapon, rejects.toList())
             }
     }
 
     companion object {
-        val EMPTY = SimulationToolLoadout(ItemStack.EMPTY, false, emptyList())
+        val EMPTY = SimulationToolLoadout(ItemStack.EMPTY, emptyList())
     }
 }
 
@@ -67,7 +61,6 @@ internal object SimulationToolModules {
     init {
         register(WeaponToolModule.ID, WeaponToolModule)
         register(IncineratorToolModule.ID, IncineratorToolModule)
-        register(DispenserToolModule.ID, DispenserToolModule)
     }
 
     @Synchronized

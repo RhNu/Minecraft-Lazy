@@ -237,7 +237,7 @@ class SimulationRecipeCodecTest {
     }
 
     @Test
-    fun `legacy automatic batch loads as a fixed item batch`() {
+    fun `obsolete automatic batch is rejected`() {
         val tag =
             CompoundTag().apply {
                 putString("kind", "automatic")
@@ -245,21 +245,7 @@ class SimulationRecipeCodecTest {
                 put("automaticOutput", ItemStack(Items.RAW_IRON, 2).save(registries))
             }
 
-        val restored = requireNotNull(SimulationBatch.parse(registries, tag)) as SimulationBatch.Item
-
-        assertEquals(
-            Items.RAW_IRON,
-            restored.itemOutputs
-                .single()
-                .stack.item,
-        )
-        assertEquals(
-            2,
-            restored.itemOutputs
-                .single()
-                .stack.count,
-        )
-        assertEquals(5, restored.remaining)
+        assertEquals(null, SimulationBatch.parse(registries, tag))
     }
 
     @Test

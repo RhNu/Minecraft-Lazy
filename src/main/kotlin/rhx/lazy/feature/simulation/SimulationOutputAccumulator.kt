@@ -2,14 +2,14 @@ package rhx.lazy.feature.simulation
 
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.fluids.FluidStack
-import java.math.BigInteger
+import rhx.lazy.core.process.PreparedCommit
+import rhx.lazy.core.resource.FluidResourceKind
+import rhx.lazy.core.resource.FluidVariant
+import rhx.lazy.core.resource.ItemResourceKind
+import rhx.lazy.core.resource.ItemVariant
+import rhx.lazy.core.resource.ResourceAmount
 
-/**
- * Collects everything a batch tick produced, deduplicated by item and fluid.
- *
- * [acceptsItem] runs once per distinct item at [flush] rather than on every roll, so a tool that
- * filters the output costs one tag lookup per produced kind instead of one per drop.
- */
+/** Collects one random result slice, merging exact variants with checked [Long] arithmetic. */
 internal class SimulationOutputAccumulator(
     private val acceptsItem: (ItemStack) -> Boolean = { true },
 ) {
@@ -23,9 +23,9 @@ internal class SimulationOutputAccumulator(
         if (stack.isEmpty || amount <= 0L) return
         val existing = items.firstOrNull { ItemStack.isSameItemSameComponents(it.template, stack) }
         if (existing == null) {
-            items += ItemAmount(stack.copyWithCount(1), BigInteger.valueOf(amount))
+            items += ItemAmount(stack.copyWithCount(1), amount)
         } else {
-            existing.amount += BigInteger.valueOf(amount)
+            existing.amount = Math.addExact(existing.amount, amount)
         }
     }
 
@@ -36,41 +36,33 @@ internal class SimulationOutputAccumulator(
         if (stack.isEmpty || amount <= 0L) return
         val existing = fluids.firstOrNull { FluidStack.isSameFluidSameComponents(it.template, stack) }
         if (existing == null) {
-            fluids += FluidAmount(stack.copyWithAmount(1), BigInteger.valueOf(amount))
+            fluids += FluidAmount(stack.copyWithAmount(1), amount)
         } else {
-            existing.amount += BigInteger.valueOf(amount)
+            existing.amount = Math.addExact(existing.amount, amount)
         }
     }
 
-    fun flush(router: SimulationOutputRouter) {
-        items.forEach { entry ->
-            if (acceptsItem(entry.template)) entry.amount.forEachLongChunk { router.enqueue(entry.template, it) }
-        }
-        fluids.forEach { entry -> entry.amount.forEachLongChunk { router.enqueue(entry.template, it) } }
-        items.clear()
-        fluids.clear()
-    }
+    fun prepare(workUnits: Int): PreparedCommit =
+        PreparedCommit(
+            items =
+                items.mapNotNull { entry ->
+                    if (!acceptsItem(entry.template)) return@mapNotNull null
+                    ItemVariant.of(entry.template)?.let { ResourceAmount(ItemResourceKind, it, entry.amount) }
+                },
+            fluids =
+                fluids.mapNotNull { entry ->
+                    FluidVariant.of(entry.template)?.let { ResourceAmount(FluidResourceKind, it, entry.amount) }
+                },
+            workUnits = workUnits,
+        )
 
     private data class ItemAmount(
         val template: ItemStack,
-        var amount: BigInteger,
+        var amount: Long,
     )
 
     private data class FluidAmount(
         val template: FluidStack,
-        var amount: BigInteger,
+        var amount: Long,
     )
-
-    private companion object {
-        val LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE)
-
-        fun BigInteger.forEachLongChunk(consumer: (Long) -> Unit) {
-            var remaining = this
-            while (remaining.signum() > 0) {
-                val chunk = remaining.min(LONG_MAX)
-                consumer(chunk.toLong())
-                remaining -= chunk
-            }
-        }
-    }
 }

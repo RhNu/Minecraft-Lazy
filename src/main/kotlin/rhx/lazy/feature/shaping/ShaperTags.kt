@@ -19,7 +19,7 @@ internal object ShaperTags {
     /** Items the shaper refuses to accept, even when they carry a known `c:` form tag. */
     val inputBlacklist: TagKey<Item> = itemTag("shaper/blacklist/input")
 
-    /** Items the shaper refuses to produce; the lane idles instead of converting. */
+    /** Items the shaper refuses to produce; the matching input entry idles instead of converting. */
     val outputBlacklist: TagKey<Item> = itemTag("shaper/blacklist/output")
 
     private fun itemTag(path: String): TagKey<Item> = TagKey.create(Registries.ITEM, lazyId(path))

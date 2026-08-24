@@ -29,12 +29,13 @@ internal object BeyondDimensionsStorageAdapter : BeyondDimensionsStoragePort {
 
     override fun insertFluid(
         networkId: BeyondDimensionsNetworkId,
-        stack: FluidStack,
+        template: FluidStack,
+        amount: Long,
         simulate: Boolean,
     ): BeyondDimensionsStorageResult<Long> {
-        if (stack.isEmpty) return BeyondDimensionsStorageResult.Success(0L)
+        if (template.isEmpty || amount <= 0L) return BeyondDimensionsStorageResult.Success(0L)
         val storage = storage(networkId) ?: return BeyondDimensionsStorageResult.NetworkNotFound
-        return BeyondDimensionsStorageResult.Success(storage.insert(FluidStackKey(stack), stack.amount.toLong(), simulate).amount())
+        return BeyondDimensionsStorageResult.Success(storage.insert(FluidStackKey(template), amount, simulate).amount())
     }
 
     override fun insertEnergy(

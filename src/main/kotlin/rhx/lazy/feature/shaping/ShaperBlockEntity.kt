@@ -1,85 +1,57 @@
 package rhx.lazy.feature.shaping
 
-import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.items.IItemHandlerModifiable
-import net.neoforged.neoforge.items.ItemHandlerHelper
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.NeighborCapabilities
-import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkOffer
-import rhx.lazy.core.io.NetworkPayload
-import rhx.lazy.core.io.NetworkTargetRef
-import rhx.lazy.core.io.offer
+import rhx.lazy.core.io.ResourceKinds
+import rhx.lazy.core.io.StoredOutputSource
 import rhx.lazy.core.material.MaterialIndex
 import rhx.lazy.core.material.MaterialIndexes
 import rhx.lazy.core.render.MachineActivity
 import rhx.lazy.core.render.MachineDisplayState
+import rhx.lazy.core.resource.ItemResourceKind
+import rhx.lazy.core.resource.ItemVariant
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceDelta
+import rhx.lazy.core.resource.ResourceItemHandler
+import rhx.lazy.core.resource.ResourceStore
+import rhx.lazy.core.resource.ResourceTransaction
+import rhx.lazy.core.resource.StoreDelta
 
 /**
- * Converts every input lane into one chosen material form, in the tick the material arrives.
+ * Converts every input resource identity into one chosen material form in the tick it arrives.
  *
- * There is no progress, no recipe lookup and no batch state: a lane is an item, the index turns that
+ * There is no progress, no recipe lookup and no batch state: an entry is an item, the index turns that
  * item into a material and a unit value, and [shaperTrade] turns two unit values into whole-item
- * exchanges. What a lane cannot fill a whole trade with simply stays put.
+ * exchanges. What an entry cannot fill a whole trade with simply stays put.
  *
- * The eight lanes are the performance ceiling, not just the capacity. One machine can hold at most
- * eight materials, so per-tick work is bounded at eight map lookups no matter how much throughput
- * runs through it — which is exactly why a lane holds 1024 pieces instead of 64.
+ * The eight entries are a bound on resource diversity and per-tick work, not eight independent
+ * machines. Quantities are long-count values and all exchanges commit atomically.
  */
 internal class ShaperBlockEntity(
     pos: BlockPos,
     state: BlockState,
 ) : IoManagedBlockEntity(ShaperRegistries.blockEntity.get(), pos, state) {
-    @field:Persisted
-    @field:LazyManaged
-    private val inputTemplates = MutableList(LANES) { ItemStack.EMPTY }
-
-    @field:Persisted
-    @field:LazyManaged
-    private val inputCounts = MutableList(LANES) { 0 }
-
-    @field:Persisted
-    @field:LazyManaged
-    private val outputTemplates = MutableList(LANES) { ItemStack.EMPTY }
-
-    @field:Persisted
-    @field:LazyManaged
-    private val outputCounts = MutableList(LANES) { 0 }
-
     /** The chosen form, stored as the item a player showed the machine. Never consumed. */
     private var sample = ItemStack.EMPTY
 
     private var blocked = false
     private var lastConversionTick = Long.MIN_VALUE
-    private val neighborItems = NeighborCapabilities.items(blockPos) { !isRemoved }
+    private var workCursor = 0
+    private val inputs = ResourceStore(ItemResourceKind, ENTRIES, ENTRY_CAPACITY, ::resourcesChanged)
+    private val outputs = ResourceStore(ItemResourceKind, ENTRIES, ENTRY_CAPACITY, ::resourcesChanged)
+    private val outputSource = StoredOutputSource(listOf(outputs))
 
-    private val inputs =
-        ShaperLanes(inputTemplates, inputCounts, LANES, LANE_CAPACITY) {
-            markDirty(INPUT_TEMPLATES_FIELD)
-            markDirty(INPUT_COUNTS_FIELD)
-            setChanged()
-        }
-
-    private val outputs =
-        ShaperLanes(outputTemplates, outputCounts, LANES, LANE_CAPACITY) {
-            markDirty(OUTPUT_TEMPLATES_FIELD)
-            markDirty(OUTPUT_COUNTS_FIELD)
-            setChanged()
-        }
-
-    val inputHandler: IItemHandlerModifiable = ShaperLaneHandler(inputs, allowInsert = true, ::isValidInput)
-    val outputHandler: IItemHandlerModifiable = ShaperLaneHandler(outputs, allowInsert = false) { false }
+    val inputHandler: IItemHandlerModifiable = ResourceItemHandler(inputs, allowInsert = true, isValid = ::isValidInput)
+    val outputHandler: IItemHandlerModifiable = ResourceItemHandler(outputs, allowInsert = false)
 
     init {
         installIoAdapter(ShaperIoAdapter())
@@ -87,8 +59,9 @@ internal class ShaperBlockEntity(
 
     fun serverTick() {
         val serverLevel = level as? ServerLevel ?: return
+        val ioCycle = ioController.beginTick()
         convert(serverLevel)
-        ioController.tick()
+        ioController.endTick(ioCycle)
         tickDisplayState()
     }
 
@@ -99,6 +72,10 @@ internal class ShaperBlockEntity(
     fun hasInvalidSample(): Boolean = !sample.isEmpty && MaterialIndexes.current().formOf(sample.item) == null
 
     fun isBlocked(): Boolean = blocked
+
+    fun inputAmount(entry: Int): Long = inputs.amount(entry)
+
+    fun outputAmount(entry: Int): Long = outputs.amount(entry)
 
     /**
      * Records the form to convert to. Rejects anything with no known form, so a slot that refuses an
@@ -124,6 +101,8 @@ internal class ShaperBlockEntity(
     ) {
         super.saveAdditional(tag, registries)
         if (!sample.isEmpty) tag.put(SAMPLE_FIELD, sample.save(registries))
+        if (!inputs.isEmpty) tag.put(INPUT_STORE_TAG, inputs.save(registries))
+        if (!outputs.isEmpty) tag.put(OUTPUT_STORE_TAG, outputs.save(registries))
     }
 
     override fun computeDisplayState(): MachineDisplayState {
@@ -140,16 +119,11 @@ internal class ShaperBlockEntity(
             ItemStack.parseOptional(registries, tag.getCompound(SAMPLE_FIELD)).let {
                 if (it.isEmpty) ItemStack.EMPTY else it.copyWithCount(1)
             }
-        inputs.normalize()
-        outputs.normalize()
+        inputs.load(registries, tag.getList(INPUT_STORE_TAG, Tag.TAG_COMPOUND.toInt()))
+        outputs.load(registries, tag.getList(OUTPUT_STORE_TAG, Tag.TAG_COMPOUND.toInt()))
         blocked = false
+        workCursor = 0
         lastConversionTick = Long.MIN_VALUE
-        neighborItems.invalidate()
-    }
-
-    override fun setRemoved() {
-        neighborItems.invalidate()
-        super.setRemoved()
     }
 
     /**
@@ -188,8 +162,8 @@ internal class ShaperBlockEntity(
     }
 
     /**
-     * One pass over the lanes. Every step is a map lookup or integer arithmetic, so a machine with a
-     * full output pool costs the same as an empty one: the trade count comes out zero and the lane is
+     * One pass over the entries. Every step is a map lookup or integer arithmetic, so a machine with a
+     * full output pool costs the same as an empty one: the trade count comes out zero and the entry is
      * skipped without writing anything.
      */
     private fun convert(level: ServerLevel) {
@@ -207,25 +181,39 @@ internal class ShaperBlockEntity(
 
         var blockedNow = false
         var converted = false
-        for (lane in 0 until LANES) {
-            val template = inputs.template(lane)
-            val available = inputs.count(lane)
-            if (template.isEmpty || available <= 0) continue
+        var visited = 0
+        while (visited < ENTRIES) {
+            val entry = (workCursor + visited) % ENTRIES
+            visited++
+            val template = inputs.variant(entry)?.template ?: continue
+            val available = inputs.amount(entry)
+            if (available <= 0L) continue
             val source = index.formOf(template.item) ?: continue
             if (source.form == match.form) continue
             val product = index.itemFor(source.material, match.form) ?: continue
             if (ItemStack(product).`is`(ShaperTags.outputBlacklist)) continue
             val trade = shaperTrade(source.units, targetUnits) ?: continue
-            val productStack = ItemStack(product)
-            val trades = trade.trades(available, outputs.capacityFor(productStack))
-            if (trades <= 0) {
+            val productVariant = requireNotNull(ItemVariant.of(ItemStack(product)))
+            val trades = trade.trades(available, outputs.capacityFor(productVariant))
+            if (trades <= 0L) {
                 if (available >= trade.inputPerTrade) blockedNow = true
                 continue
             }
-            inputs.take(lane, trades * trade.inputPerTrade)
-            outputs.insert(productStack, trades * trade.outputPerTrade)
-            converted = true
+            val consumed =
+                ResourceAmount(ItemResourceKind, requireNotNull(inputs.variant(entry)), Math.multiplyExact(trades, trade.inputPerTrade))
+            val produced = ResourceAmount(ItemResourceKind, productVariant, Math.multiplyExact(trades, trade.outputPerTrade))
+            if (
+                ResourceTransaction.tryApply(
+                    StoreDelta(inputs, ResourceDelta(extracted = listOf(consumed))),
+                    StoreDelta(outputs, ResourceDelta(inserted = listOf(produced))),
+                )
+            ) {
+                converted = true
+            } else {
+                blockedNow = true
+            }
         }
+        workCursor = (workCursor + 1) % ENTRIES
 
         if (converted) lastConversionTick = level.gameTime
         blocked = blockedNow
@@ -242,9 +230,9 @@ internal class ShaperBlockEntity(
 
     /** What the tooltip describes: the loaded material, or the sample's own when nothing is loaded. */
     private fun summaryMaterial(index: MaterialIndex): String? {
-        for (lane in 0 until LANES) {
-            val template = inputs.template(lane)
-            if (template.isEmpty || inputs.count(lane) <= 0) continue
+        for (entry in 0 until ENTRIES) {
+            val template = inputs.variant(entry)?.template ?: continue
+            if (inputs.amount(entry) <= 0L) continue
             index.formOf(template.item)?.let { return it.material }
         }
         return index.formOf(sample.item)?.material
@@ -256,48 +244,24 @@ internal class ShaperBlockEntity(
     }
 
     private inner class ShaperIoAdapter : IoAdapter {
-        override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
+        override val capabilities = setOf(ResourceKinds.ITEM)
+        override val outputSource = this@ShaperBlockEntity.outputSource
+    }
 
-        override fun pushToFaces(directions: Set<Direction>): IoPushResult {
-            val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
-            directions.forEach { direction ->
-                val target = neighborItems[serverLevel, direction] ?: return@forEach
-                for (lane in 0 until LANES) {
-                    val stack = outputs.stackInLane(lane)
-                    if (stack.isEmpty) continue
-                    val remainder = ItemHandlerHelper.insertItemStacked(target, stack, false)
-                    val remaining = remainder.count.coerceIn(0, stack.count)
-                    if (remaining != stack.count) outputs.take(lane, stack.count - remaining)
-                }
-            }
-            return IoPushResult.Success
-        }
-
-        override fun pushToNetwork(target: NetworkTargetRef): IoPushResult {
-            for (lane in 0 until LANES) {
-                val stack = outputs.stackInLane(lane)
-                if (stack.isEmpty) continue
-                val amount = stack.count.toLong()
-                when (val offer = target.offer(NetworkPayload.Items(stack.copyWithCount(1), amount), amount)) {
-                    is NetworkOffer.Accepted -> if (offer.accepted > 0L) outputs.take(lane, offer.accepted.toInt())
-                    is NetworkOffer.Rejected -> return offer.push
-                }
-            }
-            return IoPushResult.Success
-        }
+    private fun resourcesChanged() {
+        setChanged()
     }
 
     companion object {
-        const val LANES = 8
-        const val LANE_CAPACITY = 1024
+        const val ENTRIES = 8
+        const val CAPABILITY_SLOT_LIMIT = Int.MAX_VALUE
+        private const val ENTRY_CAPACITY = Long.MAX_VALUE
 
         /** How long a conversion keeps the machine lit, so the display poll cannot miss a busy tick. */
         private const val ACTIVITY_WINDOW = 20L
 
-        private const val INPUT_TEMPLATES_FIELD = "inputTemplates"
-        private const val INPUT_COUNTS_FIELD = "inputCounts"
-        private const val OUTPUT_TEMPLATES_FIELD = "outputTemplates"
-        private const val OUTPUT_COUNTS_FIELD = "outputCounts"
+        private const val INPUT_STORE_TAG = "resourcesIn"
+        private const val OUTPUT_STORE_TAG = "resourcesOut"
         private const val SAMPLE_FIELD = "sample"
 
         private fun joinLines(lines: List<Component>): Component =

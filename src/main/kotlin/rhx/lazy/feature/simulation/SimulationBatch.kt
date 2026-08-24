@@ -128,12 +128,6 @@ internal sealed interface SimulationBatch {
                             ),
                             remaining,
                         )
-                    AUTOMATIC_KIND -> {
-                        val stack = ItemStack.parseOptional(registries, tag.getCompound(AUTOMATIC_OUTPUT_TAG))
-                        stack
-                            .takeUnless(ItemStack::isEmpty)
-                            ?.let { Item(listOf(SimulationItemOutput(it)), emptyList(), emptyList(), remaining) }
-                    }
                     ENTITY_KIND -> {
                         val entityId = ResourceLocation.tryParse(tag.getString(ENTITY_TAG)) ?: return null
                         Entity(
@@ -188,9 +182,7 @@ internal sealed interface SimulationBatch {
         private const val ITEM_OUTPUTS_TAG = "itemOutputs"
         private const val FLUID_OUTPUTS_TAG = "fluidOutputs"
         private const val BLOCK_LOOT_OUTPUTS_TAG = "blockLootOutputs"
-        private const val AUTOMATIC_OUTPUT_TAG = "automaticOutput"
         private const val ITEM_KIND = "item"
-        private const val AUTOMATIC_KIND = "automatic"
         private const val ENTITY_KIND = "entity"
     }
 }

@@ -24,6 +24,8 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import rhx.lazy.core.displayActionBar
 import rhx.lazy.core.lazyId
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 
 internal interface IoPanelModel {
     val player: Player
@@ -505,7 +507,7 @@ private fun providerTooltip(
         if (!compatible) add(Component.translatable("gui.lazy.io.provider.incompatible"))
     }.toTypedArray()
 
-private fun capabilityList(capabilities: Set<NetworkInsertCapability>): Component {
+private fun capabilityList(capabilities: Set<ResourceKind<out ResourceVariant>>): Component {
     val result = Component.empty()
     capabilities.forEachIndexed { index, capability ->
         if (index > 0) result.append(", ")

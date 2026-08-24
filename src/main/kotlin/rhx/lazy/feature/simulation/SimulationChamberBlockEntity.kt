@@ -1,15 +1,11 @@
 package rhx.lazy.feature.simulation
 
-import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.Tag
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.util.RandomSource
 import net.minecraft.world.entity.EntityType
@@ -19,124 +15,108 @@ import net.minecraft.world.entity.MobSpawnType
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.event.EventHooks
-import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
-import rhx.lazy.core.ManagedBlockEntity.Companion.MANAGED_DATA_KEY
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.IoMode
-import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.NeighborCapabilities
-import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkTargetRef
+import rhx.lazy.core.io.ResourceKinds
+import rhx.lazy.core.io.StoredOutputSource
+import rhx.lazy.core.process.PreparedCommit
+import rhx.lazy.core.process.WorkController
+import rhx.lazy.core.process.WorkProvider
+import rhx.lazy.core.process.WorkStatus
+import rhx.lazy.core.process.WorkStep
 import rhx.lazy.core.render.MachineActivity
 import rhx.lazy.core.render.MachineDisplayState
-import rhx.lazy.core.storage.LongItemStack
+import rhx.lazy.core.resource.FluidResourceKind
+import rhx.lazy.core.resource.ItemResourceKind
+import rhx.lazy.core.resource.ResourceFluidHandler
+import rhx.lazy.core.resource.ResourceItemHandler
+import rhx.lazy.core.resource.ResourceStore
 import kotlin.math.min
 
 internal class SimulationChamberBlockEntity(
     pos: BlockPos,
     state: BlockState,
 ) : IoManagedBlockEntity(SimulationRegistries.blockEntity.get(), pos, state) {
-    @field:Persisted
-    @field:LazyManaged
     private val inputs = MutableList(INPUT_SLOTS) { ItemStack.EMPTY }
 
-    @field:Persisted
-    @field:LazyManaged
-    private val outputs = MutableList(SimulationOutputRouter.ITEM_SLOTS) { ItemStack.EMPTY }
+    private val itemOutputs = ResourceStore(ItemResourceKind, OUTPUT_ENTRIES, Long.MAX_VALUE, ::outputsChanged)
+    private val fluidOutputs = ResourceStore(FluidResourceKind, OUTPUT_ENTRIES, Long.MAX_VALUE, ::outputsChanged)
+    private val outputSource = StoredOutputSource(listOf(itemOutputs, fluidOutputs))
 
-    @field:Persisted
-    @field:LazyManaged
-    private val fluids = MutableList(SimulationOutputRouter.FLUID_TANKS) { FluidStack.EMPTY }
-
-    @field:Persisted
-    @field:LazyManaged
-    private var progressTicks = 0
-
-    private val pendingItems = mutableListOf<LongItemStack>()
-    private val pendingFluids = mutableListOf<LongFluidStack>()
-    private var batch: SimulationBatch? = null
-    private var legacyBatch: LegacyBatch? = null
-    private val neighborItems = NeighborCapabilities.items(blockPos) { !isRemoved }
-    private val neighborFluids = NeighborCapabilities.fluids(blockPos) { !isRemoved }
-    private val outputRouter =
-        SimulationOutputRouter(outputs, fluids, pendingItems, pendingFluids, neighborItems, neighborFluids) {
-            setChanged()
-        }
+    private var activeJob: SimulationJob? = null
 
     val inputItemHandler: IItemHandlerModifiable = SimulationInputHandler(inputs, ::inputLimit, ::validInput, ::setInput)
-    val outputItemHandler: IItemHandlerModifiable = outputRouter.itemHandler
-    val outputFluidHandler: IFluidHandler = outputRouter.fluidHandler
+    val outputItemHandler: IItemHandlerModifiable = ResourceItemHandler(itemOutputs, allowInsert = false)
+    val outputFluidHandler: IFluidHandler = ResourceFluidHandler(fluidOutputs, allowInsert = false)
+
+    private val workController =
+        WorkController(
+            provider =
+                object : WorkProvider {
+                    override fun step(workBudget: Int): WorkStep = produceStep(workBudget)
+
+                    override fun committed(workUnits: Int) = commitWorkUnits(workUnits)
+                },
+            commit = { prepared ->
+                val complete = prepared.drainInto(itemOutputs, fluidOutputs)
+                setChanged()
+                complete
+            },
+        )
 
     init {
         installIoAdapter(OutputIoAdapter())
     }
 
     fun serverTick() {
-        val level = level as? ServerLevel ?: return
-        migrateLegacyBatch(level)
-        advance(level)
-        ioController.tick()
+        val serverLevel = level as? ServerLevel ?: return
+        val ioCycle = ioController.beginTick()
+        if (activeJob == null && workController.preparedCommit == null) startJob(serverLevel)
+        advanceJob(serverLevel)
+        ioController.endTick(ioCycle)
         tickDisplayState()
     }
 
-    /**
-     * The chamber refuses to start while anything is still buffered, so [serverTick] runs this first
-     * and hands the results to the IO cycle within the same tick: a batch that finished never spends
-     * a tick reported as blocked, and the next recipe starts on the very next tick.
-     */
-    private fun advance(level: ServerLevel) {
-        if (batch != null) return processBatch(level)
-        if (outputRouter.hasOutputs) return
-        val simulation = SimulationRecipeResolver.resolve(level, inputs[TARGET_SLOT]) ?: return resetProgress()
-        val tier = SimulationRegistries.coreTier(inputs[CORE_SLOT]) ?: return resetProgress()
-        progressTicks += tier.speedMultiplier()
-        markDirty(PROGRESS_FIELD)
-        if (progressTicks < simulation.duration) return
-        beginBatch(simulation, tier)
-        processBatch(level)
-    }
-
-    /** A batch that spans several ticks holds the bar full: the recipe is done and only rolls remain. */
     fun progress(): Float {
-        if (batch != null) return 1f
-        val simulation = level?.let { SimulationRecipeResolver.resolve(it, inputs[TARGET_SLOT]) } ?: return 0f
-        return (progressTicks.toFloat() / simulation.duration).coerceIn(0f, 1f)
+        val job = activeJob ?: return 0f
+        return (job.progressTicks.toFloat() / job.duration).coerceIn(0f, 1f)
     }
 
-    fun speedMultiplier(): Int = SimulationRegistries.coreTier(inputs[CORE_SLOT])?.speedMultiplier() ?: 0
+    fun speedMultiplier(): Int = activeJob?.speedMultiplier ?: SimulationRegistries.coreTier(inputs[CORE_SLOT])?.speedMultiplier() ?: 0
 
     fun outputMultiplier(): Long =
-        SimulationRegistries
-            .coreTier(inputs[CORE_SLOT])
-            ?.let { tier -> inputs[CORE_SLOT].count.toLong() * tier.outputMultiplier() }
+        activeJob?.outputMultiplier
+            ?: SimulationRegistries
+                .coreTier(inputs[CORE_SLOT])
+                ?.let { tier -> Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.outputMultiplier().toLong()) }
             ?: 0L
 
-    fun hasWaitingOutputs(): Boolean = batch == null && outputRouter.hasOutputs
+    fun hasWaitingOutputs(): Boolean = workController.status == WorkStatus.BLOCKED
 
-    /**
-     * The chamber shows its target on the front panel. Progress and the reason a stalled chamber is
-     * stalled stay in the screen and the Jade view; out in the world there is only "what" and "is it
-     * alive", which is what a player scanning a wall of chambers can actually read.
-     */
+    fun getInput(slot: Int): ItemStack = inputs[slot].copy()
+
     override fun computeDisplayState(): MachineDisplayState {
-        val icon = SimulationDisplayIcons.iconFor(inputs[TARGET_SLOT])
+        val target = activeJob?.target ?: inputs[TARGET_SLOT]
+        val icon = SimulationDisplayIcons.iconFor(target)
         if (icon.isEmpty) return MachineDisplayState.EMPTY
         return MachineDisplayState(icon, displayActivity())
     }
 
     private fun displayActivity(): MachineActivity =
         when {
-            batch != null || progressTicks > 0 -> MachineActivity.RUNNING
-            outputRouter.hasOutputs -> MachineActivity.BLOCKED
+            workController.status == WorkStatus.BLOCKED || workController.status == WorkStatus.FAULTED -> MachineActivity.BLOCKED
+            activeJob != null -> MachineActivity.RUNNING
             else -> MachineActivity.IDLE
         }
 
-    fun getInput(slot: Int): ItemStack = inputs[slot].copy()
-
-    fun hasContents(): Boolean = inputs.any { !it.isEmpty } || outputRouter.hasOutputs || batch != null || legacyBatch != null
+    fun hasContents(): Boolean =
+        inputs.any { !it.isEmpty } ||
+            !itemOutputs.isEmpty ||
+            !fluidOutputs.isEmpty ||
+            activeJob != null ||
+            workController.preparedCommit != null
 
     override fun hasStoredContents(): Boolean = hasContents()
 
@@ -145,14 +125,25 @@ internal class SimulationChamberBlockEntity(
         registries: HolderLookup.Provider,
     ) {
         super.saveAdditional(tag, registries)
-        if (pendingItems.isNotEmpty()) {
-            tag.put(PENDING_ITEMS, ListTag().apply { pendingItems.forEach { add(it.save(registries)) } })
-        }
-        if (pendingFluids.isNotEmpty()) {
-            tag.put(PENDING_FLUIDS, ListTag().apply { pendingFluids.forEach { add(it.save(registries)) } })
-        }
-        batch?.let { tag.put(BATCH_TAG, it.save(registries)) }
-        legacyBatch?.save(tag, registries)
+        tag.put(
+            INPUT_STORE_TAG,
+            ListTag().apply {
+                inputs.forEachIndexed { slot, stack ->
+                    if (!stack.isEmpty) {
+                        add(
+                            CompoundTag().apply {
+                                putInt(SLOT_TAG, slot)
+                                put(STACK_TAG, stack.save(registries))
+                            },
+                        )
+                    }
+                }
+            },
+        )
+        if (!itemOutputs.isEmpty) tag.put(ITEM_OUTPUT_STORE_TAG, itemOutputs.save(registries))
+        if (!fluidOutputs.isEmpty) tag.put(FLUID_OUTPUT_STORE_TAG, fluidOutputs.save(registries))
+        activeJob?.let { tag.put(ACTIVE_JOB_TAG, it.save(registries)) }
+        workController.preparedCommit?.let { tag.put(PREPARED_COMMIT_TAG, it.save(registries)) }
     }
 
     override fun loadAdditional(
@@ -160,131 +151,113 @@ internal class SimulationChamberBlockEntity(
         registries: HolderLookup.Provider,
     ) {
         super.loadAdditional(tag, registries)
-        inputs.resize(INPUT_SLOTS) { ItemStack.EMPTY }
-        neighborItems.invalidate()
-        neighborFluids.invalidate()
-        outputRouter.normalize()
-        pendingItems.clear()
-        tag.getList(PENDING_ITEMS, Tag.TAG_COMPOUND.toInt()).forEach { raw ->
-            LongItemStack.parse(registries, raw as CompoundTag)?.let(pendingItems::add)
+        inputs.indices.forEach { inputs[it] = ItemStack.EMPTY }
+        tag.getList(INPUT_STORE_TAG, Tag.TAG_COMPOUND.toInt()).forEach { raw ->
+            val entry = raw as? CompoundTag ?: return@forEach
+            val slot = entry.getInt(SLOT_TAG)
+            if (slot in inputs.indices) inputs[slot] = ItemStack.parseOptional(registries, entry.getCompound(STACK_TAG))
         }
-        pendingFluids.clear()
-        tag.getList(PENDING_FLUIDS, Tag.TAG_COMPOUND.toInt()).forEach { raw ->
-            LongFluidStack.parse(registries, raw as CompoundTag)?.let(pendingFluids::add)
-        }
-        batch =
-            if (tag.contains(BATCH_TAG, Tag.TAG_COMPOUND.toInt())) {
-                SimulationBatch.parse(registries, tag.getCompound(BATCH_TAG))
-            } else {
-                null
-            }
-        legacyBatch = if (batch == null) LegacyBatch.parse(tag, registries) else null
+        itemOutputs.load(registries, tag.getList(ITEM_OUTPUT_STORE_TAG, Tag.TAG_COMPOUND.toInt()))
+        fluidOutputs.load(registries, tag.getList(FLUID_OUTPUT_STORE_TAG, Tag.TAG_COMPOUND.toInt()))
+        activeJob =
+            tag
+                .takeIf { it.contains(ACTIVE_JOB_TAG, Tag.TAG_COMPOUND.toInt()) }
+                ?.getCompound(ACTIVE_JOB_TAG)
+                ?.let { SimulationJob.parse(registries, it) }
+        val prepared =
+            tag
+                .takeIf { activeJob != null && it.contains(PREPARED_COMMIT_TAG, Tag.TAG_COMPOUND.toInt()) }
+                ?.getCompound(PREPARED_COMMIT_TAG)
+                ?.let { PreparedCommit.parse(registries, it) }
+        workController.restore(prepared)
     }
 
-    override fun setRemoved() {
-        neighborItems.invalidate()
-        neighborFluids.invalidate()
-        super.setRemoved()
-    }
-
-    private fun migrateLegacyBatch(level: ServerLevel) {
-        val legacy = legacyBatch ?: return
-        legacyBatch = null
-        batch =
-            when (legacy.kind) {
-                LEGACY_ITEM_KIND -> {
-                    val id = ResourceLocation.tryParse(legacy.recipeId) ?: return markBatchDirty()
-                    val holder =
-                        level.recipeManager
-                            .getAllRecipesFor(SimulationRegistries.itemRecipeType.get())
-                            .firstOrNull { it.id() == id } ?: return markBatchDirty()
-                    val recipe = holder.value()
-                    SimulationBatch.from(
-                        ResolvedSimulation.Item(
-                            holder.id(),
-                            recipe.durationTicks(),
-                            recipe.itemOutputs,
-                            recipe.fluidOutputs,
-                        ),
-                        legacy.remaining,
-                    )
-                }
-                LEGACY_AUTOMATIC_KIND ->
-                    legacy.automaticOutput
-                        .takeUnless(ItemStack::isEmpty)
-                        ?.let {
-                            SimulationBatch.Item(
-                                listOf(SimulationItemOutput(it)),
-                                emptyList(),
-                                emptyList(),
-                                legacy.remaining,
-                            )
-                        }
-                LEGACY_ENTITY_KIND -> {
-                    val entityId = ResourceLocation.tryParse(legacy.entityId) ?: return markBatchDirty()
-                    val profile =
-                        level.recipeManager
-                            .getAllRecipesFor(SimulationRegistries.entityRecipeType.get())
-                            .firstOrNull { it.id().toString() == legacy.recipeId }
-                    if (!legacy.recipeId.startsWith("lazy:entity/") && profile == null) return markBatchDirty()
-                    SimulationBatch.from(
-                        ResolvedSimulation.EntityProfile(entityId, profile, SimulationConfigs.settings.defaultDuration.get()),
-                        legacy.remaining,
-                    )
-                }
-                else -> null
-            }
-        markBatchDirty()
-    }
-
-    private fun beginBatch(
-        simulation: ResolvedSimulation,
-        tier: SimulationCoreTier,
-    ) {
-        val rolls = inputs[CORE_SLOT].count.toLong() * tier.outputMultiplier().toLong()
-        batch = SimulationBatch.from(simulation, rolls)
-        progressTicks = 0
-        markBatchDirty()
-    }
-
-    private fun processBatch(level: ServerLevel) {
-        val active = batch ?: return
-        // Tools are read per batch tick instead of captured at batch start, so swapping one takes effect at once.
-        val loadout = SimulationToolModules.loadout(inputs.subList(TOOL_SLOT_START, INPUT_SLOTS))
-        val budget =
-            simulationRollBudget(
-                active.remaining,
-                SimulationConfigs.settings.maxRollsPerTick.get(),
-                ioController.mode,
-                loadout.settlesBatchImmediately,
+    private fun startJob(level: ServerLevel) {
+        val simulation = SimulationRecipeResolver.resolve(level, inputs[TARGET_SLOT]) ?: return
+        val tier = SimulationRegistries.coreTier(inputs[CORE_SLOT]) ?: return
+        val rolls = Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.outputMultiplier().toLong())
+        if (rolls <= 0L) return
+        activeJob =
+            SimulationJob(
+                target = inputs[TARGET_SLOT],
+                batch = SimulationBatch.from(simulation, rolls),
+                duration = simulation.duration,
+                speedMultiplier = tier.speedMultiplier(),
+                outputMultiplier = rolls,
+                tools = inputs.subList(TOOL_SLOT_START, INPUT_SLOTS),
             )
-        val accumulator = SimulationOutputAccumulator(loadout::acceptsOutput)
-        when (active) {
-            is SimulationBatch.Item -> {
-                repeat(budget) {
-                    active.blockLootOutputs.forEach { output ->
-                        net.minecraft.world.level.block.Block
-                            .getDrops(output.state, level, blockPos, null, null, output.tool)
-                            .forEach(accumulator::add)
-                    }
-                }
-                rollOutputs(level.random, active.itemOutputs, active.fluidOutputs, budget, accumulator)
-            }
-            is SimulationBatch.Entity -> {
-                val type = BuiltInRegistries.ENTITY_TYPE.getOptional(active.entityId).orElse(null) ?: return cancelBatch()
-                if (!EntitySimulationTargets.isAllowed(type)) return cancelBatch()
-                repeat(budget) {
-                    if (active.rollLootTable) {
-                        val entity = createTemporaryEntity(type, level) ?: return cancelBatch()
-                        SimulationLootRoller.roll(level, entity, active.lootTable.orElse(null), loadout.weapon, accumulator::add)
-                    }
-                }
-                rollOutputs(level.random, active.itemOutputs, active.fluidOutputs, budget, accumulator)
-            }
+        setChanged()
+        refreshDisplayState()
+    }
+
+    private fun advanceJob(level: ServerLevel) {
+        val job = activeJob ?: return
+        if (job.progressTicks < job.duration) {
+            job.progressTicks = min(job.duration, Math.addExact(job.progressTicks, job.speedMultiplier))
+            setChanged()
+            if (job.progressTicks < job.duration) return
         }
-        accumulator.flush(outputRouter)
-        val remaining = active.remaining - budget
-        if (remaining <= 0) cancelBatch() else batch = active.withRemaining(remaining).also { setChanged() }
+        workController.tick(SimulationConfigs.settings.rollBudgetPerTick.get())
+    }
+
+    private fun produceStep(workBudget: Int): WorkStep {
+        val level = level as? ServerLevel ?: return WorkStep.Idle
+        val job = activeJob ?: return WorkStep.Idle
+        if (job.progressTicks < job.duration || workBudget <= 0) return WorkStep.Running
+        val units = min(job.batch.remaining, workBudget.toLong()).toInt()
+        if (units <= 0) return WorkStep.Idle
+        val loadout = SimulationToolModules.loadout(job.tools)
+        val accumulator = SimulationOutputAccumulator(loadout::acceptsOutput)
+        return try {
+            when (val batch = job.batch) {
+                is SimulationBatch.Item -> {
+                    repeat(units) {
+                        batch.blockLootOutputs.forEach { output ->
+                            net.minecraft.world.level.block.Block
+                                .getDrops(output.state, level, blockPos, null, null, output.tool)
+                                .forEach(accumulator::add)
+                        }
+                    }
+                    rollOutputs(level.random, batch.itemOutputs, batch.fluidOutputs, units, accumulator)
+                }
+                is SimulationBatch.Entity -> {
+                    val type =
+                        BuiltInRegistries.ENTITY_TYPE.getOptional(batch.entityId).orElse(null)
+                            ?: return WorkStep.Faulted("Missing entity type ${batch.entityId}")
+                    if (!EntitySimulationTargets.isAllowed(
+                            type,
+                        )
+                    ) {
+                        return WorkStep.Faulted("Entity type ${batch.entityId} is no longer allowed")
+                    }
+                    repeat(units) {
+                        if (batch.rollLootTable) {
+                            val entity =
+                                createTemporaryEntity(type, level)
+                                    ?: return WorkStep.Faulted("Could not create entity ${batch.entityId}")
+                            SimulationLootRoller.roll(level, entity, batch.lootTable.orElse(null), loadout.weapon, accumulator::add)
+                        }
+                    }
+                    rollOutputs(level.random, batch.itemOutputs, batch.fluidOutputs, units, accumulator)
+                }
+            }
+            WorkStep.Produced(accumulator.prepare(units))
+        } catch (overflow: ArithmeticException) {
+            WorkStep.Faulted("Simulation output overflow: ${overflow.message.orEmpty()}")
+        }
+    }
+
+    private fun commitWorkUnits(workUnits: Int) {
+        val job = activeJob ?: return
+        val remaining = job.batch.remaining - workUnits
+        if (remaining <= 0L) {
+            activeJob = null
+            workController.clear()
+            refreshDisplayState()
+        } else {
+            job.batch = job.batch.withRemaining(remaining)
+        }
+        setChanged()
     }
 
     private fun rollOutputs(
@@ -298,7 +271,7 @@ internal class SimulationChamberBlockEntity(
             repeat(budget) {
                 if (random.nextFloat() < output.chance) {
                     val rolls = random.nextIntBetweenInclusive(output.minRolls, output.maxRolls)
-                    accumulator.add(output.stack, output.stack.count.toLong() * rolls)
+                    accumulator.add(output.stack, Math.multiplyExact(output.stack.count.toLong(), rolls.toLong()))
                 }
             }
         }
@@ -306,7 +279,7 @@ internal class SimulationChamberBlockEntity(
             repeat(budget) {
                 if (random.nextFloat() < output.chance) {
                     val rolls = random.nextIntBetweenInclusive(output.minRolls, output.maxRolls)
-                    accumulator.add(output.stack, output.stack.amount.toLong() * rolls)
+                    accumulator.add(output.stack, Math.multiplyExact(output.stack.amount.toLong(), rolls.toLong()))
                 }
             }
         }
@@ -334,37 +307,20 @@ internal class SimulationChamberBlockEntity(
             }
         }
 
-    private fun resetProgress() {
-        if (progressTicks == 0) return
-        progressTicks = 0
-        markDirty(PROGRESS_FIELD)
-    }
-
-    private fun cancelBatch() {
-        batch = null
-        markBatchDirty()
-    }
-
-    private fun markBatchDirty() {
-        markDirty(PROGRESS_FIELD)
-        setChanged()
-    }
-
     private fun setInput(
         slot: Int,
         stack: ItemStack,
     ) {
         if (ItemStack.matches(inputs[slot], stack)) return
-        inputs[slot] = stack
-        if (slot == TARGET_SLOT) resetProgress()
-        markDirty(INPUTS_FIELD)
-        refreshDisplayState()
+        inputs[slot] = if (stack.isEmpty) ItemStack.EMPTY else stack.copy()
+        setChanged()
+        if (activeJob == null) refreshDisplayState()
     }
 
     private fun inputLimit(
         slot: Int,
         stack: ItemStack,
-    ) = if (slot == CORE_SLOT) min(64, stack.maxStackSize.coerceAtLeast(1)) else 1
+    ): Int = if (slot == CORE_SLOT) min(64, stack.maxStackSize.coerceAtLeast(1)) else 1
 
     private fun validInput(
         slot: Int,
@@ -377,18 +333,13 @@ internal class SimulationChamberBlockEntity(
             else -> false
         }
 
+    private fun outputsChanged() {
+        setChanged()
+    }
+
     private inner class OutputIoAdapter : IoAdapter {
-        override val capabilities = setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID)
-        override val maintainsWhenIdle = true
-
-        override fun maintain() = outputRouter.movePendingLocal()
-
-        override fun pushToFaces(directions: Set<Direction>): IoPushResult {
-            val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
-            return outputRouter.pushToFaces(serverLevel, directions)
-        }
-
-        override fun pushToNetwork(target: NetworkTargetRef): IoPushResult = outputRouter.pushToNetwork(target)
+        override val capabilities = setOf(ResourceKinds.ITEM, ResourceKinds.FLUID)
+        override val outputSource = this@SimulationChamberBlockEntity.outputSource
     }
 
     companion object {
@@ -397,88 +348,19 @@ internal class SimulationChamberBlockEntity(
         const val TOOL_SLOT_START = 2
         const val TOOL_SLOTS = 3
         const val INPUT_SLOTS = TOOL_SLOT_START + TOOL_SLOTS
-        private const val INPUTS_FIELD = "inputs"
-        private const val PROGRESS_FIELD = "progressTicks"
-        private const val BATCH_TAG = "lazySimulationBatch"
-        private const val PENDING_ITEMS = "lazyPendingItems"
-        private const val PENDING_FLUIDS = "lazyPendingFluids"
-        private const val LEGACY_KIND_FIELD = "batchKind"
-        private const val LEGACY_ID_FIELD = "batchId"
-        private const val LEGACY_ENTITY_FIELD = "batchEntity"
-        private const val LEGACY_REMAINING_FIELD = "batchRemaining"
-        private const val LEGACY_AUTOMATIC_OUTPUT_FIELD = "batchAutomaticOutput"
-        private const val LEGACY_ITEM_KIND = "item"
-        private const val LEGACY_AUTOMATIC_KIND = "automatic"
-        private const val LEGACY_ENTITY_KIND = "entity"
-    }
+        const val OUTPUT_ENTRIES = 28
 
-    private data class LegacyBatch(
-        val kind: String,
-        val recipeId: String,
-        val entityId: String,
-        val remaining: Long,
-        val automaticOutput: ItemStack,
-    ) {
-        fun save(
-            root: CompoundTag,
-            registries: HolderLookup.Provider,
-        ) {
-            val managed = root.getCompound(MANAGED_DATA_KEY)
-            managed.putString(LEGACY_KIND_FIELD, kind)
-            managed.putString(LEGACY_ID_FIELD, recipeId)
-            managed.putString(LEGACY_ENTITY_FIELD, entityId)
-            managed.putLong(LEGACY_REMAINING_FIELD, remaining)
-            if (!automaticOutput.isEmpty) managed.put(LEGACY_AUTOMATIC_OUTPUT_FIELD, automaticOutput.save(registries))
-            root.put(MANAGED_DATA_KEY, managed)
-        }
-
-        companion object {
-            fun parse(
-                root: CompoundTag,
-                registries: HolderLookup.Provider,
-            ): LegacyBatch? {
-                val managed = root.getCompound(MANAGED_DATA_KEY)
-                val remaining = managed.getLong(LEGACY_REMAINING_FIELD)
-                if (remaining <= 0L) return null
-                return LegacyBatch(
-                    managed.getString(LEGACY_KIND_FIELD),
-                    managed.getString(LEGACY_ID_FIELD),
-                    managed.getString(LEGACY_ENTITY_FIELD),
-                    remaining,
-                    ItemStack.parseOptional(registries, managed.getCompound(LEGACY_AUTOMATIC_OUTPUT_FIELD)),
-                )
-            }
-        }
+        private const val INPUT_STORE_TAG = "simulationInputs"
+        private const val ITEM_OUTPUT_STORE_TAG = "simulationItemOutput"
+        private const val FLUID_OUTPUT_STORE_TAG = "simulationFluidOutput"
+        private const val ACTIVE_JOB_TAG = "simulationJob"
+        private const val PREPARED_COMMIT_TAG = "preparedCommit"
+        private const val SLOT_TAG = "slot"
+        private const val STACK_TAG = "stack"
     }
 }
 
-/**
- * A valid chamber batch cannot exceed 64 cores times the configured maximum output multiplier.
- * Network mode and the dispenser upgrade deliberately settle that whole batch before their
- * same-tick IO cycle; ordinary local or adjacent inventories otherwise keep the configured budget.
- */
 internal fun simulationRollBudget(
     remaining: Long,
     configuredLimit: Int,
-    mode: IoMode,
-    settlesBatchImmediately: Boolean = false,
-): Int {
-    if (remaining <= 0L) return 0
-    val limit =
-        if (mode == IoMode.NETWORK || settlesBatchImmediately) {
-            MAX_VALID_BATCH_ROLLS
-        } else {
-            configuredLimit.coerceAtLeast(1).toLong()
-        }
-    return min(remaining, limit).toInt()
-}
-
-private const val MAX_VALID_BATCH_ROLLS = 64L * 1024L
-
-private fun <T> MutableList<T>.resize(
-    size: Int,
-    factory: () -> T,
-) {
-    while (this.size > size) removeAt(lastIndex)
-    while (this.size < size) add(factory())
-}
+): Int = if (remaining <= 0L) 0 else min(remaining, configuredLimit.coerceAtLeast(1).toLong()).toInt()

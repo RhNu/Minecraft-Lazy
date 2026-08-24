@@ -15,6 +15,8 @@ import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank
 import net.neoforged.neoforge.items.ItemStackHandler
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
@@ -57,9 +59,9 @@ class IoConfigurationTest {
         val buffer = BufferBlockEntity(BlockPos.ZERO, BufferRegistries.block.get().defaultBlockState())
 
         assertEquals(IoMode.PASSIVE, energy.ioController.mode)
-        assertEquals(setOf(NetworkInsertCapabilities.ENERGY), energy.ioController.capabilities)
+        assertEquals(setOf(ResourceKinds.ENERGY), energy.ioController.capabilities)
         assertEquals(
-            setOf(NetworkInsertCapabilities.ITEM, NetworkInsertCapabilities.FLUID),
+            setOf(ResourceKinds.ITEM, ResourceKinds.FLUID),
             buffer.ioController.capabilities,
         )
         assertTrue(buffer.ioController.sideMode(Direction.UP).allowsInput)
@@ -176,7 +178,7 @@ class IoConfigurationTest {
     ) : NetworkOutputProvider {
         override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath("lazy", "test_item_only_$suffix")
         override val displayName: Component = Component.literal("Item only $suffix")
-        override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
+        override val capabilities = setOf(ResourceKinds.ITEM)
 
         override fun icon() = ItemStack(Items.CHEST)
 
@@ -184,11 +186,11 @@ class IoConfigurationTest {
 
         override fun isTargetValid(target: NetworkTargetRef) = target.providerId == id
 
-        override fun insert(
+        override fun offer(
             target: NetworkTargetRef,
-            payload: NetworkPayload,
+            amount: ResourceAmount<out ResourceVariant>,
             simulate: Boolean,
-        ): NetworkTransferResult = NetworkTransferResult.Success(0)
+        ): TransferResult = TransferResult.Accepted(0)
 
         fun target() = NetworkTargetRef(id, CompoundTag().apply { putString("opaque", "original") })
     }

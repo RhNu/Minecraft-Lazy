@@ -11,21 +11,21 @@ import kotlin.math.min
  * There is no remainder ledger to persist, and nothing to lose when the machine is broken.
  */
 internal data class ShaperTrade(
-    val inputPerTrade: Int,
-    val outputPerTrade: Int,
+    val inputPerTrade: Long,
+    val outputPerTrade: Long,
 ) {
     init {
         require(inputPerTrade > 0 && outputPerTrade > 0) { "A shaper trade must move at least one item each way" }
     }
 
     /**
-     * How many whole trades fit, given what the lane holds and what the output pool can still take.
+     * How many whole trades fit, given what the input entry holds and what the output store can still take.
      * Both limits are floors, so a partly-full output never causes a partial trade.
      */
     fun trades(
-        available: Int,
-        capacity: Int,
-    ): Int {
+        available: Long,
+        capacity: Long,
+    ): Long {
         if (available < inputPerTrade || capacity < outputPerTrade) return 0
         return min(available / inputPerTrade, capacity / outputPerTrade)
     }
@@ -38,7 +38,7 @@ internal fun shaperTrade(
 ): ShaperTrade? {
     if (inputUnits <= 0 || outputUnits <= 0) return null
     val divisor = greatestCommonDivisor(inputUnits, outputUnits)
-    return ShaperTrade(outputUnits / divisor, inputUnits / divisor)
+    return ShaperTrade((outputUnits / divisor).toLong(), (inputUnits / divisor).toLong())
 }
 
 private tailrec fun greatestCommonDivisor(

@@ -15,7 +15,8 @@ class GuardedNetworkStoragePortTest {
             object : TestPort() {
                 override fun insertFluid(
                     networkId: BeyondDimensionsNetworkId,
-                    stack: FluidStack,
+                    template: FluidStack,
+                    amount: Long,
                     simulate: Boolean,
                 ): BeyondDimensionsStorageResult<Long> = throw IllegalStateException("upstream failure")
             }
@@ -24,7 +25,7 @@ class GuardedNetworkStoragePortTest {
         repeat(2) {
             assertSame(
                 BeyondDimensionsStorageResult.Failed,
-                guarded.insertFluid(NETWORK_ID, FluidStack.EMPTY, simulate = true),
+                guarded.insertFluid(NETWORK_ID, FluidStack.EMPTY, 1L, simulate = true),
             )
         }
     }
@@ -114,7 +115,8 @@ class GuardedNetworkStoragePortTest {
 
         override fun insertFluid(
             networkId: BeyondDimensionsNetworkId,
-            stack: FluidStack,
+            template: FluidStack,
+            amount: Long,
             simulate: Boolean,
         ): BeyondDimensionsStorageResult<Long> = BeyondDimensionsStorageResult.Success(0L)
 

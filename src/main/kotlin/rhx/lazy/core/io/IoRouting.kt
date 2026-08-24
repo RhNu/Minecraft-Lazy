@@ -1,42 +1,22 @@
 package rhx.lazy.core.io
 
-import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
-import net.neoforged.neoforge.fluids.FluidStack
+import rhx.lazy.core.resource.EnergyResourceKind
+import rhx.lazy.core.resource.FluidResourceKind
+import rhx.lazy.core.resource.ItemResourceKind
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 
-internal class NetworkInsertCapability(
-    val id: ResourceLocation,
-    val displayName: Component,
-) {
-    override fun equals(other: Any?): Boolean = other is NetworkInsertCapability && id == other.id
-
-    override fun hashCode(): Int = id.hashCode()
-
-    override fun toString(): String = id.toString()
-}
-
-internal object NetworkInsertCapabilities {
-    val ITEM =
-        NetworkInsertCapability(
-            ResourceLocation.fromNamespaceAndPath("lazy", "item"),
-            Component.translatable("gui.lazy.io.capability.item"),
-        )
-    val FLUID =
-        NetworkInsertCapability(
-            ResourceLocation.fromNamespaceAndPath("lazy", "fluid"),
-            Component.translatable("gui.lazy.io.capability.fluid"),
-        )
-    val ENERGY =
-        NetworkInsertCapability(
-            ResourceLocation.fromNamespaceAndPath("neoforge", "energy"),
-            Component.translatable("gui.lazy.io.capability.energy"),
-        )
-
-    val all: Set<NetworkInsertCapability> = setOf(ITEM, FLUID, ENERGY)
+internal object ResourceKinds {
+    val ITEM = ItemResourceKind
+    val FLUID = FluidResourceKind
+    val ENERGY = EnergyResourceKind
+    val all: Set<ResourceKind<out ResourceVariant>> = setOf(ITEM, FLUID, ENERGY)
 }
 
 /**
@@ -86,47 +66,25 @@ internal sealed interface NetworkTargetResolution {
     data object Failed : NetworkTargetResolution
 }
 
-internal sealed interface NetworkPayload {
-    val capability: NetworkInsertCapability
+internal sealed interface TransferResult {
+    /** [accepted] is always clamped to the offered amount. */
+    data class Accepted(
+        val accepted: Long,
+    ) : TransferResult
 
-    data class Items(
-        val template: ItemStack,
-        val amount: Long,
-    ) : NetworkPayload {
-        override val capability: NetworkInsertCapability = NetworkInsertCapabilities.ITEM
-    }
+    data object TemporarilyUnavailable : TransferResult
 
-    data class Fluid(
-        val stack: FluidStack,
-    ) : NetworkPayload {
-        override val capability: NetworkInsertCapability = NetworkInsertCapabilities.FLUID
-    }
+    data object TargetMissing : TransferResult
 
-    data class Energy(
-        val amount: Long,
-    ) : NetworkPayload {
-        override val capability: NetworkInsertCapability = NetworkInsertCapabilities.ENERGY
-    }
-}
+    data object InvalidTarget : TransferResult
 
-internal sealed interface NetworkTransferResult {
-    data class Success(
-        val remainder: Long,
-    ) : NetworkTransferResult
-
-    data object TemporarilyUnavailable : NetworkTransferResult
-
-    data object TargetMissing : NetworkTransferResult
-
-    data object InvalidTarget : NetworkTransferResult
-
-    data object OutcomeUnknown : NetworkTransferResult
+    data object OutcomeUnknown : TransferResult
 }
 
 internal interface NetworkOutputProvider {
     val id: ResourceLocation
     val displayName: Component
-    val capabilities: Set<NetworkInsertCapability>
+    val capabilities: Set<ResourceKind<out ResourceVariant>>
 
     fun icon(): ItemStack
 
@@ -135,11 +93,11 @@ internal interface NetworkOutputProvider {
     fun isTargetValid(target: NetworkTargetRef): Boolean
 
     /** Implementations must treat [target] and its opaque data as read-only. */
-    fun insert(
+    fun offer(
         target: NetworkTargetRef,
-        payload: NetworkPayload,
+        amount: ResourceAmount<out ResourceVariant>,
         simulate: Boolean,
-    ): NetworkTransferResult
+    ): TransferResult
 }
 
 internal object NetworkOutputProviders {
@@ -159,15 +117,18 @@ internal object NetworkOutputProviders {
 }
 
 internal object NetworkOutputRouter {
-    fun insert(
+    fun offer(
         target: NetworkTargetRef,
-        payload: NetworkPayload,
+        amount: ResourceAmount<out ResourceVariant>,
         simulate: Boolean,
-    ): NetworkTransferResult {
-        val provider = NetworkOutputProviders.get(target.providerId) ?: return NetworkTransferResult.TemporarilyUnavailable
-        if (payload.capability !in provider.capabilities) return NetworkTransferResult.TemporarilyUnavailable
-        if (!provider.isTargetValid(target)) return NetworkTransferResult.InvalidTarget
-        return provider.insert(target, payload, simulate)
+    ): TransferResult {
+        val provider = NetworkOutputProviders.get(target.providerId) ?: return TransferResult.TemporarilyUnavailable
+        if (amount.kind !in provider.capabilities) return TransferResult.TemporarilyUnavailable
+        if (!provider.isTargetValid(target)) return TransferResult.InvalidTarget
+        return when (val result = provider.offer(target, amount, simulate)) {
+            is TransferResult.Accepted -> TransferResult.Accepted(result.accepted.coerceIn(0L, amount.amount))
+            else -> result
+        }
     }
 }
 
@@ -181,38 +142,8 @@ internal sealed interface IoPushResult {
     data object OutcomeUnknown : IoPushResult
 }
 
-internal fun NetworkTransferResult.toPushResult(): IoPushResult =
-    when (this) {
-        is NetworkTransferResult.Success -> IoPushResult.Success
-        NetworkTransferResult.TargetMissing, NetworkTransferResult.InvalidTarget -> IoPushResult.TargetMissing
-        NetworkTransferResult.OutcomeUnknown -> IoPushResult.OutcomeUnknown
-        NetworkTransferResult.TemporarilyUnavailable -> IoPushResult.Retry
-    }
-
-/** Outcome of offering a single payload to a network target. */
-internal sealed interface NetworkOffer {
-    /** [accepted] is always clamped to the offered amount. */
-    data class Accepted(
-        val accepted: Long,
-    ) : NetworkOffer
-
-    data class Rejected(
-        val push: IoPushResult,
-    ) : NetworkOffer
-}
-
-/**
- * Sends [payload] to this target and reports how much of [offered] was taken, so callers only deal
- * with accepted amounts instead of re-deriving them from remainders.
- */
-internal fun NetworkTargetRef.offer(
-    payload: NetworkPayload,
-    offered: Long,
-): NetworkOffer =
-    when (val result = NetworkOutputRouter.insert(this, payload, false)) {
-        is NetworkTransferResult.Success -> NetworkOffer.Accepted(offered - result.remainder.coerceIn(0L, offered))
-        else -> NetworkOffer.Rejected(result.toPushResult())
-    }
+internal fun NetworkTargetRef.offer(amount: ResourceAmount<out ResourceVariant>): TransferResult =
+    NetworkOutputRouter.offer(this, amount, false)
 
 /**
  * Machine-side half of the IO system.
@@ -221,15 +152,14 @@ internal fun NetworkTargetRef.offer(
  * their machine moves resources. Every hook is called on the server thread only.
  */
 internal interface IoAdapter {
-    val capabilities: Set<NetworkInsertCapability>
+    val outputSource: OutputSource
+
+    val capabilities: Set<ResourceKind<out ResourceVariant>>
+        get() = outputSource.capabilities
 
     /** Machines that never accept an inbound transfer skip the input face states while cycling. */
     val acceptsInput: Boolean
         get() = true
-
-    /** Adapters holding buffered output that must drain even without an active push target. */
-    val maintainsWhenIdle: Boolean
-        get() = false
 
     fun supportsNetworkTarget(target: NetworkTargetRef): Boolean =
         NetworkOutputProviders
@@ -237,14 +167,6 @@ internal interface IoAdapter {
             ?.let { provider -> capabilities.any { it in provider.capabilities } && provider.isTargetValid(target) }
             ?: false
 
-    /** Local upkeep; runs every tick in every mode, before that mode's push. */
-    fun maintain() = Unit
-
     /** Rate limit or precondition, evaluated once per tick immediately before a push. */
     fun readyToPush(): Boolean = true
-
-    /** [directions] is never empty. */
-    fun pushToFaces(directions: Set<Direction>): IoPushResult = IoPushResult.Success
-
-    fun pushToNetwork(target: NetworkTargetRef): IoPushResult = IoPushResult.Success
 }

@@ -3,21 +3,15 @@ package rhx.lazy.feature.itemcopier
 import com.lowdragmc.lowdraglib2.syncdata.annotation.LazyManaged
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
+import rhx.lazy.core.io.InfiniteOutputSource
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.IoPushResult
-import rhx.lazy.core.io.NeighborCapabilities
-import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkOutputRouter
-import rhx.lazy.core.io.NetworkPayload
-import rhx.lazy.core.io.NetworkTargetRef
-import rhx.lazy.core.io.toPushResult
+import rhx.lazy.core.io.ResourceKinds
+import rhx.lazy.core.resource.itemAmount
 
 internal class ItemCopierBlockEntity(
     pos: BlockPos,
@@ -32,8 +26,10 @@ internal class ItemCopierBlockEntity(
     private var pushIntervalTicks = ItemCopierGear.DEFAULT.intervalTicks
 
     private var ticksUntilPush = 0
-
-    private val neighborItems = NeighborCapabilities.items(blockPos) { !isRemoved }
+    private val outputSource =
+        InfiniteOutputSource {
+            itemAmount(template, template.maxStackSize.coerceAtLeast(1).toLong())?.let(::listOf) ?: emptyList()
+        }
 
     init {
         installIoAdapter(ItemCopierIoAdapter())
@@ -93,13 +89,7 @@ internal class ItemCopierBlockEntity(
         super.loadAdditional(tag, registries)
         template = if (template.isEmpty) ItemStack.EMPTY else template.copyWithCount(1)
         pushIntervalTicks = getGear().intervalTicks
-        neighborItems.invalidate()
         requestImmediatePush()
-    }
-
-    override fun setRemoved() {
-        neighborItems.invalidate()
-        super.setRemoved()
     }
 
     private fun requestImmediatePush() {
@@ -107,21 +97,11 @@ internal class ItemCopierBlockEntity(
     }
 
     private inner class ItemCopierIoAdapter : IoAdapter {
-        override val capabilities = setOf(NetworkInsertCapabilities.ITEM)
+        override val capabilities = setOf(ResourceKinds.ITEM)
         override val acceptsInput = false
+        override val outputSource = this@ItemCopierBlockEntity.outputSource
 
         override fun readyToPush(): Boolean = !template.isEmpty && advanceSchedule()
-
-        override fun pushToFaces(directions: Set<Direction>): IoPushResult {
-            val serverLevel = level as? ServerLevel ?: return IoPushResult.Retry
-            ItemCopierPusher.pushToHandlers(template, directions.map { neighborItems[serverLevel, it] })
-            return IoPushResult.Success
-        }
-
-        override fun pushToNetwork(target: NetworkTargetRef): IoPushResult =
-            NetworkOutputRouter
-                .insert(target, NetworkPayload.Items(template.copyWithCount(1), template.maxStackSize.toLong()), false)
-                .toPushResult()
     }
 
     companion object {

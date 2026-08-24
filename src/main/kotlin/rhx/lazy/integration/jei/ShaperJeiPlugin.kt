@@ -195,9 +195,9 @@ internal class ShaperJeiPlugin : IModPlugin {
             if (input.`is`(ShaperTags.inputBlacklist) || output.`is`(ShaperTags.outputBlacklist)) return null
             val trade = shaperTrade(index.unitsOf(inputForm) ?: return null, index.unitsOf(outputForm) ?: return null) ?: return null
             return ShapingDisplay(
-                input.copyWithCount(trade.inputPerTrade),
+                input.copyWithCount(trade.inputPerTrade.toInt()),
                 output.copyWithCount(1),
-                output.copyWithCount(trade.outputPerTrade),
+                output.copyWithCount(trade.outputPerTrade.toInt()),
             )
         }
     }

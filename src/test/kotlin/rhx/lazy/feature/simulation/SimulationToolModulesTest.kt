@@ -33,18 +33,6 @@ class SimulationToolModulesTest {
     }
 
     @Test
-    fun `batch settlement upgrade combines with other tools`() {
-        val loadout =
-            SimulationToolModules.buildLoadout(
-                listOf(settleBatchModule, weaponModule),
-                listOf(ItemStack(Items.DISPENSER), ItemStack(Items.DIAMOND_SWORD)),
-            )
-
-        assertTrue(loadout.settlesBatchImmediately)
-        assertTrue(loadout.weapon.`is`(Items.DIAMOND_SWORD))
-    }
-
-    @Test
     fun `a module only sees the stacks it claims`() {
         val loadout =
             SimulationToolModules.buildLoadout(
@@ -60,7 +48,6 @@ class SimulationToolModulesTest {
         val loadout = SimulationToolModules.buildLoadout(listOf(weaponModule), List(3) { ItemStack.EMPTY })
 
         assertSame(SimulationToolLoadout.EMPTY, loadout)
-        assertFalse(loadout.settlesBatchImmediately)
         assertTrue(loadout.weapon.isEmpty)
         assertTrue(loadout.acceptsOutput(ItemStack(Items.DIAMOND_SWORD)))
     }
@@ -78,16 +65,6 @@ class SimulationToolModulesTest {
                 stack: ItemStack,
                 builder: SimulationToolLoadout.Builder,
             ) = builder.weapon(stack)
-        }
-
-    private val settleBatchModule =
-        object : SimulationToolModule {
-            override fun claims(stack: ItemStack) = stack.`is`(Items.DISPENSER)
-
-            override fun contribute(
-                stack: ItemStack,
-                builder: SimulationToolLoadout.Builder,
-            ) = builder.settleBatchImmediately()
         }
 
     private fun rejectModule(

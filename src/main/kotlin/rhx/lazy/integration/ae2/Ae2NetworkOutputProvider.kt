@@ -14,19 +14,20 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks
 import rhx.lazy.MOD_ID
 import rhx.lazy.core.io.ConfigurationCardRegistries
 import rhx.lazy.core.io.ConfigurationCardSources
-import rhx.lazy.core.io.NetworkInsertCapability
 import rhx.lazy.core.io.NetworkOutputProvider
-import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
-import rhx.lazy.core.io.NetworkTransferResult
+import rhx.lazy.core.io.TransferResult
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 
 internal object Ae2NetworkOutputProvider : NetworkOutputProvider {
     val ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(MOD_ID, "ae2")
 
     override val id: ResourceLocation = ID
     override val displayName: Component = Component.translatable("gui.lazy.io.provider.ae2")
-    override val capabilities: Set<NetworkInsertCapability>
+    override val capabilities: Set<ResourceKind<out ResourceVariant>>
         get() = AeStoragePayloadAdapters.capabilities
 
     override fun icon(): ItemStack =
@@ -58,28 +59,27 @@ internal object Ae2NetworkOutputProvider : NetworkOutputProvider {
 
     override fun isTargetValid(target: NetworkTargetRef): Boolean = Ae2NetworkTarget.parse(target) != null
 
-    override fun insert(
+    override fun offer(
         target: NetworkTargetRef,
-        payload: NetworkPayload,
+        amount: ResourceAmount<out ResourceVariant>,
         simulate: Boolean,
-    ): NetworkTransferResult {
-        val globalPos = Ae2NetworkTarget.parse(target) ?: return NetworkTransferResult.InvalidTarget
-        val converted = AeStoragePayloadAdapters.convert(payload) ?: return NetworkTransferResult.TemporarilyUnavailable
-        if (converted.amount <= 0) return NetworkTransferResult.Success(0)
+    ): TransferResult {
+        val globalPos = Ae2NetworkTarget.parse(target) ?: return TransferResult.InvalidTarget
+        val converted = AeStoragePayloadAdapters.convert(amount) ?: return TransferResult.TemporarilyUnavailable
 
         return try {
-            val server = ServerLifecycleHooks.getCurrentServer() ?: return NetworkTransferResult.TemporarilyUnavailable
-            val level = server.getLevel(globalPos.dimension) ?: return NetworkTransferResult.TemporarilyUnavailable
+            val server = ServerLifecycleHooks.getCurrentServer() ?: return TransferResult.TemporarilyUnavailable
+            val level = server.getLevel(globalPos.dimension) ?: return TransferResult.TemporarilyUnavailable
             val chunkX = globalPos.pos.x shr 4
             val chunkZ = globalPos.pos.z shr 4
             if (level.chunkSource.getChunkNow(chunkX, chunkZ) == null) {
-                return NetworkTransferResult.TemporarilyUnavailable
+                return TransferResult.TemporarilyUnavailable
             }
             val accessPoint =
                 level.getBlockEntity(globalPos.pos) as? IWirelessAccessPoint
-                    ?: return NetworkTransferResult.TemporarilyUnavailable
-            if (!accessPoint.isActive) return NetworkTransferResult.TemporarilyUnavailable
-            val grid = accessPoint.grid ?: return NetworkTransferResult.TemporarilyUnavailable
+                    ?: return TransferResult.TemporarilyUnavailable
+            if (!accessPoint.isActive) return TransferResult.TemporarilyUnavailable
+            val grid = accessPoint.grid ?: return TransferResult.TemporarilyUnavailable
             val inserted =
                 grid.storageService.inventory.insert(
                     converted.key,
@@ -87,11 +87,11 @@ internal object Ae2NetworkOutputProvider : NetworkOutputProvider {
                     Actionable.ofSimulate(simulate),
                     IActionSource.ofMachine(accessPoint),
                 )
-            NetworkTransferResult.Success((converted.amount - inserted).coerceAtLeast(0))
+            TransferResult.Accepted(inserted.coerceIn(0L, converted.amount))
         } catch (_: LinkageError) {
-            if (simulate) NetworkTransferResult.TemporarilyUnavailable else NetworkTransferResult.OutcomeUnknown
+            if (simulate) TransferResult.TemporarilyUnavailable else TransferResult.OutcomeUnknown
         } catch (_: RuntimeException) {
-            if (simulate) NetworkTransferResult.TemporarilyUnavailable else NetworkTransferResult.OutcomeUnknown
+            if (simulate) TransferResult.TemporarilyUnavailable else TransferResult.OutcomeUnknown
         }
     }
 

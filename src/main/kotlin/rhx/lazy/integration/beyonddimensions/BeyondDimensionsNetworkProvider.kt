@@ -9,19 +9,23 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import rhx.lazy.MOD_ID
-import rhx.lazy.core.io.NetworkInsertCapabilities
 import rhx.lazy.core.io.NetworkOutputProvider
-import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
-import rhx.lazy.core.io.NetworkTransferResult
+import rhx.lazy.core.io.ResourceKinds
+import rhx.lazy.core.io.TransferResult
+import rhx.lazy.core.resource.EnergyVariant
+import rhx.lazy.core.resource.FluidVariant
+import rhx.lazy.core.resource.ItemVariant
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceVariant
 
 internal class BeyondDimensionsNetworkProvider(
     private val storage: BeyondDimensionsStoragePort,
 ) : NetworkOutputProvider {
     override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath(MOD_ID, "beyonddimensions")
     override val displayName: Component = Component.translatable("gui.lazy.io.provider.beyonddimensions")
-    override val capabilities = NetworkInsertCapabilities.all
+    override val capabilities = ResourceKinds.all
 
     override fun icon(): ItemStack =
         BuiltInRegistries.ITEM
@@ -45,46 +49,46 @@ internal class BeyondDimensionsNetworkProvider(
 
     override fun isTargetValid(target: NetworkTargetRef): Boolean = networkId(target) != null
 
-    override fun insert(
+    override fun offer(
         target: NetworkTargetRef,
-        payload: NetworkPayload,
+        amount: ResourceAmount<out ResourceVariant>,
         simulate: Boolean,
-    ): NetworkTransferResult {
-        val networkId = networkId(target) ?: return NetworkTransferResult.InvalidTarget
-        return when (payload) {
-            is NetworkPayload.Items ->
+    ): TransferResult {
+        val networkId = networkId(target) ?: return TransferResult.InvalidTarget
+        return when (val variant = amount.variant) {
+            is ItemVariant ->
                 when (
                     val result =
                         storage.insertItems(
                             networkId,
-                            payload.template,
-                            payload.amount,
+                            variant.template,
+                            amount.amount,
                             simulate,
                         )
                 ) {
                     is BeyondDimensionsStorageResult.Success ->
-                        NetworkTransferResult.Success(result.value.coerceIn(0L, payload.amount))
-                    BeyondDimensionsStorageResult.NetworkNotFound -> NetworkTransferResult.TargetMissing
-                    BeyondDimensionsStorageResult.OutcomeUnknown -> NetworkTransferResult.OutcomeUnknown
-                    else -> NetworkTransferResult.TemporarilyUnavailable
+                        TransferResult.Accepted(amount.amount - result.value.coerceIn(0L, amount.amount))
+                    BeyondDimensionsStorageResult.NetworkNotFound -> TransferResult.TargetMissing
+                    BeyondDimensionsStorageResult.OutcomeUnknown -> TransferResult.OutcomeUnknown
+                    else -> TransferResult.TemporarilyUnavailable
                 }
 
-            is NetworkPayload.Fluid ->
-                when (val result = storage.insertFluid(networkId, payload.stack, simulate)) {
+            is FluidVariant ->
+                when (val result = storage.insertFluid(networkId, variant.template, amount.amount, simulate)) {
                     is BeyondDimensionsStorageResult.Success ->
-                        NetworkTransferResult.Success(result.value.coerceIn(0L, payload.stack.amount.toLong()))
-                    BeyondDimensionsStorageResult.NetworkNotFound -> NetworkTransferResult.TargetMissing
-                    BeyondDimensionsStorageResult.OutcomeUnknown -> NetworkTransferResult.OutcomeUnknown
-                    else -> NetworkTransferResult.TemporarilyUnavailable
+                        TransferResult.Accepted(amount.amount - result.value.coerceIn(0L, amount.amount))
+                    BeyondDimensionsStorageResult.NetworkNotFound -> TransferResult.TargetMissing
+                    BeyondDimensionsStorageResult.OutcomeUnknown -> TransferResult.OutcomeUnknown
+                    else -> TransferResult.TemporarilyUnavailable
                 }
 
-            is NetworkPayload.Energy ->
-                when (val result = storage.insertEnergy(networkId, payload.amount, simulate)) {
+            EnergyVariant ->
+                when (val result = storage.insertEnergy(networkId, amount.amount, simulate)) {
                     is BeyondDimensionsStorageResult.Success ->
-                        NetworkTransferResult.Success(result.value.coerceIn(0L, payload.amount))
-                    BeyondDimensionsStorageResult.NetworkNotFound -> NetworkTransferResult.TargetMissing
-                    BeyondDimensionsStorageResult.OutcomeUnknown -> NetworkTransferResult.OutcomeUnknown
-                    else -> NetworkTransferResult.TemporarilyUnavailable
+                        TransferResult.Accepted(amount.amount - result.value.coerceIn(0L, amount.amount))
+                    BeyondDimensionsStorageResult.NetworkNotFound -> TransferResult.TargetMissing
+                    BeyondDimensionsStorageResult.OutcomeUnknown -> TransferResult.OutcomeUnknown
+                    else -> TransferResult.TemporarilyUnavailable
                 }
         }
     }

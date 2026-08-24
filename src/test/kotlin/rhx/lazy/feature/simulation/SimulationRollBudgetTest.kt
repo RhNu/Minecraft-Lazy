@@ -1,31 +1,22 @@
 package rhx.lazy.feature.simulation
 
-import rhx.lazy.core.io.IoMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SimulationRollBudgetTest {
     @Test
-    fun `network mode settles a full valid batch in one tick`() {
-        assertEquals(432, simulationRollBudget(432, 16, IoMode.NETWORK))
-        assertEquals(65_536, simulationRollBudget(65_536, 16, IoMode.NETWORK))
+    fun `budget is independent of output mode`() {
+        assertEquals(16, simulationRollBudget(432, 16))
+        assertEquals(4096, simulationRollBudget(65_536, 4096))
     }
 
     @Test
-    fun `non-network modes retain configured roll throttling`() {
-        assertEquals(16, simulationRollBudget(432, 16, IoMode.PASSIVE))
-        assertEquals(16, simulationRollBudget(432, 16, IoMode.FACE))
+    fun `remaining work caps the configured budget`() {
+        assertEquals(7, simulationRollBudget(7, 16))
     }
 
     @Test
-    fun `network mode bounds malformed legacy batches`() {
-        assertEquals(65_536, simulationRollBudget(Long.MAX_VALUE, 16, IoMode.NETWORK))
-    }
-
-    @Test
-    fun `dispenser upgrade settles ordinary IO modes in one tick`() {
-        assertEquals(432, simulationRollBudget(432, 16, IoMode.PASSIVE, true))
-        assertEquals(432, simulationRollBudget(432, 16, IoMode.FACE, true))
-        assertEquals(65_536, simulationRollBudget(Long.MAX_VALUE, 16, IoMode.PASSIVE, true))
+    fun `malformed large work still observes the configured budget`() {
+        assertEquals(16, simulationRollBudget(Long.MAX_VALUE, 16))
     }
 }

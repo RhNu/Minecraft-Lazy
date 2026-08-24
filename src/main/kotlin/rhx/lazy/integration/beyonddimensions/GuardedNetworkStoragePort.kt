@@ -23,9 +23,10 @@ internal class GuardedNetworkStoragePort(
 
     override fun insertFluid(
         networkId: BeyondDimensionsNetworkId,
-        stack: FluidStack,
+        template: FluidStack,
+        amount: Long,
         simulate: Boolean,
-    ) = guardedMutation(simulate) { insertFluid(networkId, stack, simulate) }
+    ) = guardedMutation(simulate) { insertFluid(networkId, template, amount, simulate) }
 
     override fun insertEnergy(
         networkId: BeyondDimensionsNetworkId,

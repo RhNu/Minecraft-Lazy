@@ -8,6 +8,8 @@ import net.minecraft.nbt.Tag
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import rhx.lazy.core.MachineBlockEntity
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 
 internal abstract class IoManagedBlockEntity(
     type: BlockEntityType<*>,
@@ -71,6 +73,11 @@ internal abstract class IoManagedBlockEntity(
 
     override fun settingKeys(): Set<String> = setOf(IO_CONFIGURATION_TAG, IO_NETWORK_PAUSED_TAG)
 
+    override fun setRemoved() {
+        ioController.invalidateOutputs()
+        super.setRemoved()
+    }
+
     private companion object {
         const val IO_CONFIGURATION_TAG = "lazyIoConfiguration"
         const val IO_NETWORK_PAUSED_TAG = "lazyIoNetworkPaused"
@@ -79,7 +86,7 @@ internal abstract class IoManagedBlockEntity(
 
 internal interface IoConfigurationEditor {
     val configuration: IoConfiguration
-    val capabilities: Set<NetworkInsertCapability>
+    val capabilities: Set<ResourceKind<out ResourceVariant>>
 
     /** False for machines that can only emit, so cycling a face skips the input-capable states. */
     val acceptsInput: Boolean
@@ -106,6 +113,7 @@ internal class IoController(
 ) : IoConfigurationEditor {
     private var adapter: IoAdapter? = null
     private var retryTicks = 0
+    private val outputDispatcher = OutputDispatcher(blockEntity.blockPos) { !blockEntity.isRemoved }
 
     override val configuration: IoConfiguration
         get() = blockEntity.storedIoConfiguration()
@@ -119,7 +127,7 @@ internal class IoController(
     val target: NetworkTargetRef?
         get() = configuration.networkTarget
 
-    override val capabilities: Set<NetworkInsertCapability>
+    override val capabilities: Set<ResourceKind<out ResourceVariant>>
         get() = adapter?.capabilities ?: emptySet()
 
     override val acceptsInput: Boolean
@@ -132,6 +140,8 @@ internal class IoController(
     internal fun resetBackoff() {
         retryTicks = 0
     }
+
+    internal fun invalidateOutputs() = outputDispatcher.invalidate()
 
     override fun setMode(mode: IoMode) {
         update(configuration.copy(mode = mode))
@@ -194,32 +204,58 @@ internal class IoController(
             .mapTo(linkedSetOf()) { it.toWorldDirection(blockEntity.blockState) }
     }
 
-    /**
-     * One IO cycle. Machines run it once per tick and *after* their own work, so whatever they
-     * produced during the tick leaves in the same tick instead of spending one looking blocked.
-     *
-     * Maintenance runs whatever the mode is, because a buffered adapter has to keep draining even
-     * when the mode's push is skipped — which a network machine does while it is unbound, paused or
-     * inside its retry back-off.
-     */
+    /** A one-pass convenience for sources with no work phase, such as buffers and infinite sources. */
     fun tick() {
-        val currentAdapter = adapter ?: return
-        if (currentAdapter.maintainsWhenIdle) currentAdapter.maintain()
+        beginTick()
+    }
+
+    /**
+     * Starts a work/IO cycle by outputting old contents. [endTick] reuses the same transfer budget
+     * after work, so pre- and post-output together can never exceed the per-tick offer bound.
+     */
+    fun beginTick(): IoTransferCycle? {
+        val currentAdapter = adapter ?: return null
         val current = configuration
+        val source = currentAdapter.outputSource
+        val budget = TransferBudget()
+        val cycle = IoTransferCycle(current.mode, source, current.networkTarget, outputDirections(), budget)
         when (current.mode) {
-            IoMode.PASSIVE -> Unit
+            IoMode.PASSIVE -> return cycle
             IoMode.FACE -> {
-                val directions = outputDirections()
-                if (directions.isEmpty()) return
-                if (!readyToPush(currentAdapter)) return
-                handle(currentAdapter.pushToFaces(directions))
+                val directions = cycle.directions
+                if (directions.isEmpty()) return cycle
+                if (!readyToPush(currentAdapter)) return cycle
+                cycle.active = handle(dispatch(cycle))
             }
             IoMode.NETWORK -> {
-                val target = current.networkTarget ?: return
-                if (networkPaused) return
-                if (!readyToPush(currentAdapter)) return
-                handle(currentAdapter.pushToNetwork(target))
+                val target = current.networkTarget ?: return cycle
+                if (networkPaused) return cycle
+                if (!readyToPush(currentAdapter)) return cycle
+                cycle.active = handle(dispatch(cycle))
             }
+        }
+        return cycle
+    }
+
+    fun endTick(cycle: IoTransferCycle?) {
+        cycle ?: return
+        if (!cycle.active || cycle.budget.exhausted || cycle.source == null) return
+        cycle.active = handle(dispatch(cycle))
+    }
+
+    private fun dispatch(cycle: IoTransferCycle): IoPushResult {
+        return when (cycle.mode) {
+            IoMode.PASSIVE -> IoPushResult.Success
+            IoMode.FACE -> {
+                val serverLevel = blockEntity.level as? net.minecraft.server.level.ServerLevel ?: return IoPushResult.Retry
+                outputDispatcher.pushToFaces(serverLevel, requireNotNull(cycle.source), cycle.directions, cycle.budget)
+            }
+            IoMode.NETWORK ->
+                outputDispatcher.pushToNetwork(
+                    requireNotNull(cycle.source),
+                    requireNotNull(cycle.target),
+                    cycle.budget,
+                )
         }
     }
 
@@ -231,7 +267,7 @@ internal class IoController(
         return adapter.readyToPush()
     }
 
-    private fun handle(result: IoPushResult) {
+    private fun handle(result: IoPushResult): Boolean {
         when (result) {
             IoPushResult.Success -> retryTicks = 0
             IoPushResult.Retry -> retryTicks = NETWORK_RETRY_INTERVAL - 1
@@ -241,6 +277,7 @@ internal class IoController(
                 retryTicks = 0
             }
         }
+        return result == IoPushResult.Success
     }
 
     private fun update(configuration: IoConfiguration) {
@@ -252,4 +289,14 @@ internal class IoController(
     private companion object {
         const val NETWORK_RETRY_INTERVAL = 20
     }
+}
+
+internal class IoTransferCycle internal constructor(
+    internal val mode: IoMode,
+    internal val source: OutputSource?,
+    internal val target: NetworkTargetRef?,
+    internal val directions: Set<Direction>,
+    internal val budget: TransferBudget,
+) {
+    internal var active: Boolean = false
 }

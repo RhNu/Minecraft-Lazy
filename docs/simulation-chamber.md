@@ -1,187 +1,32 @@
 # 模拟室
 
-模拟室使用一个不消耗的模拟目标和一组不消耗的模拟核心工作，不需要土壤或 FE。目标槽接受显式物品模拟配方、可自动识别的树苗、作物、植物、标签材料、神秘农业种子，以及刷怪蛋、龙蛋或已绑定的数据模型；核心槽接受同一等级的可堆叠核心；下方三个工具槽接受被工具模块认领的物品，用来改变模拟的方式和结果。
+模拟室使用统一的工作与资源流水线。目标槽、核心槽和三个不消耗工具槽保持不变。
 
-空数据模型对生物使用后会绑定该生物类型，绑定成功时播放提示音并显示附魔光效；手持已绑定模型潜行使用可清除绑定。已绑定模型、对应实体的刷怪蛋以及少数显式关联的普通物品会解析为同一个实体目标，使用同一份 profile、默认周期、黑名单、工具效果与战利品流程，且都不会被消耗；当前龙蛋会解析为末影龙。没有刷怪蛋的实体仍可通过数据模型模拟。模拟室内置 16 个不在界面显示的物品缓存槽和 28 个大容量流体输出槽。网络模式会在完成刻结算整个合法批次，并把全部产物直接提交给网络；网络接受全部产物时，模拟室下一刻即可开始新一轮，部分接受时只保留未接受的余量。被动与面输出默认按 `maxRollsPerTick` 分刻结算并使用内部缓存，以免相邻普通容器承担无法接收的瞬时批量；放入发射器后也会在完成刻结算整个合法批次。批次完成后若产物尚未全部送出，模拟暂停并专注输出，同时在界面中显示警告图标。
+## 作业快照
 
-## 正面显示
+一轮开始时快照已解析配方及产出、配方时长、核心等级与数量、速度与总抽取次数，以及武器和过滤工具。中途替换任何输入只影响下一轮；正面图标、进度和倍率以活动快照为准。
 
-模拟室把当前目标画在正面板上，不必打开界面或对准准星就能认出一整面墙上每台在做什么。
+进度结束后进入随机工作阶段。每刻最多执行配置 `rollBudgetPerTick` 次抽取，默认 16、范围 1–4096。被动、面和网络模式使用完全相同的预算。
 
-- 图标即目标：物品目标显示它自己；刷怪蛋、数据模型和实体关联物品优先统一显示目标实体的刷怪蛋，没有刷怪蛋的生物（以及绑定的模组已经离开整合包时）回落到原目标物品。龙蛋会保留在末影龙配方的等价输入轮换中。
-- 亮度即活性：正在推进配方的模拟室自发光，空转的按环境光渲染，因此扫一眼就能看出哪几台熄了屏。
-- 输出积压导致暂停时图标叠加红色，这一路信号不依赖房间亮度，全亮的基地里也读得出来。
-- 正面紧贴完整方块时不渲染——那种摆法本来也看不到——此时按 Jade 查看。
+## 输出与背压
 
-进度百分比、速度与产出倍率、暂停原因仍然只在界面和 Jade 中显示：世界里只回答「是什么」和「活着吗」。
+输出由 28 个物品种类条目和 28 个流体种类条目组成，每种容量为 `Long.MAX_VALUE`。相同物品或流体按数据组件精确合并。
 
-## 工具槽
+每个随机分片先完整生成，再尝试提交。提交失败时只保留一份持久化 `PreparedCommit`：不丢失、不重滚，未提交完前不生成下一分片；结果种类多于当前空条目时，可在下游腾空后继续分块提交。
 
-界面下方三个工具槽与目标、核心槽同宽同间距，左侧是 IO 设置按钮，右侧是输出积压警告。工具槽不消耗、不损耗，只声明「这台模拟室用什么方式干活」，放不进去的物品说明当前没有任何模块认领它。
+输出仓非空不会阻止下一轮。只有待提交结果、资源种类耗尽或单种数量溢出风险造成背压。
 
-- 武器（`lazy:simulation/tool/weapon`，默认 `#c:tools` 与原版可附魔武器、工具标签）在实体模拟中的语义是「用它击杀这只生物」：抢夺提高战利品与装备掉率，火焰附加让掉落变成熟食，按武器判定的战利品条件同样成立。
-- 只认第一把武器：从左到右第一个提供武器的槽位胜出，后面的武器槽不再生效。这条规则属于工具装载本身，任何单值效果都遵守它。
-- 武器不耗耐久：模拟室只把副本交给虚拟击杀者，从不执行攻击流程，槽里的物品永远不会被写回。
-- 岩浆桶（`lazy:simulation/tool/incinerator`）熔毁产出：本次模拟产出中命中 `lazy:simulation/incinerated` 的物品被丢弃，其余产物照常送出。过滤对物品模拟同样生效，因此产出装备的显式配方也会被熔掉。
-- 发射器（`lazy:simulation/tool/dispenser`）解除普通输出限流：被动与面输出模式会在完成刻结算整个合法批次，不再受 `maxRollsPerTick` 限制，适合下游 IO 足以立即接收大批量产物的场景。产物仍经过模拟室缓存和既有 IO 路由。
-- 工具在每个批次刻实时读取，不在批次开始时快照，因此中途换工具会立刻影响剩余的抽取。
-- `lazy:simulation/incinerated` 默认含 `#c:tools`、`#c:armors` 和原版可附魔武器、护甲、工具标签，但**刻意不含** `#c:enchantables`——后者经 `#minecraft:enchantable/equippable` 含 `#minecraft:skulls` 与 `minecraft:carved_pumpkin`，会把凋灵骷髅头这类核心产物一起熔掉。整合包想保住某类装备（例如三叉戟），把它从这张标签里排除即可。
+每刻先尝试输出旧产物，再提交或生成工作，最后用剩余运输预算输出新产物。面输出、网络输出和被动抽取都从同一输出仓扣账。
 
-## 数据包配方
+## 工具
 
-物品模拟配方位于普通 `recipe` 数据目录，类型为 `lazy:item_simulation`：
+- `lazy:simulation/tool/weapon`：实体模拟的击杀武器，槽位顺序决定优先级。
+- `lazy:simulation/tool/incinerator`：过滤 `lazy:simulation/incinerated` 中的产物。
 
-```json
-{
-  "type": "lazy:item_simulation",
-  "input": { "item": "minecraft:wheat_seeds" },
-  "duration": 1200,
-  "priority": 0,
-  "item_outputs": [
-    { "stack": { "id": "minecraft:wheat", "count": 1 }, "chance": 1.0, "min_rolls": 1, "max_rolls": 3 }
-  ],
-  "fluid_outputs": []
-}
-```
+工具不消耗耐久，也不会被工作取走。当前工具与网络扩展均为内部 SPI。
 
-实体 profile 使用 `lazy:entity_simulation`，其输入可以是对应刷怪蛋、已绑定的数据模型或显式关联的普通物品，JEI 会把它们作为同一配方的等价输入轮换显示；当前内置的普通物品关联是龙蛋到末影龙。`roll_loot_table` 默认开启；`loot_table` 可覆盖实体实例选择的默认战利品表。模拟会收集战利品表、自定义死亡掉落及装备掉落，但不会触发生物死亡/掉落事件，也不会生成经验。初始化偶尔产生的鸡骑士、蜘蛛骑士等伴生实体会随模拟清理，不会进入世界，其自身掉落也不会成为模拟产物。`display_item_outputs` 和 `display_fluid_outputs` 只用于 JEI 预览。
+## 配方与持久化
 
-```json
-{
-  "type": "lazy:entity_simulation",
-  "entity": "minecraft:cow",
-  "duration": 1200,
-  "priority": 0,
-  "roll_loot_table": true,
-  "fluid_outputs": [
-    { "stack": { "id": "minecraft:milk", "amount": 1000 }, "chance": 0.3 }
-  ],
-  "display_item_outputs": [{ "id": "minecraft:leather", "count": 1 }],
-  "display_fluid_outputs": [{ "id": "minecraft:milk", "amount": 1000 }]
-}
-```
+显式物品模拟、实体 profile、注入配方、自动树木/作物/植物/材料和神秘农业来源沿用原 ID 与解析规则。黑名单只影响自动来源。
 
-概率必须在 `0..1`，显式周期必须大于零，数量范围必须满足 `0 <= min_rolls <= max_rolls`，物品配方至少有一种输出，单个配方最多声明 28 种产物。省略 `duration` 时使用服务端 `defaultDuration` 配置。可以使用 NeoForge 数据包条件包裹配方，以便只在目标模组存在时加载。
-
-最终配方按以下顺序组合：
-
-1. 匹配的 `lazy:item_simulation` 按 `priority` 降序、配方 ID 升序选择一个；显式配方会完整替换自动基底。
-2. 没有显式配方时组合所有适用且未被黑名单禁止的自动适配器；接管输入的特化适配器（目前为神秘农业）不会叠加通用作物结果。
-3. 按配方 ID 升序追加所有匹配的 `lazy:item_simulation_injection`。注入不能单独创建可运行配方。
-4. 组合结果超过 28 个输出条目时整份有效配方禁用并记录错误，不会静默截断。
-
-注入配方沿用物品与流体输出格式，并且必须至少声明一种输出：
-
-```json
-{
-  "type": "lazy:item_simulation_injection",
-  "input": { "tag": "minecraft:saplings" },
-  "item_outputs": [
-    { "stack": { "id": "minecraft:stick" }, "chance": 0.25, "min_rolls": 1, "max_rolls": 2 }
-  ]
-}
-```
-
-## 自动树木与作物
-
-- `minecraft:saplings` 中可在同命名空间配对 `<name>_log` 和 `<name>_leaves` 的树苗，每轮产出 1–4 原木、5% 树苗和 1–3 树叶；红树胎生苗按红树特例配对。
-- 橡树和深色橡树额外有 5% 苹果，丛林木有 5% 可可豆，红树有 5% 红树根和 1% 泥泞红树根。
-- 作物发现会合并方块到物品映射、`#minecraft:crops`、`#c:seeds`、`#minecraft:villager_plantable_seeds`、`CropBlock` 与可骨粉生长结构提供的证据，并按「输入物品 + 方块」去重。一个种子映射到多个生长阶段或环境变体时不会只看 `BlockItem` 的首要方块。
-- `CropBlock` 使用最大年龄状态；作物标签中带整数 `age` 属性的通用方块使用该属性最大值。候选按有效产物、返种、结构证据与稳定方块 ID 仲裁，只选择一份自动基底，再用空工具实时滚取当前数据包中的方块战利品表。
-- 西瓜种子固定产出一个西瓜块，同时滚取西瓜方块表得到西瓜片，并有 5% 返种；南瓜滚取南瓜方块表并有 5% 返种。
-- 没有标准方块物品映射、作物/种子标签、年龄属性或扩展 API 的完全自定义生长系统不会执行物品放置代码来猜测，可使用显式配方或注入补充。
-
-安装神秘农业时，所有启用且已注册的作物（包括扩展注册作物）由专用适配器接管。每轮固定产出一个种子和一个精华，并按作物的 secondary chance 分别追加种子和精华；`fertilized_essence` 遵循神秘农业自身配置概率。未安装该模组时不会加载其 API 类。
-
-## 自动植物
-
-`lazy:simulation/target/plant` 物品标签中的方块物品会按标签自动生成配方，语义是「把它种下去再收割」——取对应方块的状态实时滚取当前数据包中的方块战利品表，因此原版和模组植物都保留自己的产物与附加掉落规则。
-
-- 默认标签内容为 `#minecraft:small_flowers`、`#minecraft:tall_flowers`、`minecraft:pink_petals` 和 `minecraft:spore_blossom`；模组花卉只要注册进原版花卉标签就自动生效。
-- 整合包可以向 `lazy:simulation/target/plant` 追加任意「方块物品 + 有意义的方块战利品表」条目，例如苔藓、海泡菜或模组灌木，不需要改动代码。
-- 双层植物（`half` 属性）取下半部分状态，否则高花的战利品表条件不成立、模拟会空转。
-- 滚表时使用剪刀作为工具，因此剪刀限定掉落的模组植物也能正常出货。
-- 方块是 `CropBlock` 的物品由自动作物适配器处理，本适配器会跳过，避免同一张战利品表被叠加两次。
-- 注意标签里不要塞树叶类方块（例如 `#minecraft:flowers` 就包含 `minecraft:cherry_leaves` 和 `minecraft:flowering_azalea_leaves`），否则会得到与预期不符的产物。
-
-## 自动材料
-
-材料生成器由一张声明式规则表驱动，每条规则的语义是「带 `c:<输入前缀>/<材料>` 标签的物品长出 `c:<输出前缀>/<材料>` 的规范产物」。开启服务端配置 `taggedMaterials` 时内置三条规则：
-
-| 规则 | 输入标签 | 输出标签 | 配方 id |
-| --- | --- | --- | --- |
-| `ingot` | `c:ingots/<材料>` | `c:raw_materials/<材料>` | `lazy:automatic/material/ingot/<材料>` |
-| `gem` | `c:gems/<材料>` | `c:gems/<材料>` | `lazy:automatic/material/gem/<材料>` |
-| `dust` | `c:dusts/<材料>` | `c:dusts/<材料>` | `lazy:automatic/material/dust/<材料>` |
-
-- 输出标签里有多个候选时，统一按服务端 `taggedMaterialModPriority` 配置按序选取。默认顺序是 `kubejs > minecraft > alltheores > create > mekanism > jaopca`；列表内一个都没有命中时，剩余候选按命名空间和完整物品 ID 升序确定唯一赢家，缺失模组会自然跳过。今后任何「标签物品存在多个可能产物」的场景都走同一份配置。
-- 同时匹配多条规则或多种材料（例如同属 `c:ingots/iron` 与 `c:dusts/iron`）时不猜产物，也不生成自动配方。单个材料的例外用显式模拟配方覆写。
-- 原版紫水晶碎片属于 `c:gems/amethyst`，由 `gem` 规则覆盖；紫水晶簇和芽属于独立的 `c:clusters`/`c:buds` 标签，不会被当作紫水晶碎片的生长目标。
-- 没有 `c:` 材料标签、但语义上「自己产出自己」的物品放进 `lazy:simulation/target/duplicate_self` 物品标签，配方 id 为 `lazy:automatic/material/self/<命名空间>/<路径>`。整合包可以自由追加。该标签同样受 `taggedMaterials` 开关、`taggedMaterialDuration` 时长和材料黑名单控制。
-- 默认内容为 `minecraft:coal`（木炭不在内）、`#c:gems` 和 `#c:dusts`。后两者是 NeoForge 的伞标签，用来兜住「只注册了 `c:gems` / `c:dusts`、没有注册任何 `<类别>/<材料>` 子标签」的模组物品——正常打标的物品会先命中 `gem` / `dust` 规则，根本走不到自产自身分支，所以两者不冲突。`#c:ingots` **不在**默认内容里：锭的规则产出是粗矿，让锭自产自身会跳过整条粗矿链，并且造成「打标规范的铁锭产出粗铁、打标偷懒的合金锭直接产出自己」的倒挂。
-- 规则命中但输出标签查不到候选时（`c:ingots/<材料>` 没有对应的 `c:raw_materials/<材料>`，钢、黄铜等一切合金锭皆如此），同样回落到 `duplicate_self`：把那个锭单独写进标签就能让它自产自身，不需要写显式配方。输入输出同标签的 `gem` 与 `dust` 规则不会走到这条回退——物品自己就在输出标签里，查不空。
-- 原版 `minecraft:netherite_ingot` 也缺 `c:raw_materials/netherite`，由显式配方 `lazy:simulation/netherite_ingot` 接上，产出 `minecraft:netherite_scrap`。显式配方不受 `taggedMaterials` 开关和材料黑名单影响，时长取 `defaultDuration` 而非 `taggedMaterialDuration`；要改行为请覆写或移除该配方。
-- 自动材料的周期时长使用 `taggedMaterialDuration`。
-
-## 标签总览
-
-模拟室的物品标签分为 `target/`（自动生成的目标来源）、`tool/`（工具槽认领来源）与 `blacklist/`（禁止来源）三组：
-
-| 标签 | 注册表 | 作用 |
-| --- | --- | --- |
-| `lazy:simulation/target/plant` | 物品 | 自动植物目标 |
-| `lazy:simulation/target/duplicate_self` | 物品 | 自产自身的材料目标，默认含 `#c:gems`、`#c:dusts` |
-| `lazy:simulation/tool/weapon` | 物品 | 可作为击杀武器的工具 |
-| `lazy:simulation/tool/incinerator` | 物品 | 触发产出熔毁的工具，默认为岩浆桶 |
-| `lazy:simulation/tool/dispenser` | 物品 | 解除普通输出的每刻抽取限制，默认为发射器 |
-| `lazy:simulation/incinerated` | 物品 | 被熔毁的产出，默认为装备与工具武器 |
-| `lazy:simulation/blacklist/all` | 物品 | 禁止该目标的全部自动来源 |
-| `lazy:simulation/blacklist/tree` | 物品 | 只禁止自动树木 |
-| `lazy:simulation/blacklist/crop` | 物品 | 只禁止自动作物 |
-| `lazy:simulation/blacklist/plant` | 物品 | 只禁止自动植物 |
-| `lazy:simulation/blacklist/material` | 物品 | 只禁止自动材料（含自产自身） |
-| `lazy:simulation/blacklist/mystical` | 物品 | 只禁止神秘农业来源 |
-| `lazy:simulation/blacklist/data_model` | 实体类型 | 禁止数据模型绑定及该实体的全部模拟目标（含刷怪蛋与关联物品） |
-
-黑名单不影响显式配方，注入仍需已有基底。
-
-## 扩展点
-
-自动生成系统由一个注册表和一张规则表构成，两者都是代码内扩展入口，不需要改动核心分支：
-
-- `AutomaticSimulationAdapters.register(source, adapter)` 增加一个自动来源。内置的 `lazy:tree`、`lazy:crop`、`lazy:plant`、`lazy:material` 与集成侧的 `lazy:mystical` 走的是同一个入口，来源 ID 不可重复。
-- `AutomaticGrowthCandidateSources.register(id, source)` 增加一种作物关系证据来源；来源只向统一收集器提交物品、方块与证据，核心层负责跨来源去重、成熟状态解析和候选仲裁。
-- 来源的黑名单标签由来源 ID 推导：`lazy:<路径>` 得到 `lazy:simulation/blacklist/<路径>`，其它命名空间得到 `lazy:simulation/blacklist/<命名空间>/<路径>`。新来源无需改动标签映射代码，未提供标签文件时视为空标签。
-- 自动配方 ID 统一为 `lazy:automatic/<来源路径>/<细分段…>`。
-- `TaggedMaterialRules.register(rule)` 增加一条标签材料规则，`kind` 不可重复；`TaggedMaterialPriority.preferredItem(tag)` 是所有「从标签里按序挑一个产物」的共用入口。
-- 自动来源只会选出一个最高优先级基底，不会把作物、植物、树木或材料结果隐式相加；追加产物使用显式注入配方。特化适配器可以声明 `claimsInput`，优先接管输入（神秘农业即如此）。
-- `SimulationToolModules.register(id, module)` 增加一种工具槽模块。模块用 `claims` 声明认领哪些物品（同时决定工具槽放得进什么），用 `contribute` 把效果写进工具装载：单值效果（如击杀武器）先到先得，可叠加效果（如产出过滤）直接累积。内置的 `lazy:weapon` 与 `lazy:incinerator` 走的是同一个入口，模块 ID 不可重复。
-
-服务端会在登录、`/reload` 和相关配置变化后同步自动配方快照，客户端目标槽校验与 JEI 运行期显示以该快照为准。增长关系按配方管理器缓存，单个输入的成熟目标按需缓存；数据包或相关设置变化时整体失效。JEI 预览使用固定随机种子和实际方块状态、工具上下文探测当前战利品表，互斥条件不会再被静态合并；实际生产仍实时滚取当时已加载的数据包。
-
-## KubeJS
-
-脚本 API 版本为 `Lazy.apiVersion === 1`。通过 KubeJS 标准 recipe schema 创建、覆盖和删除配方；`.id(...)` 与 `event.remove(...)` 保持 KubeJS 原有语义。
-
-```js
-ServerEvents.recipes(event => {
-  event.recipes.lazy.item_simulation('examplemod:rice_seeds')
-    .duration(600)
-    .priority(10)
-    .itemOutput(Lazy.simulation.item('examplemod:rice', 1.0, 2, 5))
-    .id('kubejs:rice_simulation')
-
-  event.recipes.lazy.entity_simulation('examplemod:yak')
-    .fluidOutput(Lazy.simulation.fluid('minecraft:milk', 1000, 0.3, 1, 1))
-    .rollLootTable(true)
-    .id('kubejs:yak_simulation')
-
-  event.recipes.lazy.item_simulation_injection('#minecraft:saplings')
-    .itemOutput(Lazy.simulation.item('minecraft:stick', 0.25, 1, 2))
-    .id('kubejs:sapling_sticks')
-
-  event.remove({ type: 'lazy:item_simulation_injection', id: 'kubejs:sapling_sticks' })
-})
-```
-
-`apiVersion` 只在不兼容的脚本 API 变更时递增；新增可选字段或函数不递增主版本。
+机器只读取 `simulationInputs`、`simulationItemOutput`、`simulationFluidOutput`、`simulationJob` 和 `preparedCommit`。旧批次、旧 pending 队列和旧槽数组不会迁移。

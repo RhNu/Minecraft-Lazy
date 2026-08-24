@@ -30,15 +30,3 @@ internal object IncineratorToolModule : SimulationToolModule {
         builder: SimulationToolLoadout.Builder,
     ) = builder.rejectOutputs { output -> output.`is`(SimulationTags.incineratedOutputs) }
 }
-
-/** A dispenser lets ordinary IO modes settle the entire completed batch in the same tick. */
-internal object DispenserToolModule : SimulationToolModule {
-    val ID: ResourceLocation = lazyId("dispenser")
-
-    override fun claims(stack: ItemStack): Boolean = stack.`is`(SimulationTags.dispenserTools)
-
-    override fun contribute(
-        stack: ItemStack,
-        builder: SimulationToolLoadout.Builder,
-    ) = builder.settleBatchImmediately()
-}

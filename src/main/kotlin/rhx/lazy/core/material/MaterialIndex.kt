@@ -23,7 +23,7 @@ private typealias FormEntry = Pair<ResourceKey<MaterialForm>, MaterialForm>
  * lookups.
  *
  * Built once whenever tags or the priority setting change, never during a tick. That is the whole
- * point — a machine converting eight lanes per tick cannot afford to walk tags, so it walks a
+ * point — a machine converting eight resource identities per tick cannot afford to walk tags, so it walks a
  * [HashMap] instead and the sweep happens on reload, where a few milliseconds do not matter.
  */
 internal class MaterialIndex private constructor(

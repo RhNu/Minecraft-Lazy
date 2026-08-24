@@ -79,6 +79,7 @@ internal object BufferUI {
                                     largeItemSlot(
                                         model.itemHandler,
                                         slot,
+                                        countProvider = { model.itemCount(slot) },
                                         spec = {
                                             cls = { +"lazy-buffer__item-slot" }
                                         },
@@ -245,6 +246,8 @@ internal object BufferUI {
             get() = blockEntity?.itemHandler ?: EmptyItemHandler
 
         fun hasContents(): Boolean = blockEntity?.hasContents() == true
+
+        fun itemCount(slot: Int): Long = blockEntity?.getItemCount(slot)?.toLong() ?: 0L
 
         fun clearContents() {
             blockEntity?.clearContents()

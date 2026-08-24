@@ -15,12 +15,12 @@ internal class SimulationConfig(
             "Default simulation duration in ticks when a recipe does not specify one.",
         )
 
-    val maxRollsPerTick =
+    val rollBudgetPerTick =
         builder.int(
-            "maxRollsPerTick",
+            "rollBudgetPerTick",
             16,
             1..4096,
-            "Maximum virtual output rolls processed by one ordinary chamber per server tick without a dispenser tool.",
+            "Maximum virtual output rolls processed by one chamber per server tick.",
         )
 
     val taggedMaterials =

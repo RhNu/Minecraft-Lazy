@@ -3,8 +3,10 @@ package rhx.lazy.integration.appflux
 import appeng.api.stacks.AEKey
 import com.glodblock.github.appflux.common.me.key.FluxKey
 import com.glodblock.github.appflux.common.me.key.type.EnergyType
-import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.resource.EnergyResourceKind
+import rhx.lazy.core.resource.EnergyVariant
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.integration.IntegrationContext
 import rhx.lazy.integration.IntegrationModule
 import rhx.lazy.integration.ae2.AeStoragePayload
@@ -17,12 +19,12 @@ internal object AppliedFluxIntegrationModule : IntegrationModule {
     override fun initialize(context: IntegrationContext) {
         AeStoragePayloadAdapters.register(
             object : AeStoragePayloadAdapter {
-                override val capability = NetworkInsertCapabilities.ENERGY
+                override val kind = EnergyResourceKind
 
-                override fun convert(payload: NetworkPayload): AeStoragePayload? {
-                    val energy = payload as? NetworkPayload.Energy ?: return null
+                override fun convert(amount: ResourceAmount<out ResourceVariant>): AeStoragePayload? {
+                    if (amount.variant !is EnergyVariant) return null
                     val key: AEKey = FluxKey.of(EnergyType.FE) ?: return null
-                    return AeStoragePayload(key, energy.amount)
+                    return AeStoragePayload(key, amount.amount)
                 }
             },
         )

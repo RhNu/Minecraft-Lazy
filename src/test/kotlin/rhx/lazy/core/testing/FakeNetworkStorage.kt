@@ -8,14 +8,18 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.neoforged.neoforge.fluids.FluidStack
-import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkInsertCapability
 import rhx.lazy.core.io.NetworkOutputProvider
 import rhx.lazy.core.io.NetworkOutputProviders
-import rhx.lazy.core.io.NetworkPayload
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
-import rhx.lazy.core.io.NetworkTransferResult
+import rhx.lazy.core.io.ResourceKinds
+import rhx.lazy.core.io.TransferResult
+import rhx.lazy.core.resource.EnergyVariant
+import rhx.lazy.core.resource.FluidVariant
+import rhx.lazy.core.resource.ItemVariant
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.min
 
@@ -38,7 +42,7 @@ internal class FakeNetworkStorage(
         template: ItemStack,
         amount: Long,
         simulate: Boolean,
-    ): NetworkTransferResult =
+    ): TransferResult =
         transfer {
             if (template.isEmpty || amount <= 0L) return@transfer 0L
             val accepted = min(amount, (itemCapacity - storedItemAmount).coerceAtLeast(0L))
@@ -46,39 +50,40 @@ internal class FakeNetworkStorage(
                 storedItem = template.copyWithCount(1)
                 storedItemAmount += accepted
             }
-            amount - accepted
+            accepted
         }
 
     fun insertFluid(
-        stack: FluidStack,
+        template: FluidStack,
+        amount: Long,
         simulate: Boolean,
-    ): NetworkTransferResult =
+    ): TransferResult =
         transfer {
-            val accepted = min(stack.amount.toLong(), (fluidCapacity - storedFluidAmount).coerceAtLeast(0L))
+            val accepted = min(amount, (fluidCapacity - storedFluidAmount).coerceAtLeast(0L))
             if (!simulate && accepted > 0) {
-                storedFluid = stack.copyWithAmount(1)
+                storedFluid = template.copyWithAmount(1)
                 storedFluidAmount += accepted
             }
-            stack.amount.toLong() - accepted
+            accepted
         }
 
     fun insertEnergy(
         amount: Long,
         simulate: Boolean,
-    ): NetworkTransferResult =
+    ): TransferResult =
         transfer {
             val requested = amount.coerceAtLeast(0L)
             val accepted = min(requested, (energyCapacity - storedEnergy).coerceAtLeast(0L))
             if (!simulate) storedEnergy += accepted
-            requested - accepted
+            accepted
         }
 
-    private fun transfer(operation: () -> Long): NetworkTransferResult =
+    private fun transfer(operation: () -> Long): TransferResult =
         when {
-            outcomeUnknown -> NetworkTransferResult.OutcomeUnknown
-            !isAvailable -> NetworkTransferResult.TemporarilyUnavailable
-            !networkExists -> NetworkTransferResult.TargetMissing
-            else -> NetworkTransferResult.Success(operation())
+            outcomeUnknown -> TransferResult.OutcomeUnknown
+            !isAvailable -> TransferResult.TemporarilyUnavailable
+            !networkExists -> TransferResult.TargetMissing
+            else -> TransferResult.Accepted(operation())
         }
 
     companion object {
@@ -93,7 +98,7 @@ internal value class FakeNetworkId(
 
 internal class FakeNetworkOutputProvider(
     private val storage: FakeNetworkStorage,
-    override val capabilities: Set<NetworkInsertCapability> = NetworkInsertCapabilities.all,
+    override val capabilities: Set<ResourceKind<out ResourceVariant>> = ResourceKinds.all,
 ) : NetworkOutputProvider {
     override val id: ResourceLocation =
         ResourceLocation.fromNamespaceAndPath("lazy", "test_network_${nextId.getAndIncrement()}")
@@ -120,16 +125,16 @@ internal class FakeNetworkOutputProvider(
 
     override fun isTargetValid(target: NetworkTargetRef): Boolean = networkId(target) != null
 
-    override fun insert(
+    override fun offer(
         target: NetworkTargetRef,
-        payload: NetworkPayload,
+        amount: ResourceAmount<out ResourceVariant>,
         simulate: Boolean,
-    ): NetworkTransferResult {
-        if (networkId(target) == null) return NetworkTransferResult.InvalidTarget
-        return when (payload) {
-            is NetworkPayload.Items -> storage.insertItemAmount(payload.template, payload.amount, simulate)
-            is NetworkPayload.Fluid -> storage.insertFluid(payload.stack, simulate)
-            is NetworkPayload.Energy -> storage.insertEnergy(payload.amount, simulate)
+    ): TransferResult {
+        if (networkId(target) == null) return TransferResult.InvalidTarget
+        return when (val variant = amount.variant) {
+            is ItemVariant -> storage.insertItemAmount(variant.template, amount.amount, simulate)
+            is FluidVariant -> storage.insertFluid(variant.template, amount.amount, simulate)
+            EnergyVariant -> storage.insertEnergy(amount.amount, simulate)
         }
     }
 

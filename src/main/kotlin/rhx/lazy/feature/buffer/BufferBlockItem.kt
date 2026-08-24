@@ -8,7 +8,6 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.block.Block
-import rhx.lazy.core.ManagedBlockEntity
 
 internal class BufferBlockItem(
     block: Block,
@@ -22,9 +21,9 @@ internal class BufferBlockItem(
     ) {
         val data = stack.get(DataComponents.BLOCK_ENTITY_DATA)
         if (data != null && !data.isEmpty) {
-            val managed = data.copyTag().getCompound(ManagedBlockEntity.MANAGED_DATA_KEY)
-            val itemTotal = managed.getInt(BufferBlockEntity.ITEM_TOTAL_FIELD)
-            val fluidTotal = managed.getInt(BufferBlockEntity.FLUID_TOTAL_FIELD)
+            val stored = data.copyTag()
+            val itemTotal = stored.sumStore(BufferBlockEntity.ITEM_STORE_TAG)
+            val fluidTotal = stored.sumStore(BufferBlockEntity.FLUID_STORE_TAG)
             if (itemTotal > 0 || fluidTotal > 0) {
                 tooltipComponents +=
                     Component
@@ -39,4 +38,13 @@ internal class BufferBlockItem(
         }
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag)
     }
+
+    private fun net.minecraft.nbt.CompoundTag.sumStore(key: String): Long =
+        getList(
+            key,
+            net.minecraft.nbt.Tag.TAG_COMPOUND
+                .toInt(),
+        ).sumOf { raw ->
+            (raw as? net.minecraft.nbt.CompoundTag)?.getLong("amount") ?: 0L
+        }
 }

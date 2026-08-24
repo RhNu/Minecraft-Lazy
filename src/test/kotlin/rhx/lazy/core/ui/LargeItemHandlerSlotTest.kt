@@ -3,6 +3,10 @@ package rhx.lazy.core.ui
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.neoforged.neoforge.items.IItemHandlerModifiable
+import rhx.lazy.core.resource.ItemResourceKind
+import rhx.lazy.core.resource.ResourceItemHandler
+import rhx.lazy.core.resource.ResourceStore
+import rhx.lazy.core.resource.itemAmount
 import kotlin.math.min
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,12 +24,47 @@ class LargeItemHandlerSlotTest {
     }
 
     @Test
+    fun `slot only removes what remains available in a nearly full long-count entry`() {
+        val store = ResourceStore(ItemResourceKind, 1, 1_024)
+        store.insert(requireNotNull(itemAmount(ItemStack(Items.STONE), 1_000)))
+        val slot = LargeItemHandlerSlot(ResourceItemHandler(store), 0)
+        val carried = ItemStack(Items.STONE, 64)
+
+        assertEquals(40, slot.safeInsert(carried, 64).count)
+        assertEquals(1_024L, store.amount(0))
+    }
+
+    @Test
     fun `slot extracts at most one normal item stack onto the cursor`() {
         val handler = TestLargeHandler(ItemStack(Items.STONE, 256))
         val slot = LargeItemHandlerSlot(handler, 0)
 
         assertEquals(64, slot.remove(1_024).count)
         assertEquals(192, handler.stack.count)
+    }
+
+    @Test
+    fun `quick move remainder subtracts from an output-only long-count slot`() {
+        val store = ResourceStore(ItemResourceKind, 1)
+        store.insert(requireNotNull(itemAmount(ItemStack(Items.STONE), 100)))
+        val slot = LargeItemHandlerSlot(ResourceItemHandler(store, allowInsert = false), 0)
+        val visible = slot.item
+
+        slot.setByPlayer(ItemStack.EMPTY, visible)
+
+        assertEquals(36L, store.amount(0))
+    }
+
+    @Test
+    fun `partial quick move subtracts only the transferred visible amount`() {
+        val store = ResourceStore(ItemResourceKind, 1)
+        store.insert(requireNotNull(itemAmount(ItemStack(Items.STONE), 100)))
+        val slot = LargeItemHandlerSlot(ResourceItemHandler(store, allowInsert = false), 0)
+        val visible = slot.item
+
+        slot.setByPlayer(visible.copyWithCount(10), visible)
+
+        assertEquals(46L, store.amount(0))
     }
 
     @Test

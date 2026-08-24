@@ -6,6 +6,9 @@ import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import rhx.lazy.core.resource.ItemVariant
+import rhx.lazy.core.resource.ResourceStore
+import rhx.lazy.core.resource.itemAmount
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,8 +20,7 @@ class ShaperBlockEntityPersistenceTest {
     @Test
     fun `dropped machine keeps lanes but resets its phantom sample`() {
         val source = newShaper()
-        mutableField<ItemStack>(source, "inputTemplates")[0] = ItemStack(Items.IRON_INGOT)
-        mutableField<Int>(source, "inputCounts")[0] = 700
+        itemStore(source, "inputs").insert(requireNotNull(itemAmount(ItemStack(Items.IRON_INGOT), 700L)))
         setField(source, "sample", ItemStack(Items.IRON_NUGGET))
 
         assertTrue(source.hasStoredContents())
@@ -31,7 +33,7 @@ class ShaperBlockEntityPersistenceTest {
 
         val restored = newShaper()
         restored.loadWithComponents(data.copyTag(), registries)
-        assertEquals(700, restored.inputHandler.getStackInSlot(0).count)
+        assertEquals(700L, restored.inputAmount(0))
         assertFalse(restored.hasSample())
     }
 
@@ -49,16 +51,6 @@ class ShaperBlockEntityPersistenceTest {
             ShaperRegistries.block.get().defaultBlockState(),
         )
 
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> mutableField(
-        owner: Any,
-        name: String,
-    ): MutableList<T> {
-        val field = owner.javaClass.getDeclaredField(name)
-        field.isAccessible = true
-        return field.get(owner) as MutableList<T>
-    }
-
     private fun setField(
         owner: Any,
         name: String,
@@ -67,5 +59,15 @@ class ShaperBlockEntityPersistenceTest {
         val field = owner.javaClass.getDeclaredField(name)
         field.isAccessible = true
         field.set(owner, value)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun itemStore(
+        owner: Any,
+        name: String,
+    ): ResourceStore<ItemVariant> {
+        val field = owner.javaClass.getDeclaredField(name)
+        field.isAccessible = true
+        return field.get(owner) as ResourceStore<ItemVariant>
     }
 }

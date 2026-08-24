@@ -104,8 +104,20 @@ internal object ShaperUI {
                         cls = { +"lazy-shaper__storage" }
                     },
                 ) {
-                    laneGrid("gui.lazy.shaper.input", "lazy-shaper__input", model.inputHandler, IngredientIO.INPUT)
-                    laneGrid("gui.lazy.shaper.output", "lazy-shaper__output", model.outputHandler, IngredientIO.OUTPUT)
+                    resourceGrid(
+                        "gui.lazy.shaper.input",
+                        "lazy-shaper__input",
+                        model.inputHandler,
+                        model::inputAmount,
+                        IngredientIO.INPUT,
+                    )
+                    resourceGrid(
+                        "gui.lazy.shaper.output",
+                        "lazy-shaper__output",
+                        model.outputHandler,
+                        model::outputAmount,
+                        IngredientIO.OUTPUT,
+                    )
                 }
 
                 label(
@@ -142,10 +154,11 @@ internal object ShaperUI {
         )
     }
 
-    private fun com.lowdragmc.lowdraglib2.gui.ui.UIContainer<*, *>.laneGrid(
+    private fun com.lowdragmc.lowdraglib2.gui.ui.UIContainer<*, *>.resourceGrid(
         titleKey: String,
         cssClass: String,
         handler: IItemHandlerModifiable,
+        amount: (Int) -> Long,
         ingredientIo: IngredientIO,
     ) {
         column(
@@ -173,6 +186,7 @@ internal object ShaperUI {
                         largeItemSlot(
                             handler,
                             slot,
+                            countProvider = { amount(slot) },
                             spec = {
                                 cls = { +"lazy-shaper__slot" }
                             },
@@ -221,10 +235,14 @@ internal object ShaperUI {
 
         fun hasInvalidSample(): Boolean = blockEntity?.hasInvalidSample() == true
 
+        fun inputAmount(entry: Int): Long = blockEntity?.inputAmount(entry) ?: 0L
+
+        fun outputAmount(entry: Int): Long = blockEntity?.outputAmount(entry) ?: 0L
+
         override fun isValid(): Boolean = (holder.blockState.block as? ShaperBlock)?.stillValid(holder) == true
     }
 
-    private object EmptyShaperHandler : EmptyHandler(ShaperBlockEntity.LANES, ShaperBlockEntity.LANE_CAPACITY)
+    private object EmptyShaperHandler : EmptyHandler(ShaperBlockEntity.ENTRIES, ShaperBlockEntity.CAPABILITY_SLOT_LIMIT)
 
     private open class EmptyHandler(
         private val size: Int,

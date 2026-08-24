@@ -3,14 +3,18 @@ package rhx.lazy.integration.ae2
 import appeng.api.stacks.AEFluidKey
 import appeng.api.stacks.AEItemKey
 import appeng.api.stacks.AEKey
-import rhx.lazy.core.io.NetworkInsertCapabilities
-import rhx.lazy.core.io.NetworkInsertCapability
-import rhx.lazy.core.io.NetworkPayload
+import rhx.lazy.core.resource.FluidResourceKind
+import rhx.lazy.core.resource.FluidVariant
+import rhx.lazy.core.resource.ItemResourceKind
+import rhx.lazy.core.resource.ItemVariant
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 
 internal interface AeStoragePayloadAdapter {
-    val capability: NetworkInsertCapability
+    val kind: ResourceKind<out ResourceVariant>
 
-    fun convert(payload: NetworkPayload): AeStoragePayload?
+    fun convert(amount: ResourceAmount<out ResourceVariant>): AeStoragePayload?
 }
 
 internal data class AeStoragePayload(
@@ -19,41 +23,41 @@ internal data class AeStoragePayload(
 )
 
 internal object AeStoragePayloadAdapters {
-    private val adapters = linkedMapOf<NetworkInsertCapability, AeStoragePayloadAdapter>()
+    private val adapters = linkedMapOf<ResourceKind<out ResourceVariant>, AeStoragePayloadAdapter>()
 
     /** Snapshot rebuilt on registration; the router reads this on every push. */
-    var capabilities: Set<NetworkInsertCapability> = emptySet()
+    var capabilities: Set<ResourceKind<out ResourceVariant>> = emptySet()
         private set
 
     fun register(adapter: AeStoragePayloadAdapter) {
-        check(adapters.putIfAbsent(adapter.capability, adapter) == null) {
-            "An AE storage adapter is already registered for ${adapter.capability.id}"
+        check(adapters.putIfAbsent(adapter.kind, adapter) == null) {
+            "An AE storage adapter is already registered for ${adapter.kind.id}"
         }
         capabilities = adapters.keys.toSet()
     }
 
-    fun convert(payload: NetworkPayload): AeStoragePayload? = adapters[payload.capability]?.convert(payload)
+    fun convert(amount: ResourceAmount<out ResourceVariant>): AeStoragePayload? = adapters[amount.kind]?.convert(amount)
 
     fun registerAe2Adapters() {
         register(
             object : AeStoragePayloadAdapter {
-                override val capability = NetworkInsertCapabilities.ITEM
+                override val kind = ItemResourceKind
 
-                override fun convert(payload: NetworkPayload): AeStoragePayload? {
-                    val items = payload as? NetworkPayload.Items ?: return null
-                    val key = AEItemKey.of(items.template) ?: return null
-                    return AeStoragePayload(key, items.amount)
+                override fun convert(amount: ResourceAmount<out ResourceVariant>): AeStoragePayload? {
+                    val variant = amount.variant as? ItemVariant ?: return null
+                    val key = AEItemKey.of(variant.template) ?: return null
+                    return AeStoragePayload(key, amount.amount)
                 }
             },
         )
         register(
             object : AeStoragePayloadAdapter {
-                override val capability = NetworkInsertCapabilities.FLUID
+                override val kind = FluidResourceKind
 
-                override fun convert(payload: NetworkPayload): AeStoragePayload? {
-                    val fluid = payload as? NetworkPayload.Fluid ?: return null
-                    val key = AEFluidKey.of(fluid.stack) ?: return null
-                    return AeStoragePayload(key, fluid.stack.amount.toLong())
+                override fun convert(amount: ResourceAmount<out ResourceVariant>): AeStoragePayload? {
+                    val variant = amount.variant as? FluidVariant ?: return null
+                    val key = AEFluidKey.of(variant.template) ?: return null
+                    return AeStoragePayload(key, amount.amount)
                 }
             },
         )
