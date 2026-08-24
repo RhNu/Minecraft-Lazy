@@ -9,7 +9,7 @@ item_ids:
 
 # Shaper
 
-<BlockImage id="lazy:shaper" scale="1.15" />
+<BlockImage id="lazy:shaper" scale="8" />
 
 The Shaper converts common forms of the same material without consuming material or energy. Put the desired form in the phantom sample slot, then load nuggets, ingots, gems, dusts, raw materials, plates, rods, wires, gears, or storage blocks into its shared input store.
 

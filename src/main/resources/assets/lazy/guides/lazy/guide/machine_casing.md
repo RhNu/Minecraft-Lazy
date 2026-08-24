@@ -10,7 +10,7 @@ item_ids:
 
 # Machine Casing
 
-<BlockImage id="lazy:machine_casing" scale="1.15" />
+<BlockImage id="lazy:machine_casing" scale="8" />
 
 Machine Casing is the shared structural component used by Lazy's machines. It is a normal block with no inventory or processing behaviour.
 

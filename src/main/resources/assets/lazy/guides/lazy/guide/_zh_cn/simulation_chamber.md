@@ -10,7 +10,7 @@ item_ids:
 
 # 模拟室
 
-<BlockImage id="lazy:simulation_chamber" scale="1.15" />
+<BlockImage id="lazy:simulation_chamber" scale="8" />
 
 模拟室运行数据驱动的物品和实体模拟，不需要维持真实农场或生物。产物会先存放在内部物品、流体库存中，等待 IO 输出。
 

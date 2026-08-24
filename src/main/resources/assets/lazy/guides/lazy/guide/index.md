@@ -27,4 +27,5 @@ Lazy is a toolbox for removing repetitive work. Its tools favor convenience over
 - [Data Model](data_model.md)
 - [Energy Battery](energy_battery.md)
 - [Modular Configurator](modular_configurator.md)
+- [Teleporter](teleporter.md)
 - [Processing Cores](processing_cores.md)

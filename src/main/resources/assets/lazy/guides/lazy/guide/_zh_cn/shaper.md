@@ -9,7 +9,7 @@ item_ids:
 
 # 塑形机
 
-<BlockImage id="lazy:shaper" scale="1.15" />
+<BlockImage id="lazy:shaper" scale="8" />
 
 塑形机在不消耗材料与能量的前提下转换同种材料的常见形态。把想要的形态放进幽灵样品槽，再将粒、锭、宝石、粉、粗矿、板、杆、线、齿轮或储存块放入共享输入仓。
 

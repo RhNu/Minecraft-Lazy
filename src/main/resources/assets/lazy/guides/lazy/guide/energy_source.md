@@ -10,7 +10,7 @@ item_ids:
 
 # Energy Source
 
-<BlockImage id="lazy:energy_source" scale="1.15" />
+<BlockImage id="lazy:energy_source" scale="8" />
 
 The Energy Source provides effectively infinite FE. It accepts no energy and can output up to 500,000,000 FE per tick to each transfer operation.
 

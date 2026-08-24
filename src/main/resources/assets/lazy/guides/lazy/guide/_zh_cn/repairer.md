@@ -10,7 +10,7 @@ item_ids:
 
 # 修复器
 
-<BlockImage id="lazy:repairer" scale="1.15" />
+<BlockImage id="lazy:repairer" scale="8" />
 
 修复器一次修复一个已损坏且具有耐久度的物品，不需要材料，也不会消耗物品。
 

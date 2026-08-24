@@ -10,7 +10,7 @@ item_ids:
 
 # 精华转换器
 
-<BlockImage id="lazy:essence_converter" scale="1.15" />
+<BlockImage id="lazy:essence_converter" scale="8" />
 
 安装 Mystical Agriculture 后会提供精华转换器。它会把精华合并为选定档位，并将完整的目标精华作为产物输出。
 

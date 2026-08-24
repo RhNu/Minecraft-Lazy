@@ -10,7 +10,7 @@ item_ids:
 
 # 物品复制器
 
-<BlockImage id="lazy:item_copier" scale="1.15" />
+<BlockImage id="lazy:item_copier" scale="8" />
 
 物品复制器会反复生成选定物品，并将其推入相邻库存或兼容网络，不会消耗作为模板的物品。
 

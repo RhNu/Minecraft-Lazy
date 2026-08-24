@@ -10,7 +10,7 @@ item_ids:
 
 # Essence Converter
 
-<BlockImage id="lazy:essence_converter" scale="1.15" />
+<BlockImage id="lazy:essence_converter" scale="8" />
 
 The Essence Converter is available when Mystical Agriculture is installed. It combines essence into a selected target tier and exposes the completed target essence as output.
 

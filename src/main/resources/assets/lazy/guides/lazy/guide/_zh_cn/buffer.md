@@ -10,7 +10,7 @@ item_ids:
 
 # 缓冲器
 
-<BlockImage id="lazy:buffer" scale="1.15" />
+<BlockImage id="lazy:buffer" scale="8" />
 
 缓冲器是同时支持物品和流体的大型存储机器，可作为本地缓存，也可作为机器之间的交接点。
 

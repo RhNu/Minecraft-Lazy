@@ -10,7 +10,7 @@ item_ids:
 
 # Buffer
 
-<BlockImage id="lazy:buffer" scale="1.15" />
+<BlockImage id="lazy:buffer" scale="8" />
 
 The Buffer is a large mixed item-and-fluid storage machine. It is useful as a local cache or as a shared hand-off point between machines.
 

@@ -10,7 +10,7 @@ item_ids:
 
 # Simulation Chamber
 
-<BlockImage id="lazy:simulation_chamber" scale="1.15" />
+<BlockImage id="lazy:simulation_chamber" scale="8" />
 
 The Simulation Chamber runs data-driven item and entity simulations without spawning a permanent farm or mob. Results are stored in internal item and fluid outputs until IO can move them away.
 

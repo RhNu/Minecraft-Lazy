@@ -10,7 +10,7 @@ item_ids:
 
 # Item Copier
 
-<BlockImage id="lazy:item_copier" scale="1.15" />
+<BlockImage id="lazy:item_copier" scale="8" />
 
 The Item Copier repeatedly creates the selected item and pushes it into adjacent inventories or a compatible network. It does not consume a source stack.
 

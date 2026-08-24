@@ -19,7 +19,7 @@ class GuideResourceTest {
             listOf(english, chinese).forEach { content ->
                 assertTrue(content.contains("item_ids:"), page.fileName)
                 assertTrue(content.contains("- ${page.itemId}"), page.fileName)
-                assertTrue(content.contains("<BlockImage id=\"${page.itemId}\""), page.fileName)
+                assertTrue(content.contains("<BlockImage id=\"${page.itemId}\" scale=\"8\" />"), page.fileName)
             }
             assertTrue(indexEnglish.contains("(${page.fileName})"), page.fileName)
             assertTrue(indexChinese.contains("(${page.fileName})"), page.fileName)
@@ -81,6 +81,7 @@ class GuideResourceTest {
                 MachinePage("energy_source.md", "lazy:energy_source"),
                 MachinePage("item_copier.md", "lazy:item_copier"),
                 MachinePage("repairer.md", "lazy:repairer"),
+                MachinePage("shaper.md", "lazy:shaper"),
                 MachinePage("simulation_chamber.md", "lazy:simulation_chamber"),
                 MachinePage("essence_converter.md", "lazy:essence_converter"),
             )
@@ -90,6 +91,7 @@ class GuideResourceTest {
                 ToolPage("data_model.md", listOf("lazy:data_model"), "lazy:data_model"),
                 ToolPage("energy_battery.md", listOf("lazy:energy_battery"), "lazy:energy_battery"),
                 ToolPage("modular_configurator.md", listOf("lazy:modular_configurator"), "lazy:modular_configurator"),
+                ToolPage("teleporter.md", listOf("lazy:teleporter"), "lazy:teleporter"),
                 ToolPage(
                     "processing_cores.md",
                     listOf(

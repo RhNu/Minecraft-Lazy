@@ -10,7 +10,7 @@ item_ids:
 
 # Repairer
 
-<BlockImage id="lazy:repairer" scale="1.15" />
+<BlockImage id="lazy:repairer" scale="8" />
 
 The Repairer restores durability to one damaged, damageable item at a time. It does not require an ingredient or consume the item.
 

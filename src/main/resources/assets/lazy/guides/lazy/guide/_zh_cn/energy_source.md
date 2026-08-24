@@ -10,7 +10,7 @@ item_ids:
 
 # 能量源
 
-<BlockImage id="lazy:energy_source" scale="1.15" />
+<BlockImage id="lazy:energy_source" scale="8" />
 
 能量源提供近似无限的 FE，不接收能量；每次传输操作每刻最多输出 500,000,000 FE。
 
