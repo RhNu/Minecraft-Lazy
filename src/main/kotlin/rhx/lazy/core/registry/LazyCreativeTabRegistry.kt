@@ -14,6 +14,7 @@ import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.itemcopier.ItemCopierRegistries
 import rhx.lazy.feature.machine.MachineCasingRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
+import rhx.lazy.feature.shaping.ShaperRegistries
 import rhx.lazy.feature.simulation.SimulationRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import java.util.function.Supplier
@@ -36,6 +37,7 @@ internal object LazyCreativeTabRegistry : RegistryModule {
                         output.accept(EnergyRegistries.sourceItem.get())
                         output.accept(ItemCopierRegistries.item.get())
                         output.accept(RepairerRegistries.item.get())
+                        output.accept(ShaperRegistries.item.get())
                         output.accept(SimulationRegistries.item.get())
                         output.accept(ConfigurationCardRegistries.item.get())
                         output.accept(ModularConfiguratorRegistries.item.get())

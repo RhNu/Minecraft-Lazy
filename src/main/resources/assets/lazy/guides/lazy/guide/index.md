@@ -16,6 +16,7 @@ Lazy is a toolbox for removing repetitive work. Its tools favor convenience over
 - [Energy Source](energy_source.md)
 - [Item Copier](item_copier.md)
 - [Repairer](repairer.md)
+- [Shaper](shaper.md)
 - [Simulation Chamber](simulation_chamber.md)
 - [Essence Converter](essence_converter.md)
 - [IO and automation](io.md)

@@ -2,7 +2,6 @@ package rhx.lazy.feature.itemcopier
 
 import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.DataBindingBuilder
-import com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import com.lowdragmc.lowdraglib2.gui.ui.UI
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement
@@ -10,11 +9,15 @@ import com.lowdragmc.lowdraglib2.gui.ui.element
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ItemSlot
+import com.lowdragmc.lowdraglib2.gui.ui.elements.asXeiPhantom
+import com.lowdragmc.lowdraglib2.gui.ui.elements.asXeiRecipeIngredient
 import com.lowdragmc.lowdraglib2.gui.ui.elements.button
+import com.lowdragmc.lowdraglib2.gui.ui.elements.itemSlot
 import com.lowdragmc.lowdraglib2.gui.ui.elements.label
 import com.lowdragmc.lowdraglib2.gui.ui.inventorySlots
 import com.lowdragmc.lowdraglib2.gui.ui.row
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager
+import com.lowdragmc.lowdraglib2.integration.xei.IngredientIO
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import rhx.lazy.core.blockEntityOrNull
@@ -27,8 +30,7 @@ internal object ItemCopierUI {
 
     fun create(holder: BlockUIMenuType.BlockUIHolder): ModularUI {
         val model = ItemCopierUiModel(holder)
-        val templateTexture = ItemStackTexture(ItemStack.EMPTY)
-        lateinit var templateButton: Button
+        lateinit var templateSlot: ItemSlot
         lateinit var gearButton: Button
         lateinit var installIoPanel: (UIElement) -> Unit
 
@@ -53,29 +55,31 @@ internal object ItemCopierUI {
                         cls = { +"lazy-item-copier__controls" }
                     },
                 ) {
-                    templateButton =
-                        button(
+                    templateSlot =
+                        itemSlot(
                             {
-                                noText()
                                 cls = { +"lazy-item-copier__template" }
                                 style = {
                                     tooltips(
                                         Component.translatable("gui.lazy.item_copier.template.empty"),
                                     )
                                 }
-                                onServerClick = { event ->
-                                    if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                                        model.markCarriedStack()
-                                    }
-                                }
                             },
-                        ).element.apply {
-                            buttonStyle { style ->
-                                style.baseTexture(ItemSlot.ITEM_SLOT_TEXTURE)
-                                style.hoverTexture(ItemSlot.ITEM_SLOT_TEXTURE)
-                                style.pressedTexture(ItemSlot.ITEM_SLOT_TEXTURE)
+                        ) {
+                            asXeiPhantom()
+                            asXeiRecipeIngredient(IngredientIO.OUTPUT)
+                        }.element.apply {
+                            bind(
+                                DataBindingBuilder
+                                    .itemStack(model::template, model::setTemplate)
+                                    .initialValue(ItemStack.EMPTY)
+                                    .build(),
+                            )
+                            addServerEventListener("mouseDown") { event ->
+                                if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
+                                    model.markCarriedStack()
+                                }
                             }
-                            addPreIcon(templateTexture)
                         }
 
                     gearButton =
@@ -112,11 +116,8 @@ internal object ItemCopierUI {
                 )
             }
 
-        val displayedTemplate = BindableValue(ItemStack.EMPTY)
-        displayedTemplate.setDisplay(false)
-        displayedTemplate.registerValueListener { template ->
-            templateTexture.setItems(template)
-            templateButton.style { style ->
+        templateSlot.registerValueListener { template ->
+            templateSlot.style { style ->
                 style.tooltips(
                     if (template.isEmpty) {
                         Component.translatable("gui.lazy.item_copier.template.empty")
@@ -129,12 +130,6 @@ internal object ItemCopierUI {
                 )
             }
         }
-        displayedTemplate.bind(
-            DataBindingBuilder
-                .itemStackS2C(model::template)
-                .build(),
-        )
-        root.addChild(displayedTemplate)
 
         val displayedGear = BindableValue(ItemCopierGear.DEFAULT)
         displayedGear.setDisplay(false)
@@ -183,12 +178,15 @@ internal object ItemCopierUI {
 
         fun template(): ItemStack = blockEntity?.getTemplate() ?: ItemStack.EMPTY
 
+        fun setTemplate(stack: ItemStack) {
+            if (!isValid()) return
+            blockEntity?.setTemplate(stack)
+        }
+
         fun gear(): ItemCopierGear = blockEntity?.getGear() ?: ItemCopierGear.DEFAULT
 
         fun markCarriedStack() {
-            val entity = blockEntity ?: return
-            if (!isValid()) return
-            entity.setTemplate(holder.player.containerMenu.carried)
+            setTemplate(holder.player.containerMenu.carried)
         }
 
         fun cycleGear() {

@@ -6,6 +6,7 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import rhx.lazy.core.lazyId
+import rhx.lazy.core.material.MaterialTagPreference
 
 internal data class AutomaticSimulationCandidate(
     val source: ResourceLocation,
@@ -101,7 +102,7 @@ internal data class AutomaticSimulationSettings(
                 SimulationConfigs.settings.defaultDuration.get(),
                 SimulationConfigs.settings.taggedMaterials.get(),
                 SimulationConfigs.settings.taggedMaterialDuration.get(),
-                TaggedMaterialPriority.namespaces(),
+                MaterialTagPreference.namespaces(),
                 TaggedMaterialRules.fingerprint(),
             )
     }

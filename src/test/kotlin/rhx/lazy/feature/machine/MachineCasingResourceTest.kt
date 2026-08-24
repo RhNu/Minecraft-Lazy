@@ -60,6 +60,7 @@ class MachineCasingResourceTest {
                 "energy_source" to listOf(" B ", "GMG"),
                 "item_copier" to listOf(" C ", "BMB"),
                 "repairer" to listOf(" A ", "CMC"),
+                "shaper" to listOf(" S ", "CMC"),
             )
 
         expectedPatterns.forEach { (machine, expectedPattern) ->
@@ -75,7 +76,7 @@ class MachineCasingResourceTest {
     @Test
     fun `machines use orientable overlay models with shared base textures`() {
         val bottomTexture = readTexture("machine/bottom")
-        val columnMachines = listOf("buffer", "energy_source", "item_copier", "repairer")
+        val columnMachines = listOf("buffer", "energy_source", "item_copier", "repairer", "shaper")
 
         columnMachines.forEach { machine ->
             val model = readJson("/assets/lazy/models/block/$machine.json")
@@ -142,6 +143,7 @@ class MachineCasingResourceTest {
                 "overlay/essence_converter.svg",
                 "overlay/item_copier.svg",
                 "overlay/repairer.svg",
+                "overlay/shaper.svg",
             )
 
         sources.forEach { source ->

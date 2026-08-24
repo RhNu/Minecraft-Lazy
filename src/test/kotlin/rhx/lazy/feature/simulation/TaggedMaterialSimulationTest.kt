@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.tags.TagKey
 import net.minecraft.world.item.Item
 import rhx.lazy.core.lazyId
+import rhx.lazy.core.material.materialIdComparator
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -67,7 +68,7 @@ class TaggedMaterialSimulationTest {
 
     @Test
     fun `tag derived candidate order uses configured namespaces then deterministic fallback`() {
-        val comparator = taggedMaterialIdComparator(listOf("kubejs", "minecraft", "create"))
+        val comparator = materialIdComparator(listOf("kubejs", "minecraft", "create"))
         val ids =
             listOf(
                 id("zeta", "raw_iron"),
@@ -93,7 +94,7 @@ class TaggedMaterialSimulationTest {
 
     @Test
     fun `unlisted namespaces still resolve to one deterministic winner`() {
-        val comparator = taggedMaterialIdComparator(listOf("kubejs"))
+        val comparator = materialIdComparator(listOf("kubejs"))
         val candidates = listOf(id("zeta", "raw_iron"), id("alpha", "raw_iron"), id("beta", "raw_iron"))
 
         assertEquals(id("alpha", "raw_iron"), candidates.minWith(comparator))

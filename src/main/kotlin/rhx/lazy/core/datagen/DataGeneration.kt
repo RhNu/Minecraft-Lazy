@@ -27,11 +27,13 @@ import net.neoforged.neoforge.data.event.GatherDataEvent
 import rhx.lazy.MOD_ID
 import rhx.lazy.core.configurator.ModularConfiguratorRegistries
 import rhx.lazy.core.io.ConfigurationCardRegistries
+import rhx.lazy.core.material.MaterialForms
 import rhx.lazy.feature.buffer.BufferRegistries
 import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.itemcopier.ItemCopierRegistries
 import rhx.lazy.feature.machine.MachineCasingRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
+import rhx.lazy.feature.shaping.ShaperRegistries
 import rhx.lazy.feature.simulation.SimulationRecipeData
 import rhx.lazy.feature.simulation.SimulationRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
@@ -57,7 +59,8 @@ internal object DataGeneration {
                 RegistrySetBuilder()
                     .add(Registries.BIOME, VoidWorldBootstrap::bootstrapBiome)
                     .add(Registries.DIMENSION_TYPE, VoidWorldBootstrap::bootstrapDimensionType)
-                    .add(Registries.LEVEL_STEM, VoidWorldBootstrap::bootstrapLevelStem),
+                    .add(Registries.LEVEL_STEM, VoidWorldBootstrap::bootstrapLevelStem)
+                    .add(MaterialForms.REGISTRY_KEY, MaterialForms::bootstrap),
                 setOf(MOD_ID),
             ),
         )
@@ -160,6 +163,15 @@ internal object DataGeneration {
                 .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
                 .save(output)
             ShapedRecipeBuilder
+                .shaped(RecipeCategory.MISC, ShaperRegistries.item.get())
+                .pattern(" S ")
+                .pattern("CMC")
+                .define('S', Items.STONECUTTER)
+                .define('C', Tags.Items.INGOTS_COPPER)
+                .define('M', MachineCasingRegistries.item.get())
+                .unlockedBy("has_machine_casing", has(MachineCasingRegistries.item.get()))
+                .save(output)
+            ShapedRecipeBuilder
                 .shaped(RecipeCategory.MISC, SimulationRegistries.coreT1.get())
                 .pattern("CRC")
                 .pattern("RBR")
@@ -239,6 +251,7 @@ internal object DataGeneration {
             withExistingParent("energy_source", modLoc("block/energy_source"))
             withExistingParent("item_copier", modLoc("block/item_copier"))
             withExistingParent("repairer", modLoc("block/repairer"))
+            withExistingParent("shaper", modLoc("block/shaper"))
             withExistingParent("simulation_chamber", modLoc("block/simulation_chamber"))
             withExistingParent("data_model", mcLoc("item/generated"))
                 .texture("layer0", modLoc("item/icon/data_model"))
@@ -266,6 +279,7 @@ internal object DataGeneration {
             machineBlock(EnergyRegistries.sourceBlock.get())
             machineBlock(ItemCopierRegistries.block.get())
             machineBlock(RepairerRegistries.block.get())
+            machineBlock(ShaperRegistries.block.get())
             machineBlock(SimulationRegistries.block.get())
         }
 
@@ -306,6 +320,7 @@ internal object DataGeneration {
                 add(EnergyRegistries.sourceBlock.get(), noDrop())
                 add(ItemCopierRegistries.block.get(), noDrop())
                 add(RepairerRegistries.block.get(), noDrop())
+                add(ShaperRegistries.block.get(), noDrop())
                 add(SimulationRegistries.block.get(), noDrop())
             }
 
@@ -316,6 +331,7 @@ internal object DataGeneration {
                     EnergyRegistries.sourceBlock.get(),
                     ItemCopierRegistries.block.get(),
                     RepairerRegistries.block.get(),
+                    ShaperRegistries.block.get(),
                     SimulationRegistries.block.get(),
                 )
         }
@@ -332,7 +348,33 @@ internal object DataGeneration {
             addBlock({ EnergyRegistries.sourceBlock.get() }, "Energy Source")
             addBlock({ ItemCopierRegistries.block.get() }, "Item Copier")
             addBlock({ RepairerRegistries.block.get() }, "Repairer")
+            addBlock({ ShaperRegistries.block.get() }, "Shaper")
             addBlock({ SimulationRegistries.block.get() }, "Simulation Chamber")
+            add("tooltip.lazy.shaper.contents", "Contains stored shaping materials")
+            add("gui.lazy.shaper.sample", "Sample")
+            add("gui.lazy.shaper.input", "Input")
+            add("gui.lazy.shaper.output", "Output")
+            add("gui.lazy.shaper.sample.empty", "Show the machine the form to make")
+            add("gui.lazy.shaper.sample.unknown", "The selected sample is no longer a known material form")
+            add("gui.lazy.shaper.sample.selected", "Target: %s")
+            add("gui.lazy.shaper.sample.unavailable", "%s is unavailable for the loaded material")
+            add("gui.lazy.shaper.conversion", "%s × %s → %s × %s")
+            add("jei.lazy.shaping", "Material Shaping")
+            add("jei.lazy.shaping.sample", "Use this form as the sample")
+            add("lazy.material", "Material Forms")
+            add("lazy.material.desc", "Shared material-form selection settings")
+            add("lazy.material.modPriority", "Material mod priority")
+            add("material_form.lazy.nugget", "Nugget")
+            add("material_form.lazy.ingot", "Ingot")
+            add("material_form.lazy.gem", "Gem")
+            add("material_form.lazy.dust", "Dust")
+            add("material_form.lazy.raw_material", "Raw Material")
+            add("material_form.lazy.plate", "Plate")
+            add("material_form.lazy.rod", "Rod")
+            add("material_form.lazy.wire", "Wire")
+            add("material_form.lazy.gear", "Gear")
+            add("material_form.lazy.storage_block", "Storage Block")
+            add("material_form.lazy.raw_storage_block", "Raw Storage Block")
             addItem({ SimulationRegistries.dataModelItem.get() }, "Data Model")
             addItem({ SimulationRegistries.coreT1.get() }, "T1 Simulation Core")
             addItem({ SimulationRegistries.coreT2.get() }, "T2 Simulation Core")
@@ -358,7 +400,6 @@ internal object DataGeneration {
             add("lazy.simulation.maxRollsPerTick", "Maximum ordinary rolls per tick without a dispenser")
             add("lazy.simulation.taggedMaterials", "Tagged material recipes")
             add("lazy.simulation.taggedMaterialDuration", "Tagged material duration")
-            add("lazy.simulation.taggedMaterialModPriority", "Tagged material mod priority")
             add("lazy.simulation.t1SpeedMultiplier", "T1 speed multiplier")
             add("lazy.simulation.t1OutputMultiplier", "T1 output multiplier")
             add("lazy.simulation.t2SpeedMultiplier", "T2 speed multiplier")
@@ -564,6 +605,7 @@ internal object DataGeneration {
             addBlock({ EnergyRegistries.sourceBlock.get() }, "能量源")
             addBlock({ ItemCopierRegistries.block.get() }, "物品复制器")
             addBlock({ RepairerRegistries.block.get() }, "修复器")
+            addBlock({ ShaperRegistries.block.get() }, "塑形机")
             addItem({ TeleporterRegistries.item.get() }, "传送器")
             addItem({ EnergyRegistries.batteryItem.get() }, "能量电池")
             addBlock({ SimulationRegistries.block.get() }, "模拟室")
@@ -572,6 +614,31 @@ internal object DataGeneration {
             addItem({ SimulationRegistries.coreT2.get() }, "T2 模拟核心")
             addItem({ SimulationRegistries.coreT3.get() }, "T3 模拟核心")
             addItem({ SimulationRegistries.coreT4.get() }, "T4 模拟核心")
+            add("tooltip.lazy.shaper.contents", "包含已保存的塑形材料")
+            add("gui.lazy.shaper.sample", "样品")
+            add("gui.lazy.shaper.input", "输入")
+            add("gui.lazy.shaper.output", "输出")
+            add("gui.lazy.shaper.sample.empty", "向机器展示想要制作的形态")
+            add("gui.lazy.shaper.sample.unknown", "所选样品已不再属于已知材料形态")
+            add("gui.lazy.shaper.sample.selected", "目标：%s")
+            add("gui.lazy.shaper.sample.unavailable", "当前材料没有可用的 %s")
+            add("gui.lazy.shaper.conversion", "%s × %s → %s × %s")
+            add("jei.lazy.shaping", "材料塑形")
+            add("jei.lazy.shaping.sample", "将这种形态放入样品槽")
+            add("lazy.material", "材料形态")
+            add("lazy.material.desc", "共用的材料形态产物选择设置")
+            add("lazy.material.modPriority", "材料模组优先级")
+            add("material_form.lazy.nugget", "粒")
+            add("material_form.lazy.ingot", "锭")
+            add("material_form.lazy.gem", "宝石")
+            add("material_form.lazy.dust", "粉")
+            add("material_form.lazy.raw_material", "粗矿")
+            add("material_form.lazy.plate", "板")
+            add("material_form.lazy.rod", "杆")
+            add("material_form.lazy.wire", "线")
+            add("material_form.lazy.gear", "齿轮")
+            add("material_form.lazy.storage_block", "块")
+            add("material_form.lazy.raw_storage_block", "粗矿块")
             add("tooltip.lazy.data_model.blank", "未绑定——对生物使用以绑定")
             add("tooltip.lazy.data_model.bound", "已绑定：%s——潜行使用以清除")
             add("tooltip.lazy.simulation_chamber.contents", "包含已保存的模拟内容")
@@ -592,7 +659,6 @@ internal object DataGeneration {
             add("lazy.simulation.maxRollsPerTick", "未放入发射器时普通输出每刻最大抽取次数")
             add("lazy.simulation.taggedMaterials", "标签材料配方")
             add("lazy.simulation.taggedMaterialDuration", "标签材料周期时长")
-            add("lazy.simulation.taggedMaterialModPriority", "标签材料模组优先级")
             add("lazy.simulation.t1SpeedMultiplier", "T1 速度倍率")
             add("lazy.simulation.t1OutputMultiplier", "T1 产出倍率")
             add("lazy.simulation.t2SpeedMultiplier", "T2 速度倍率")

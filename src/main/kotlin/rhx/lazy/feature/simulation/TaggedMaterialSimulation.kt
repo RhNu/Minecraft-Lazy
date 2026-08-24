@@ -6,9 +6,9 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.tags.TagKey
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import rhx.lazy.core.lazyId
+import rhx.lazy.core.material.MaterialTagPreference
 
 /**
  * One tag driven material rule: inputs carrying `<namespace>:<inputPrefix>/<material>` grow into the
@@ -66,38 +66,6 @@ internal object TaggedMaterialRules {
     fun fingerprint(): List<String> = all().map { rule -> "${rule.kind}:${rule.namespace}:${rule.inputPrefix}>${rule.outputPrefix}" }
 }
 
-/**
- * Shared ordered selection for tag derived outputs. Every generator that can see more than one
- * candidate behind a tag picks through here, so a single server setting decides the winner.
- */
-internal object TaggedMaterialPriority {
-    fun namespaces(): List<String> =
-        SimulationConfigs.settings.taggedMaterialModPriority
-            .get()
-            .toList()
-
-    fun preferredItem(tag: TagKey<Item>): Item? {
-        val idComparator = taggedMaterialIdComparator(namespaces())
-        return BuiltInRegistries.ITEM
-            .getTag(tag)
-            .orElse(null)
-            ?.asSequence()
-            ?.map { it.value() }
-            ?.filterNot { it === Items.AIR }
-            ?.minWithOrNull { first, second ->
-                idComparator.compare(BuiltInRegistries.ITEM.getKey(first), BuiltInRegistries.ITEM.getKey(second))
-            }
-    }
-}
-
-/** Configured namespaces first, then every other namespace and full item id in ascending order. */
-internal fun taggedMaterialIdComparator(priorities: List<String>): Comparator<ResourceLocation> =
-    compareBy<ResourceLocation>(
-        { id -> priorities.indexOf(id.namespace).let { if (it < 0) Int.MAX_VALUE else it } },
-        ResourceLocation::getNamespace,
-        ResourceLocation::toString,
-    )
-
 internal object TaggedMaterialAdapter : AutomaticSimulationAdapter {
     val SOURCE: ResourceLocation = lazyId("material")
 
@@ -118,7 +86,7 @@ internal object TaggedMaterialAdapter : AutomaticSimulationAdapter {
     }
 
     private fun tagged(match: TaggedMaterialMatch): AutomaticSimulationCandidate? {
-        val output = TaggedMaterialPriority.preferredItem(match.rule.outputTag(match.material)) ?: return null
+        val output = MaterialTagPreference.preferredItem(match.rule.outputTag(match.material)) ?: return null
         return candidate(
             automaticId(SOURCE, match.rule.kind, match.material),
             SimulationItemOutput(ItemStack(output)),

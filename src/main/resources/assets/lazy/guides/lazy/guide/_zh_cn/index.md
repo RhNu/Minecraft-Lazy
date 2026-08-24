@@ -16,6 +16,7 @@ Lazy 是一套减少重复劳动的工具箱，便利性优先于平衡性。
 - [能量源](energy_source.md)
 - [物品复制器](item_copier.md)
 - [修复器](repairer.md)
+- [塑形机](shaper.md)
 - [模拟室](simulation_chamber.md)
 - [精华转换器](essence_converter.md)
 - [IO 与自动化](io.md)

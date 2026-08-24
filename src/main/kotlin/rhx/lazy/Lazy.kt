@@ -9,6 +9,9 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import rhx.lazy.core.MachineWrench
 import rhx.lazy.core.command.LazyCommands
+import rhx.lazy.core.material.MaterialConfigs
+import rhx.lazy.core.material.MaterialForms
+import rhx.lazy.core.material.MaterialIndexReloads
 import rhx.lazy.core.registry.LazyRegistries
 import rhx.lazy.feature.energy.EnergyBatteryInteractions
 import rhx.lazy.feature.protection.DamageCapHandler
@@ -32,6 +35,7 @@ object Lazy {
         val modContainer = ModLoadingContext.get().activeContainer
         TeleporterConfigs.register(modContainer)
         RepairerConfigs.register(modContainer)
+        MaterialConfigs.register(modContainer)
         SimulationConfigs.register(modContainer)
         if (ModList.get().isLoaded("mysticalagriculture")) {
             EssenceConverterConfigs.register(modContainer)
@@ -40,10 +44,14 @@ object Lazy {
             .enableMilkFluid()
         LazyRegistries.register(MOD_BUS)
         LazyIntegrations.initialize(MOD_BUS)
+        MOD_BUS.addListener(MaterialForms::registerDataPackRegistry)
+        MOD_BUS.addListener(MaterialIndexReloads::onConfigLoading)
+        MOD_BUS.addListener(MaterialIndexReloads::onConfigReloading)
         MOD_BUS.addListener(SimulationNetworking::register)
         NeoForge.EVENT_BUS.addListener(LazyCommands::register)
         NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onDatapackSync)
         NeoForge.EVENT_BUS.addListener(SimulationRecipeReloads::onServerTick)
+        NeoForge.EVENT_BUS.addListener(MaterialIndexReloads::onTagsUpdated)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, DataModelInteractionHandler::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(MachineWrench::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(EnergyBatteryInteractions::onLeftClickBlock)

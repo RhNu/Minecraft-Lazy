@@ -38,13 +38,6 @@ internal class SimulationConfig(
             "Duration in ticks for automatically inferred tagged material simulations.",
         )
 
-    val taggedMaterialModPriority =
-        builder.stringList(
-            "taggedMaterialModPriority",
-            listOf("kubejs", "minecraft", "alltheores", "create", "mekanism", "jaopca"),
-            "Preferred item namespaces for tag derived outputs, from highest to lowest priority.",
-        )
-
     val t1SpeedMultiplier = builder.int("t1SpeedMultiplier", 1, 1..1024, "Tier 1 simulation speed multiplier.")
     val t1OutputMultiplier = builder.int("t1OutputMultiplier", 1, 1..1024, "Tier 1 simulation output multiplier.")
     val t2SpeedMultiplier = builder.int("t2SpeedMultiplier", 2, 1..1024, "Tier 2 simulation speed multiplier.")

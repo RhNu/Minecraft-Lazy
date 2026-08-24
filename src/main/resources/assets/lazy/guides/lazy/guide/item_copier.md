@@ -16,7 +16,7 @@ The Item Copier repeatedly creates the selected item and pushes it into adjacent
 
 ## Template and interval
 
-Open the screen and click the template slot while carrying an item to mark it. Click it with an empty cursor to clear the template. The template is stored as one item, while each push attempts a full stack of that item's normal maximum size.
+Open the screen and click the ghost template slot while carrying an item to mark it, or drag the target output into it from JEI. Click it with an empty cursor to clear the template. The template is stored as one item, while each push attempts a full stack of that item's normal maximum size.
 
 The interval button cycles through these server-side schedules:
 

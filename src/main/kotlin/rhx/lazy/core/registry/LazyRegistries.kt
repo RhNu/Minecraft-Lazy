@@ -9,6 +9,7 @@ import rhx.lazy.feature.itemcopier.ItemCopierRegistries
 import rhx.lazy.feature.machine.MachineCasingRegistries
 import rhx.lazy.feature.protection.ProtectionRegistries
 import rhx.lazy.feature.repairer.RepairerRegistries
+import rhx.lazy.feature.shaping.ShaperRegistries
 import rhx.lazy.feature.simulation.SimulationRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import rhx.lazy.feature.voidworld.VoidWorldRegistries
@@ -25,6 +26,7 @@ internal object LazyRegistries {
             EnergyRegistries,
             ItemCopierRegistries,
             RepairerRegistries,
+            ShaperRegistries,
             SimulationRegistries,
             VoidWorldRegistries,
             LazyCreativeTabRegistry,
