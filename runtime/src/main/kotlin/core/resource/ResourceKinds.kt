@@ -77,6 +77,9 @@ public interface ResourceKind<V : ResourceVariant> {
 
     fun variantName(variant: V): Component
 
+    /** Optional sprite used by generic resource selectors that cannot render the native stack type. */
+    fun sprite(variant: V): ResourceSprite? = null
+
     fun matches(
         first: V,
         second: V,
@@ -185,6 +188,13 @@ public object EnergyResourceKind : ResourceKind<EnergyVariant> {
         tag: CompoundTag,
     ) = EnergyVariant
 }
+
+/** Server-safe description of a tinted resource sprite. */
+@LazyInternalApi
+public data class ResourceSprite(
+    val texture: ResourceLocation,
+    val color: Int = -1,
+)
 
 /**
  * Runtime catalog for every resource identity understood by Lazy.

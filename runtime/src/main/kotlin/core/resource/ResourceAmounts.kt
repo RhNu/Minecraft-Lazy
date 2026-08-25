@@ -3,6 +3,7 @@ package rhx.lazy.core.resource
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import rhx.lazy.integration.api.LazyInternalApi
 
@@ -22,7 +23,23 @@ public class ResourceAmount<V : ResourceVariant>(
     val variant: V
         get() = kind.copy(storedVariant)
 
-    fun matches(other: ResourceAmount<V>): Boolean = kind === other.kind && kind.matches(storedVariant, other.storedVariant)
+    val variantName: Component
+        get() = kind.variantName(storedVariant)
+
+    val sprite: ResourceSprite?
+        get() = kind.sprite(storedVariant)
+
+    fun matches(other: ResourceAmount<out ResourceVariant>): Boolean {
+        if (kind !== other.kind) return false
+
+        @Suppress("UNCHECKED_CAST")
+        return kind.matches(storedVariant, (other as ResourceAmount<V>).storedVariant)
+    }
+
+    fun matches(
+        expectedKind: ResourceKind<V>,
+        expectedVariant: V,
+    ): Boolean = kind === expectedKind && kind.matches(storedVariant, expectedVariant)
 
     fun withAmount(value: Long): ResourceAmount<V> = ResourceAmount(kind, storedVariant, value)
 

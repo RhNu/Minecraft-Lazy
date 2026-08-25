@@ -8,6 +8,7 @@ import rhx.lazy.integration.api.IntegrationCommonContext
 @LazyCommonEntrypoint
 internal object MekanismIntegrationModule : CommonIntegration {
     override fun install(context: IntegrationCommonContext) {
+        MekanismChemicalResourceIntegration.install()
         ModularConfiguratorModules.register(MekanismConfiguratorModule)
     }
 }

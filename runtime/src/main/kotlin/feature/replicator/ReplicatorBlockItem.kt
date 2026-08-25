@@ -10,8 +10,6 @@ import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.block.Block
 import rhx.lazy.core.ManagedBlockEntity
 import rhx.lazy.core.resource.ResourceAmount
-import rhx.lazy.core.resource.ResourceKind
-import rhx.lazy.core.resource.ResourceVariant
 
 internal class ReplicatorBlockItem(
     block: Block,
@@ -36,7 +34,7 @@ internal class ReplicatorBlockItem(
                     Component
                         .translatable(
                             "tooltip.lazy.replicator.resource",
-                            resourceName(resource),
+                            resource.variantName,
                             resource.amount,
                         ).withStyle(ChatFormatting.GRAY)
             }
@@ -51,11 +49,5 @@ internal class ReplicatorBlockItem(
                     .withStyle(ChatFormatting.GRAY)
         }
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag)
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun resourceName(amount: ResourceAmount<out ResourceVariant>): Component {
-        val kind = amount.kind as ResourceKind<ResourceVariant>
-        return kind.variantName(amount.variant)
     }
 }

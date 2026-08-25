@@ -4,7 +4,9 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.RegistryAccess
 import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
@@ -13,7 +15,9 @@ import rhx.lazy.core.ManagedBlockEntity
 import rhx.lazy.core.resource.FluidVariant
 import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceKinds
+import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.core.testing.FakeNetworkOutputProvider
 import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
@@ -106,6 +110,18 @@ class ReplicatorBlockEntityTest {
     }
 
     @Test
+    fun `replicator accepts an integration defined resource kind`() {
+        val replicator = newReplicator()
+        val variant = TestVariant("chemical-like")
+
+        replicator.markResource(TestResourceKind, variant)
+
+        assertEquals(TestResourceKind.defaultAmount, replicator.getResource()?.amount)
+        assertEquals(setOf(TestResourceKind), replicator.ioController.capabilities)
+        assertTrue(replicator.getResource()?.matches(ResourceAmount(TestResourceKind, variant, 1L)) == true)
+    }
+
+    @Test
     fun `selected kind drives capabilities and fluid network output`() {
         val replicator = newReplicator()
         val storage = FakeNetworkStorage()
@@ -191,4 +207,35 @@ class ReplicatorBlockEntityTest {
             BlockPos.ZERO,
             ReplicatorRegistries.block.get().defaultBlockState(),
         )
+
+    private data class TestVariant(
+        val value: String,
+    ) : ResourceVariant {
+        override fun copyVariant(): ResourceVariant = copy()
+    }
+
+    private object TestResourceKind : ResourceKind<TestVariant> {
+        override val id = ResourceLocation.fromNamespaceAndPath("lazy", "replicator_test")
+        override val displayName: Component = Component.literal("Test")
+        override val defaultAmount = 1_000L
+
+        override fun variantName(variant: TestVariant): Component = Component.literal(variant.value)
+
+        override fun matches(
+            first: TestVariant,
+            second: TestVariant,
+        ): Boolean = first == second
+
+        override fun copy(variant: TestVariant): TestVariant = variant.copy()
+
+        override fun save(
+            registries: net.minecraft.core.HolderLookup.Provider,
+            variant: TestVariant,
+        ): CompoundTag = CompoundTag().apply { putString("value", variant.value) }
+
+        override fun parse(
+            registries: net.minecraft.core.HolderLookup.Provider,
+            tag: CompoundTag,
+        ): TestVariant = TestVariant(tag.getString("value"))
+    }
 }

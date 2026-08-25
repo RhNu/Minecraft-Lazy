@@ -444,6 +444,7 @@ internal object DataGeneration {
             add("message.lazy.configuration_card.incompatible", "This machine cannot use the card's network target")
             add("message.lazy.modular_configurator.cleared", "Cleared all integration configurations")
             add("message.lazy.modular_configurator.nothing_to_clear", "There are no integration configurations to clear")
+            add("gui.lazy.io.capability.mekanism_chemical", "Chemicals")
             add("message.lazy.modular_configurator.mekanism.security_failed", "Mekanism access denied; nothing was changed")
             add(
                 "message.lazy.modular_configurator.mekanism.nothing_to_paste",
@@ -505,7 +506,7 @@ internal object DataGeneration {
             add("message.lazy.beyond_dimensions.unavailable", "Beyond Dimensions integration is unavailable")
             add("gui.lazy.repairer.repair", "Repair item")
             add("tooltip.lazy.buffer.contents", "%s / %s items, %s / %s mB")
-            add("gui.lazy.replicator.resource.empty", "Mark an item, or drag an item or fluid from JEI")
+            add("gui.lazy.replicator.resource.empty", "Mark an item, or drag an item, fluid, or supported resource from JEI")
             add("gui.lazy.replicator.resource.selected", "%s × %s per operation")
             add("gui.lazy.replicator.amount.edit", "Edit amount (also right- or middle-click the resource)")
             add("gui.lazy.replicator.amount.title", "Amount per operation")
@@ -710,6 +711,7 @@ internal object DataGeneration {
             add("message.lazy.configuration_card.incompatible", "该机器无法使用配置卡上的网络目标")
             add("message.lazy.modular_configurator.cleared", "已清除全部联动配置")
             add("message.lazy.modular_configurator.nothing_to_clear", "没有可清除的联动配置")
+            add("gui.lazy.io.capability.mekanism_chemical", "化学品")
             add("message.lazy.modular_configurator.mekanism.security_failed", "没有 Mekanism 访问权限，未进行任何修改")
             add("message.lazy.modular_configurator.mekanism.nothing_to_paste", "尚未复制 Mekanism 配置，无法粘贴")
             add("message.lazy.modular_configurator.mekanism.invalid_data", "保存的 Mekanism 配置无效")
@@ -753,7 +755,7 @@ internal object DataGeneration {
             add("message.lazy.beyond_dimensions.unavailable", "超越维度兼容当前不可用")
             add("gui.lazy.repairer.repair", "修复物品")
             add("tooltip.lazy.buffer.contents", "物品 %s / %s，流体 %s / %s mB")
-            add("gui.lazy.replicator.resource.empty", "标记物品，或从 JEI 拖入物品或流体")
+            add("gui.lazy.replicator.resource.empty", "标记物品，或从 JEI 拖入物品、流体或受支持资源")
             add("gui.lazy.replicator.resource.selected", "每次生成 %s × %s")
             add("gui.lazy.replicator.amount.edit", "编辑数量（也可右键或中键资源）")
             add("gui.lazy.replicator.amount.title", "每次生成数量")

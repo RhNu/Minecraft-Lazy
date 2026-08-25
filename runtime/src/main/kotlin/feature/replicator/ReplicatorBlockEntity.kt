@@ -16,6 +16,7 @@ import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceKinds
+import rhx.lazy.core.resource.ResourceSprite
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.integration.api.LazyInternalApi
 
@@ -38,6 +39,10 @@ public class ReplicatorBlockEntity(
     }
 
     public fun getResource(): ResourceAmount<out ResourceVariant>? = resource?.let(::copyAmount)
+
+    internal fun getResourceName() = resource?.variantName
+
+    internal fun getResourceSprite(): ResourceSprite? = resource?.sprite
 
     public fun setResource(amount: ResourceAmount<out ResourceVariant>?) {
         val normalized = amount?.let(::copyAmount)
@@ -64,6 +69,10 @@ public class ReplicatorBlockEntity(
                 kind.defaultAmount
             }
         setResource(ResourceAmount(kind, variant, markedAmount))
+    }
+
+    internal fun markResource(amount: ResourceAmount<out ResourceVariant>) {
+        markResourceUnchecked(amount)
     }
 
     public fun setAmount(amount: Long) {
@@ -190,8 +199,7 @@ public class ReplicatorBlockEntity(
             variant: V,
         ): Boolean {
             if (amount.kind !== kind) return false
-            val typedAmount = amount as ResourceAmount<V>
-            return kind.matches(typedAmount.variant, variant)
+            return (amount as ResourceAmount<V>).matches(kind, variant)
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -200,9 +208,13 @@ public class ReplicatorBlockEntity(
             second: ResourceAmount<out ResourceVariant>?,
         ): Boolean {
             if (first === second) return true
-            if (first == null || second == null || first.kind !== second.kind || first.amount != second.amount) return false
-            val kind = first.kind as ResourceKind<ResourceVariant>
-            return kind.matches(first.variant, second.variant)
+            return first != null && second != null && first.amount == second.amount && first.matches(second)
         }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun markResourceUnchecked(amount: ResourceAmount<out ResourceVariant>) {
+        val typed = amount as ResourceAmount<ResourceVariant>
+        markResource(typed.kind, typed.variant)
     }
 }

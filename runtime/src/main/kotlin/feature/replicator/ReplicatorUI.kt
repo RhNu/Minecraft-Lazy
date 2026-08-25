@@ -2,6 +2,8 @@ package rhx.lazy.feature.replicator
 
 import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.DataBindingBuilder
+import com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture
+import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import com.lowdragmc.lowdraglib2.gui.ui.UI
 import com.lowdragmc.lowdraglib2.gui.ui.UIContainer
@@ -27,13 +29,19 @@ import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager
 import com.lowdragmc.lowdraglib2.integration.xei.IngredientIO
 import dev.vfyjxf.taffy.style.TaffyDimension
 import dev.vfyjxf.taffy.style.TaffyPosition
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.fluids.FluidStack
 import rhx.lazy.core.blockEntityOrNull
 import rhx.lazy.core.io.IoPanelModel
 import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.core.ui.CompactLongFormatter
 
 internal object ReplicatorUI {
@@ -44,9 +52,15 @@ internal object ReplicatorUI {
         val amountEditor = AmountEditor(model)
         lateinit var itemTemplateSlot: ItemSlot
         lateinit var fluidTemplateSlot: FluidSlot
+        lateinit var customResourceSlot: UIElement
         lateinit var amountButton: Button
         lateinit var gearButton: Button
         lateinit var installIoPanel: (UIElement) -> Unit
+        var displayedItem = ItemStack.EMPTY
+        var displayedFluid = FluidStack.EMPTY
+        var displayedResourceName: Component? = null
+        var displayedSpriteTexture: ResourceLocation? = null
+        var displayedSpriteColor = -1
 
         val root =
             element(
@@ -123,6 +137,37 @@ internal object ReplicatorUI {
                                 )
                                 installResourceInteraction(model, amountEditor)
                             }
+
+                        customResourceSlot =
+                            element(
+                                {
+                                    cls = { +"lazy-replicator__resource-layer" }
+                                    layout = {
+                                        position(TaffyPosition.ABSOLUTE)
+                                        pos {
+                                            top(0)
+                                            left(0)
+                                        }
+                                    }
+                                    style = {
+                                        background(
+                                            IGuiTexture.dynamic {
+                                                val texture = displayedSpriteTexture
+                                                if (texture == null) {
+                                                    ItemSlot.ITEM_SLOT_TEXTURE
+                                                } else {
+                                                    IGuiTexture.group(
+                                                        ItemSlot.ITEM_SLOT_TEXTURE,
+                                                        SpriteTexture.of(texture).setColor(displayedSpriteColor),
+                                                    )
+                                                }
+                                            },
+                                        )
+                                    }
+                                },
+                            ).element.apply {
+                                installResourceInteraction(model, amountEditor)
+                            }
                     }
 
                     amountButton =
@@ -175,27 +220,21 @@ internal object ReplicatorUI {
                 )
             }
 
-        var displayedItem = ItemStack.EMPTY
-        var displayedFluid = FluidStack.EMPTY
         var displayedAmount = 0L
 
         fun refreshResourceSlot() {
             itemTemplateSlot.style { it.zIndex(if (displayedItem.isEmpty) 0 else 1) }
             fluidTemplateSlot.style { it.zIndex(if (displayedFluid.isEmpty) 0 else 1) }
-            val resourceName =
-                when {
-                    !displayedItem.isEmpty -> displayedItem.hoverName
-                    !displayedFluid.isEmpty -> displayedFluid.hoverName
-                    else -> null
-                }
+            customResourceSlot.style { it.zIndex(if (displayedSpriteTexture == null) 0 else 2) }
             val tooltip =
-                if (resourceName == null) {
+                if (displayedResourceName == null) {
                     Component.translatable("gui.lazy.replicator.resource.empty")
                 } else {
-                    Component.translatable("gui.lazy.replicator.resource.selected", resourceName, displayedAmount)
+                    Component.translatable("gui.lazy.replicator.resource.selected", displayedResourceName, displayedAmount)
                 }
             itemTemplateSlot.style { it.tooltips(tooltip) }
             fluidTemplateSlot.style { it.tooltips(tooltip) }
+            customResourceSlot.style { it.tooltips(tooltip) }
         }
         itemTemplateSlot.registerValueListener { template ->
             displayedItem = template
@@ -205,6 +244,67 @@ internal object ReplicatorUI {
             displayedFluid = template
             refreshResourceSlot()
         }
+
+        val resourceNameValue = BindableValue<Component>(Component.empty())
+        resourceNameValue.setDisplay(false)
+        resourceNameValue.registerValueListener { name ->
+            displayedResourceName = name.takeUnless { it.string.isEmpty() }
+            refreshResourceSlot()
+        }
+        resourceNameValue.bind(
+            DataBindingBuilder
+                .componentS2C { model.resourceName() ?: Component.empty() }
+                .initialValue(Component.empty())
+                .build(),
+        )
+        root.addChild(resourceNameValue)
+
+        val spriteTextureValue = BindableValue("")
+        spriteTextureValue.setDisplay(false)
+        spriteTextureValue.registerValueListener { texture ->
+            displayedSpriteTexture = ResourceLocation.tryParse(texture)
+            refreshResourceSlot()
+        }
+        spriteTextureValue.bind(
+            DataBindingBuilder
+                .stringS2C(model::resourceSpriteTexture)
+                .initialValue("")
+                .build(),
+        )
+        root.addChild(spriteTextureValue)
+
+        val spriteColorValue = BindableValue(-1)
+        spriteColorValue.setDisplay(false)
+        spriteColorValue.registerValueListener { color -> displayedSpriteColor = color }
+        spriteColorValue.bind(
+            DataBindingBuilder
+                .intValS2C(model::resourceSpriteColor)
+                .initialValue(-1)
+                .build(),
+        )
+        root.addChild(spriteColorValue)
+
+        val ghostSelectionValue = BindableValue<Tag>(CompoundTag())
+        ghostSelectionValue.setDisplay(false)
+        ghostSelectionValue.bind(
+            DataBindingBuilder
+                .tagC2S(model::setGhostResource)
+                .initialValue(CompoundTag())
+                .build(),
+        )
+        root.addChild(ghostSelectionValue)
+        ReplicatorGhostIngredientExtensions.install(
+            customResourceSlot,
+            object : ReplicatorGhostIngredientSink {
+                override fun <V : ResourceVariant> select(
+                    kind: ResourceKind<V>,
+                    variant: V,
+                ) {
+                    val registries = holder.player.level().registryAccess()
+                    ghostSelectionValue.setValue(ResourceAmount(kind, variant, kind.defaultAmount).save(registries))
+                }
+            },
+        )
 
         val amountValue = BindableValue(0L)
         amountValue.setDisplay(false)
@@ -435,6 +535,26 @@ internal object ReplicatorUI {
         }
 
         fun amount(): Long = blockEntity?.getResource()?.amount ?: 0L
+
+        fun resourceName(): Component? = blockEntity?.getResourceName()
+
+        fun resourceSpriteTexture(): String =
+            blockEntity
+                ?.getResourceSprite()
+                ?.texture
+                ?.toString()
+                .orEmpty()
+
+        fun resourceSpriteColor(): Int = blockEntity?.getResourceSprite()?.color ?: -1
+
+        fun setGhostResource(tag: Tag) {
+            if (!isValid() || tag !is CompoundTag) return
+            val entity = blockEntity ?: return
+            ResourceAmount
+                .parse(holder.player.level().registryAccess(), tag)
+                ?.takeIf { it.sprite != null }
+                ?.let(entity::markResource)
+        }
 
         fun amountText(): String = amount().coerceAtLeast(1L).toString()
 

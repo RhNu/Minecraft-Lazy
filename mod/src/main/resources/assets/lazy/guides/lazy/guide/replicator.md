@@ -14,11 +14,11 @@ item_ids:
   <BlockImage id="lazy:replicator" scale="8" />
 </Column>
 
-The Replicator repeatedly creates a marked item or fluid without consuming a source.
+The Replicator repeatedly creates a marked resource without consuming a source.
 
 ## Resource and interval
 
-- There is one resource slot. Click it with a carried item, or drag either an item or fluid from JEI onto the same spot.
+- There is one resource slot. Click it with a carried item, or drag an item or fluid from JEI onto the same spot. With Mekanism installed, chemicals can be dragged directly from JEI as well.
 - Click the amount button, or right- or middle-click the resource slot, to enter an exact value or use `−` / `+` in resource-sized steps.
 - Marking the same resource again preserves its amount. A different resource starts at its own default. Left-click the slot with an empty cursor to clear it.
 
@@ -33,7 +33,7 @@ The interval button cycles through four speeds:
 
 ## Automation
 
-Use [IO settings](io.md) to send copies to adjacent item or fluid handlers, or to a supported network. Unaccepted output is not buffered; the Replicator simply offers a fresh copy on its next operation.
+Use [IO settings](io.md) to send copies to an adjacent handler for the selected resource, or to a supported network. Mekanism chemicals are sent through the adjacent chemical capability. Unaccepted output is not buffered; the Replicator simply offers a fresh copy on its next operation.
 
 The marked resource and interval remain in the dropped machine when it is broken or dismantled. IO settings reset when it is placed again.
 

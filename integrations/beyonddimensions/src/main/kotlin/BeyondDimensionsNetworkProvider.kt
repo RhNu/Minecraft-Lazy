@@ -25,7 +25,7 @@ internal class BeyondDimensionsNetworkProvider(
 ) : NetworkOutputProvider {
     override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath(MOD_ID, "beyonddimensions")
     override val displayName: Component = Component.translatable("gui.lazy.io.provider.beyonddimensions")
-    override val capabilities = ResourceKinds.all
+    override val capabilities = setOf(ResourceKinds.ITEM, ResourceKinds.FLUID, ResourceKinds.ENERGY)
 
     override fun icon(): ItemStack =
         BuiltInRegistries.ITEM

@@ -3,19 +3,12 @@ package rhx.lazy.core.io
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
-import net.neoforged.neoforge.energy.IEnergyStorage
-import net.neoforged.neoforge.fluids.capability.IFluidHandler
-import net.neoforged.neoforge.items.IItemHandler
-import net.neoforged.neoforge.items.ItemHandlerHelper
-import rhx.lazy.core.resource.EnergyVariant
-import rhx.lazy.core.resource.FluidVariant
-import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceStore
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.integration.api.LazyInternalApi
-import kotlin.math.min
+import java.util.function.BooleanSupplier
 
 @LazyInternalApi
 public data class OutputEntry(
@@ -103,14 +96,17 @@ internal class TransferBudget(
 
 /** Shared face/network transfer implementation used by every machine output source. */
 internal class OutputDispatcher(
-    origin: BlockPos,
+    private val origin: BlockPos,
     stillValid: () -> Boolean,
 ) {
-    private val neighborItems = NeighborCapabilities.items(origin, stillValid)
-    private val neighborFluids = NeighborCapabilities.fluids(origin, stillValid)
-    private val neighborEnergy = NeighborCapabilities.energy(origin, stillValid)
+    private val stillValid = BooleanSupplier(stillValid)
+    private val faceTransfers = mutableMapOf<ResourceKind<out ResourceVariant>, UntypedResourceFaceTransfer>()
     private var faceCursor = 0
     private var networkCursor = 0
+
+    init {
+        BuiltInResourceFaceTransfers.install()
+    }
 
     fun pushToFaces(
         level: ServerLevel,
@@ -176,58 +172,22 @@ internal class OutputDispatcher(
     }
 
     fun invalidate() {
-        neighborItems.invalidate()
-        neighborFluids.invalidate()
-        neighborEnergy.invalidate()
+        faceTransfers.values.forEach(UntypedResourceFaceTransfer::invalidate)
+        faceTransfers.clear()
     }
 
     private fun offerToFace(
         level: ServerLevel,
         direction: Direction,
         amount: ResourceAmount<out ResourceVariant>,
-    ): Long =
-        when (val variant = amount.variant) {
-            is ItemVariant -> offerItem(neighborItems[level, direction], variant, amount.amount)
-            is FluidVariant -> offerFluid(neighborFluids[level, direction], variant, amount.amount)
-            EnergyVariant -> offerEnergy(neighborEnergy[level, direction], amount.amount)
-            else -> 0L
-        }
-
-    private fun offerItem(
-        target: IItemHandler?,
-        variant: ItemVariant,
-        amount: Long,
     ): Long {
-        if (target == null || amount <= 0L) return 0L
-        val offered =
-            min(
-                amount,
-                variant.template.maxStackSize
-                    .coerceAtLeast(1)
-                    .toLong(),
-            ).toInt()
-        val stack = variant.template.copyWithCount(offered)
-        val remainder = ItemHandlerHelper.insertItemStacked(target, stack, false)
-        return (offered - remainder.count.coerceIn(0, offered)).toLong()
-    }
-
-    private fun offerFluid(
-        target: IFluidHandler?,
-        variant: FluidVariant,
-        amount: Long,
-    ): Long {
-        if (target == null || amount <= 0L) return 0L
-        val offered = amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        return target.fill(variant.template.copyWithAmount(offered), IFluidHandler.FluidAction.EXECUTE).coerceIn(0, offered).toLong()
-    }
-
-    private fun offerEnergy(
-        target: IEnergyStorage?,
-        amount: Long,
-    ): Long {
-        if (target?.canReceive() != true || amount <= 0L) return 0L
-        val offered = amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        return target.receiveEnergy(offered, false).coerceIn(0, offered).toLong()
+        val transfer =
+            faceTransfers[amount.kind]
+                ?: ResourceFaceTransferFactories.create(amount.kind, origin, stillValid)?.also {
+                    faceTransfers[amount.kind] = it
+                }
+                ?: return 0L
+        return transfer.offer(level, direction, amount)
     }
 }
 
