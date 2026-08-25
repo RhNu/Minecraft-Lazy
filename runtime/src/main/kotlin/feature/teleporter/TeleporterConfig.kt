@@ -7,14 +7,6 @@ import rhx.lazy.core.config.LazyConfigDefinition
 internal class TeleporterConfig(
     builder: LazyConfigBuilder,
 ) {
-    val chargeTicks =
-        builder.int(
-            "chargeTicks",
-            20,
-            1..72_000,
-            "Ticks the teleporter must be charged before it activates.",
-        )
-
     val cooldownSeconds =
         builder.int(
             "cooldownSeconds",
@@ -31,11 +23,12 @@ internal class TeleporterConfig(
             "Horizontal radius searched for a safe destination.",
         )
 
-    val createVoidSafetyPlatform =
-        builder.boolean(
-            "createVoidSafetyPlatform",
-            true,
-            "Allow the teleporter to add a small platform in the void dimension.",
+    val maxSpacesPerPlayer =
+        builder.int(
+            "maxSpacesPerPlayer",
+            64,
+            1..4_096,
+            "Maximum number of active encapsulated spaces per player. Operators bypass this limit.",
         )
 }
 

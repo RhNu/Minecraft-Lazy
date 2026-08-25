@@ -18,6 +18,8 @@ import rhx.lazy.feature.simulation.SimulationConfigs
 import rhx.lazy.feature.simulation.SimulationNetworking
 import rhx.lazy.feature.simulation.SimulationRecipeReloads
 import rhx.lazy.feature.teleporter.TeleporterConfigs
+import rhx.lazy.feature.teleporter.TeleporterUI
+import rhx.lazy.feature.voidworld.VoidWorldEvents
 import rhx.lazy.integration.api.IntegrationCommonContext
 import rhx.lazy.integration.api.IntegrationConfigContext
 import rhx.lazy.integration.api.LazyInternalApi
@@ -37,11 +39,15 @@ public object LazyRuntime {
     public fun install(context: IntegrationCommonContext) {
         NeoForgeMod.enableMilkFluid()
         LazyRegistries.register(context.modBus)
+        TeleporterUI.register()
         context.modBus.addListener(MaterialForms::registerDataPackRegistry)
         context.modBus.addListener(MaterialIndexReloads::onConfigLoading)
         context.modBus.addListener(MaterialIndexReloads::onConfigReloading)
         context.modBus.addListener(SimulationNetworking::register)
         context.gameBus.addListener(LazyCommands::register)
+        context.gameBus.addListener(VoidWorldEvents::onServerStarted)
+        context.gameBus.addListener(VoidWorldEvents::onEntityJoin)
+        context.gameBus.addListener(VoidWorldEvents::onPlayerLoggedIn)
         context.gameBus.addListener(SimulationRecipeReloads::onDatapackSync)
         context.gameBus.addListener(SimulationRecipeReloads::onServerTick)
         context.gameBus.addListener(MaterialIndexReloads::onTagsUpdated)

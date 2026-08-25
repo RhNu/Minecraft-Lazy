@@ -18,7 +18,7 @@ Lazy adds extra features when supported mods are installed.
 
 ## Equipment and information
 
-- **Curios API:** Adds slots for the Teleporter and Configuration Card. The teleporter can be activated while equipped.
+- **Curios API:** Adds slots for the Teleporter and Configuration Card. The equipped Teleporter shortcut opens its management menu.
 - **Jade:** Machine overlays show useful details such as output mode, stored contents, progress, and enabled features.
 - **JEI:** Shows Simulation Chamber rewards and Shaper conversions.
 

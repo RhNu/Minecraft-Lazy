@@ -12,6 +12,8 @@ navigation:
 
 <CommandLink command="/lazy rise">运行 /lazy rise</CommandLink>
 
+`/lazy rise` 无法在虚空维度中使用。
+
 从玩家所在位置向上寻找，将玩家移动到同一竖直方向内第一个安全且能看见天空的位置。
 
 ## 伤害保护

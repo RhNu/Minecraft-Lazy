@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "lazy:block/encapsulated_space_frame"
+    }
+  }
+}

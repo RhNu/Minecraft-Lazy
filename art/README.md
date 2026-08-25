@@ -6,6 +6,7 @@
 
 - `art/block/machine/`：机器共用的底面、侧面、顶面材质。
 - `art/block/overlay/`：各机器正面 overlay（透明背景叠加层），每个机器一个。
+- `art/block/encapsulated_space_*.svg`：封装空间的半透明墙面与不透明边框材质。
 - `art/item/icon/`：物品图标的 SVG 源文件。
 - `art/slot/empty/`：空槽位图标的 SVG 源文件。
 

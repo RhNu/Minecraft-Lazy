@@ -20,6 +20,7 @@ import rhx.lazy.feature.simulation.SimulationRecipeData
 import rhx.lazy.feature.simulation.SimulationRegistries
 import rhx.lazy.feature.teleporter.TeleporterRegistries
 import rhx.lazy.feature.voidworld.VoidWorldBootstrap
+import rhx.lazy.feature.voidworld.VoidWorldRegistries
 import rhx.lazy.integration.api.LazyInternalApi
 
 /** Narrow execution-time view of runtime registry holders used by the standalone DataGen project. */
@@ -62,6 +63,10 @@ public object DataGenExports {
     public fun dataModelItem(): Item = SimulationRegistries.dataModelItem.get()
 
     public fun teleporterItem(): Item = TeleporterRegistries.item.get()
+
+    public fun encapsulatedSpaceWallBlock(): Block = VoidWorldRegistries.spaceWall.get()
+
+    public fun encapsulatedSpaceFrameBlock(): Block = VoidWorldRegistries.spaceFrame.get()
 
     public fun processingCoreT1(): Item = ProcessingCoreRegistries.t1.get()
 

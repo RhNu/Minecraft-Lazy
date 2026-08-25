@@ -12,6 +12,8 @@ navigation:
 
 <CommandLink command="/lazy rise">Run /lazy rise</CommandLink>
 
+`/lazy rise` is unavailable in the Void dimension.
+
 Searches upward in your current column and moves you to the first safe position with a clear view of the sky.
 
 ## Damage protection

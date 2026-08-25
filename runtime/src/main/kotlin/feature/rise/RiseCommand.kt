@@ -10,6 +10,7 @@ import net.minecraft.world.phys.Vec3
 import rhx.lazy.core.command.LazySubcommand
 import rhx.lazy.core.command.serverPlayerOrNull
 import rhx.lazy.core.displayActionBar
+import rhx.lazy.feature.voidworld.VoidWorldKeys
 
 internal object RiseCommand : LazySubcommand {
     override fun attachTo(root: LiteralArgumentBuilder<CommandSourceStack>) {
@@ -22,6 +23,10 @@ internal object RiseCommand : LazySubcommand {
 
     private fun execute(context: CommandContext<CommandSourceStack>): Int {
         val player = context.serverPlayerOrNull(PLAYER_ONLY) ?: return 0
+        if (player.level().dimension() == VoidWorldKeys.voidLevel) {
+            player.displayActionBar(UNAVAILABLE_IN_VOID)
+            return 0
+        }
 
         val target =
             RiseTargetFinder.find(
@@ -53,4 +58,5 @@ internal object RiseCommand : LazySubcommand {
     }
 
     private const val PLAYER_ONLY = "message.lazy.rise.player_only"
+    private const val UNAVAILABLE_IN_VOID = "message.lazy.rise.unavailable_in_void"
 }
