@@ -6,7 +6,7 @@ import kotlin.math.min
 
 internal class SimulationInputHandler(
     private val stacks: List<ItemStack>,
-    private val slotLimit: (Int, ItemStack) -> Int,
+    private val slotLimit: (Int) -> Int,
     private val validInput: (Int, ItemStack) -> Boolean,
     private val update: (Int, ItemStack) -> Unit,
 ) : IItemHandlerModifiable {
@@ -22,7 +22,7 @@ internal class SimulationInputHandler(
         if (stack.isEmpty || !validInput(slot, stack)) return stack
         val stored = stacks[slot]
         if (!stored.isEmpty && !ItemStack.isSameItemSameComponents(stored, stack)) return stack
-        val accepted = min(stack.count, slotLimit(slot, stack) - stored.count)
+        val accepted = min(stack.count, effectiveLimit(slot, stack) - stored.count)
         if (accepted <= 0) return stack
         if (!simulate) {
             update(
@@ -50,7 +50,7 @@ internal class SimulationInputHandler(
         return result
     }
 
-    override fun getSlotLimit(slot: Int) = slotLimit(slot, stacks[slot]).coerceAtLeast(1)
+    override fun getSlotLimit(slot: Int) = slotLimit(slot).coerceAtLeast(1)
 
     override fun isItemValid(
         slot: Int,
@@ -63,8 +63,13 @@ internal class SimulationInputHandler(
     ) {
         if (stack.isEmpty || validInput(slot, stack)) {
             val normalized =
-                if (stack.isEmpty) ItemStack.EMPTY else stack.copyWithCount(min(stack.count, slotLimit(slot, stack)))
+                if (stack.isEmpty) ItemStack.EMPTY else stack.copyWithCount(min(stack.count, effectiveLimit(slot, stack)))
             update(slot, normalized)
         }
     }
+
+    private fun effectiveLimit(
+        slot: Int,
+        stack: ItemStack,
+    ) = min(getSlotLimit(slot), stack.maxStackSize.coerceAtLeast(1))
 }

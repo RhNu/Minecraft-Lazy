@@ -14,7 +14,7 @@ class SimulationInputHandlerTest {
         val handler =
             SimulationInputHandler(
                 stacks,
-                { slot, _ -> if (slot == 0) 1 else 64 },
+                { slot -> if (slot == 0) 1 else 64 },
                 { slot, stack -> slot == 0 && stack.`is`(Items.WHEAT) || slot == 1 && stack.`is`(Items.DIAMOND) },
                 { slot, stack ->
                     stacks[slot] = stack
@@ -33,12 +33,28 @@ class SimulationInputHandlerTest {
     }
 
     @Test
+    fun `empty stackable slot advertises full capacity for quick move`() {
+        val stacks = MutableList(1) { ItemStack.EMPTY }
+        val handler =
+            SimulationInputHandler(
+                stacks,
+                { 64 },
+                { _, stack -> stack.`is`(Items.DIAMOND) },
+                { slot, stack -> stacks[slot] = stack },
+            )
+
+        assertEquals(64, handler.getSlotLimit(0))
+        assertTrue(handler.insertItem(0, ItemStack(Items.DIAMOND, 64), false).isEmpty)
+        assertEquals(64, stacks[0].count)
+    }
+
+    @Test
     fun `invalid direct assignment is ignored`() {
         val stacks = MutableList(1) { ItemStack.EMPTY }
         val handler =
             SimulationInputHandler(
                 stacks,
-                { _, _ -> 1 },
+                { 1 },
                 { _, stack -> stack.`is`(Items.WHEAT) },
                 { slot, stack -> stacks[slot] = stack },
             )

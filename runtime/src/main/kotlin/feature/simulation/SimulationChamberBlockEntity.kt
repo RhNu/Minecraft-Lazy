@@ -325,10 +325,7 @@ public class SimulationChamberBlockEntity(
         if (activeJob == null) refreshDisplayState()
     }
 
-    private fun inputLimit(
-        slot: Int,
-        stack: ItemStack,
-    ): Int = if (slot == CORE_SLOT) min(64, stack.maxStackSize.coerceAtLeast(1)) else 1
+    private fun inputLimit(slot: Int): Int = if (slot == CORE_SLOT) 64 else 1
 
     private fun validInput(
         slot: Int,
