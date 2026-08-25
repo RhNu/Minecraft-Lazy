@@ -18,8 +18,9 @@ The Replicator repeatedly creates a marked resource without consuming a source.
 
 ## Resource and interval
 
-- There is one resource slot. Click it with a carried item, or drag an item or fluid from JEI onto the same spot. With Mekanism installed, chemicals can be dragged directly from JEI as well.
-- Click the amount button, or right- or middle-click the resource slot, to enter an exact value or use `−` / `+` in resource-sized steps.
+- There is one resource slot. Left-click it with a carried item, or drag an item or fluid from JEI onto the same spot. With Mekanism installed, chemicals can be dragged directly from JEI as well.
+- Right-click the resource slot while carrying a container of supported resource to mark its first non-empty contained resource without consuming or modifying the container.
+- Click the amount button, or middle-click the resource slot, to enter an exact value or use `−` / `+` in resource-sized steps.
 - Marking the same resource again preserves its amount. A different resource starts at its own default. Left-click the slot with an empty cursor to clear it.
 
 The interval button cycles through four speeds:

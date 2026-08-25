@@ -1,8 +1,12 @@
 package rhx.lazy.integration.mekanism
 
+import mekanism.api.Action
+import mekanism.common.capabilities.Capabilities
+import mekanism.common.registries.MekanismBlocks
 import mekanism.common.registries.MekanismChemicals
 import net.minecraft.core.RegistryAccess
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.world.item.ItemStack
 import rhx.lazy.core.resource.ResourceAmount
 import rhx.lazy.core.resource.ResourceKinds
 import kotlin.test.BeforeTest
@@ -32,5 +36,21 @@ class MekanismChemicalResourcesTest {
         assertTrue(original.matches(restored))
         assertEquals(1L, variant.template.amount)
         assertEquals(MekanismChemicals.HYDROGEN.get(), (restored.variant as ChemicalVariant).template.chemical)
+    }
+
+    @Test
+    fun `chemical tank extraction reads its first non-empty chemical without consuming it`() {
+        val tank = ItemStack(MekanismBlocks.BASIC_CHEMICAL_TANK.asItem())
+        val handler = assertNotNull(Capabilities.CHEMICAL.getCapability(tank))
+        val inserted = MekanismChemicals.HYDROGEN.asStack(4_000L)
+        handler.insertChemical(inserted, Action.EXECUTE)
+        val storedAmount = handler.getChemicalInTank(0).amount
+        assertTrue(storedAmount > 0L)
+
+        val selected = assertNotNull(ChemicalContainerExtractor.extract(tank))
+
+        assertEquals(MekanismChemicals.HYDROGEN.get(), selected.template.chemical)
+        assertEquals(storedAmount, handler.getChemicalInTank(0).amount)
+        assertEquals(MekanismBlocks.BASIC_CHEMICAL_TANK.asItem(), tank.item)
     }
 }

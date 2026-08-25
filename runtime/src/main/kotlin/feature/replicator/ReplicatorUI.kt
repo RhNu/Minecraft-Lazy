@@ -40,6 +40,7 @@ import rhx.lazy.core.io.IoPanelModel
 import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
 import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceContainerExtractors
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.core.ui.CompactLongFormatter
@@ -362,7 +363,7 @@ internal object ReplicatorUI {
         addEventListener(
             "mouseDown",
             { event ->
-                if (event.button == RIGHT_MOUSE_BUTTON || event.button == MIDDLE_MOUSE_BUTTON) {
+                if (event.button == MIDDLE_MOUSE_BUTTON) {
                     amountEditor.open()
                     event.stopImmediatePropagation()
                 }
@@ -370,8 +371,10 @@ internal object ReplicatorUI {
             true,
         )
         addServerEventListener("mouseDown") { event ->
-            if (event.button == LEFT_MOUSE_BUTTON && model.isValid()) {
-                model.markCarriedStackOrClear()
+            if (!model.isValid()) return@addServerEventListener
+            when (event.button) {
+                LEFT_MOUSE_BUTTON -> model.markCarriedStackOrClear()
+                RIGHT_MOUSE_BUTTON -> model.markCarriedContainerResource()
             }
         }
     }
@@ -578,6 +581,11 @@ internal object ReplicatorUI {
             } else {
                 setItemTemplate(stack)
             }
+        }
+
+        fun markCarriedContainerResource() {
+            val stack = holder.player.containerMenu.carried
+            ResourceContainerExtractors.extractFirst(stack)?.let { blockEntity?.markResource(it) }
         }
 
         fun cycleGear() {

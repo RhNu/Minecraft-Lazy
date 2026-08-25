@@ -11,10 +11,13 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache
 import rhx.lazy.core.io.ResourceFaceTransfer
 import rhx.lazy.core.io.ResourceFaceTransferFactories
 import rhx.lazy.core.io.ResourceFaceTransferFactory
+import rhx.lazy.core.resource.ResourceContainerExtractor
+import rhx.lazy.core.resource.ResourceContainerExtractors
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceSprite
@@ -82,6 +85,16 @@ internal object ChemicalFaceTransferFactory : ResourceFaceTransferFactory<Chemic
     ): ResourceFaceTransfer<ChemicalVariant> = ChemicalFaceTransfer(origin, stillValid)
 }
 
+internal object ChemicalContainerExtractor : ResourceContainerExtractor<ChemicalVariant> {
+    override val kind: ResourceKind<ChemicalVariant> = ChemicalResourceKind
+
+    override fun extract(stack: ItemStack): ChemicalVariant? {
+        val handler = Capabilities.CHEMICAL.getCapability(stack) ?: return null
+        return (0 until handler.chemicalTanks)
+            .firstNotNullOfOrNull { tank -> ChemicalVariant.of(handler.getChemicalInTank(tank)) }
+    }
+}
+
 private class ChemicalFaceTransfer(
     private val origin: BlockPos,
     private val stillValid: BooleanSupplier,
@@ -120,5 +133,6 @@ internal object MekanismChemicalResourceIntegration {
     fun install() {
         ResourceKinds.register(ChemicalResourceKind)
         ResourceFaceTransferFactories.register(ChemicalFaceTransferFactory)
+        ResourceContainerExtractors.register(ChemicalContainerExtractor)
     }
 }

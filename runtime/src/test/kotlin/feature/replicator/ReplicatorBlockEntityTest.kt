@@ -15,6 +15,7 @@ import rhx.lazy.core.ManagedBlockEntity
 import rhx.lazy.core.resource.FluidVariant
 import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceContainerExtractors
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceVariant
@@ -23,6 +24,7 @@ import rhx.lazy.core.testing.FakeNetworkStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -68,6 +70,19 @@ class ReplicatorBlockEntityTest {
         assertEquals(1_000, replicator.getFluidTemplate().amount)
         assertEquals("Copied water", replicator.getFluidTemplate().get(DataComponents.CUSTOM_NAME)?.string)
         assertTrue(replicator.getResource()?.variant is FluidVariant)
+    }
+
+    @Test
+    fun `container extraction marks a fluid bucket without changing the carried item`() {
+        val bucket = ItemStack(Items.WATER_BUCKET)
+
+        val selected = assertNotNull(ResourceContainerExtractors.extractFirst(bucket))
+
+        assertEquals(ResourceKinds.FLUID, selected.kind)
+        assertEquals(ResourceKinds.FLUID.defaultAmount, selected.amount)
+        assertEquals(Fluids.WATER, (selected.variant as FluidVariant).template.fluid)
+        assertEquals(Items.WATER_BUCKET, bucket.item)
+        assertEquals(1, bucket.count)
     }
 
     @Test
