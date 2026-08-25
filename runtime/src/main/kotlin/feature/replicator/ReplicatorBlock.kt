@@ -1,4 +1,4 @@
-package rhx.lazy.feature.itemcopier
+package rhx.lazy.feature.replicator
 
 import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
@@ -14,7 +14,7 @@ import rhx.lazy.core.serverTicker
 import rhx.lazy.integration.api.LazyInternalApi
 
 @LazyInternalApi
-public class ItemCopierBlock :
+public class ReplicatorBlock :
     MachineBlock(
         Properties
             .of()
@@ -24,16 +24,16 @@ public class ItemCopierBlock :
     override fun newBlockEntity(
         pos: BlockPos,
         state: BlockState,
-    ): BlockEntity = ItemCopierBlockEntity(pos, state)
+    ): BlockEntity = ReplicatorBlockEntity(pos, state)
 
-    override fun createUI(holder: BlockUIMenuType.BlockUIHolder): ModularUI = ItemCopierUI.create(holder)
+    override fun createUI(holder: BlockUIMenuType.BlockUIHolder): ModularUI = ReplicatorUI.create(holder)
 
     override fun <T : BlockEntity?> getTicker(
         level: Level,
         state: BlockState,
         blockEntityType: BlockEntityType<T>,
     ): BlockEntityTicker<T>? =
-        level.serverTicker(blockEntityType, ItemCopierRegistries.blockEntity.get()) {
+        level.serverTicker(blockEntityType, ReplicatorRegistries.blockEntity.get()) {
             onServerTick()
         }
 }

@@ -1,7 +1,7 @@
 package rhx.lazy.integration.jade.client
 
 import net.minecraft.resources.ResourceLocation
-import rhx.lazy.core.ui.CompactItemCountFormatter
+import rhx.lazy.core.ui.CompactLongFormatter
 import rhx.lazy.integration.jade.LargeItemStorageProvider
 import snownee.jade.api.Accessor
 import snownee.jade.api.view.ClientViewGroup
@@ -23,7 +23,7 @@ internal class LargeItemStorageClientProvider(
                 group.views.mapIndexed { index, stack ->
                     val amount = amounts.getOrElse(index) { stack.count.toLong() }
                     ItemView(stack).apply {
-                        if (amount != 1L) amountText(CompactItemCountFormatter.format(amount))
+                        if (amount != 1L) amountText(CompactLongFormatter.format(amount))
                     }
                 }
             ClientViewGroup(views).apply { extraData = group.extraData }

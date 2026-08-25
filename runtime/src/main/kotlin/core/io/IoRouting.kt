@@ -5,21 +5,10 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
-import rhx.lazy.core.resource.EnergyResourceKind
-import rhx.lazy.core.resource.FluidResourceKind
-import rhx.lazy.core.resource.ItemResourceKind
 import rhx.lazy.core.resource.ResourceAmount
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.integration.api.LazyInternalApi
-
-@LazyInternalApi
-public object ResourceKinds {
-    val ITEM = ItemResourceKind
-    val FLUID = FluidResourceKind
-    val ENERGY = EnergyResourceKind
-    val all: Set<ResourceKind<out ResourceVariant>> = setOf(ITEM, FLUID, ENERGY)
-}
 
 /**
  * Opaque handle to a provider-specific output destination.

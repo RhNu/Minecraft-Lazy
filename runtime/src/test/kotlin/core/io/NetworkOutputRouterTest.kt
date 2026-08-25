@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.energyAmount
 import rhx.lazy.core.resource.itemAmount
 import rhx.lazy.core.testing.FakeNetworkOutputProvider

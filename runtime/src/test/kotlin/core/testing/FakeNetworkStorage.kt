@@ -12,13 +12,13 @@ import rhx.lazy.core.io.NetworkOutputProvider
 import rhx.lazy.core.io.NetworkOutputProviders
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
-import rhx.lazy.core.io.ResourceKinds
 import rhx.lazy.core.io.TransferResult
 import rhx.lazy.core.resource.EnergyVariant
 import rhx.lazy.core.resource.FluidVariant
 import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
 import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceVariant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.min
@@ -135,6 +135,7 @@ internal class FakeNetworkOutputProvider(
             is ItemVariant -> storage.insertItemAmount(variant.template, amount.amount, simulate)
             is FluidVariant -> storage.insertFluid(variant.template, amount.amount, simulate)
             EnergyVariant -> storage.insertEnergy(amount.amount, simulate)
+            else -> TransferResult.TemporarilyUnavailable
         }
     }
 

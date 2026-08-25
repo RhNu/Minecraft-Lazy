@@ -190,6 +190,7 @@ internal class OutputDispatcher(
             is ItemVariant -> offerItem(neighborItems[level, direction], variant, amount.amount)
             is FluidVariant -> offerFluid(neighborFluids[level, direction], variant, amount.amount)
             EnergyVariant -> offerEnergy(neighborEnergy[level, direction], amount.amount)
+            else -> 0L
         }
 
     private fun offerItem(

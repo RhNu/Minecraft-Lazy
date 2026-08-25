@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import rhx.lazy.core.resource.EnergyVariant
 import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.feature.energy.ENERGY_TRANSFER_LIMIT
 import rhx.lazy.feature.energy.EnergyRegistries

@@ -1,5 +1,9 @@
 package rhx.lazy.core.resource
 
+import net.minecraft.core.HolderLookup
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.Tag
+import net.minecraft.resources.ResourceLocation
 import rhx.lazy.integration.api.LazyInternalApi
 
 /** A positive quantity paired with an immutable resource identity. */
@@ -21,6 +25,44 @@ public class ResourceAmount<V : ResourceVariant>(
     fun matches(other: ResourceAmount<V>): Boolean = kind === other.kind && kind.matches(storedVariant, other.storedVariant)
 
     fun withAmount(value: Long): ResourceAmount<V> = ResourceAmount(kind, storedVariant, value)
+
+    fun copyAmount(): ResourceAmount<V> = ResourceAmount(kind, storedVariant, amount)
+
+    fun save(registries: HolderLookup.Provider): CompoundTag =
+        CompoundTag().apply {
+            putString(KIND_TAG, kind.id.toString())
+            put(VARIANT_TAG, kind.save(registries, storedVariant))
+            putLong(AMOUNT_TAG, amount)
+        }
+
+    companion object {
+        fun parse(
+            registries: HolderLookup.Provider,
+            tag: CompoundTag,
+        ): ResourceAmount<out ResourceVariant>? {
+            val kindId = ResourceLocation.tryParse(tag.getString(KIND_TAG)) ?: return null
+            val kind = ResourceKinds[kindId] ?: return null
+            val amount = tag.getLong(AMOUNT_TAG)
+            if (amount <= 0L || !tag.contains(VARIANT_TAG, Tag.TAG_COMPOUND.toInt())) return null
+            return parseUnchecked(registries, kind, tag.getCompound(VARIANT_TAG), amount)
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private fun parseUnchecked(
+            registries: HolderLookup.Provider,
+            kind: ResourceKind<out ResourceVariant>,
+            variantTag: CompoundTag,
+            amount: Long,
+        ): ResourceAmount<out ResourceVariant>? {
+            val typedKind = kind as ResourceKind<ResourceVariant>
+            val variant = typedKind.parse(registries, variantTag) ?: return null
+            return ResourceAmount(typedKind, variant, amount)
+        }
+
+        private const val KIND_TAG = "kind"
+        private const val VARIANT_TAG = "variant"
+        private const val AMOUNT_TAG = "amount"
+    }
 }
 
 @LazyInternalApi

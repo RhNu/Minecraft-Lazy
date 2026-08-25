@@ -3,10 +3,13 @@ package rhx.lazy.integration.jade
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.world.item.ItemStack
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceAmountStreamCodec
+import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.feature.energy.EnergySourceBlockEntity
-import rhx.lazy.feature.itemcopier.ItemCopierBlockEntity
 import rhx.lazy.feature.repairer.RepairerBlockEntity
+import rhx.lazy.feature.replicator.ReplicatorBlockEntity
 import rhx.lazy.feature.simulation.SimulationChamberBlockEntity
 
 internal data class BufferJadeData(
@@ -62,42 +65,43 @@ internal object EnergySourceJadeDataProvider :
     ): OutputOnlyJadeData = OutputOnlyJadeData(output)
 }
 
-internal data class ItemCopierJadeData(
-    val template: ItemStack,
+internal data class ReplicatorJadeData(
+    val resource: ResourceAmount<out ResourceVariant>?,
     val intervalTicks: Int,
     override val output: JadeOutputState,
 ) : IoMachineJadeData
 
-internal object ItemCopierJadeDataProvider :
-    IoMachineJadeDataProvider<ItemCopierBlockEntity, ItemCopierJadeData>(
-        ItemCopierBlockEntity::class.java,
-        JadeProviderIds.itemCopier,
-        ItemCopierJadeDataCodec,
+internal object ReplicatorJadeDataProvider :
+    IoMachineJadeDataProvider<ReplicatorBlockEntity, ReplicatorJadeData>(
+        ReplicatorBlockEntity::class.java,
+        JadeProviderIds.replicator,
+        ReplicatorJadeDataCodec,
     ) {
     override fun createData(
-        entity: ItemCopierBlockEntity,
+        entity: ReplicatorBlockEntity,
         output: JadeOutputState,
-    ): ItemCopierJadeData =
-        ItemCopierJadeData(
-            template = entity.getTemplate(),
+    ): ReplicatorJadeData =
+        ReplicatorJadeData(
+            resource = entity.getResource(),
             intervalTicks = entity.getGear().intervalTicks,
             output = output,
         )
 }
 
-private object ItemCopierJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, ItemCopierJadeData> {
+private object ReplicatorJadeDataCodec : StreamCodec<RegistryFriendlyByteBuf, ReplicatorJadeData> {
     override fun encode(
         buffer: RegistryFriendlyByteBuf,
-        value: ItemCopierJadeData,
+        value: ReplicatorJadeData,
     ) {
-        ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, value.template)
+        buffer.writeBoolean(value.resource != null)
+        value.resource?.let { ResourceAmountStreamCodec.encode(buffer, it) }
         buffer.writeVarInt(value.intervalTicks)
         JadeOutputStateCodec.encode(buffer, value.output)
     }
 
-    override fun decode(buffer: RegistryFriendlyByteBuf): ItemCopierJadeData =
-        ItemCopierJadeData(
-            template = ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer),
+    override fun decode(buffer: RegistryFriendlyByteBuf): ReplicatorJadeData =
+        ReplicatorJadeData(
+            resource = if (buffer.readBoolean()) ResourceAmountStreamCodec.decode(buffer) else null,
             intervalTicks = buffer.readVarInt(),
             output = JadeOutputStateCodec.decode(buffer),
         )

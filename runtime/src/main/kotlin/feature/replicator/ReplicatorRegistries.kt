@@ -1,4 +1,4 @@
-package rhx.lazy.feature.itemcopier
+package rhx.lazy.feature.replicator
 
 import net.minecraft.core.registries.Registries
 import net.minecraft.world.level.block.entity.BlockEntityType
@@ -10,24 +10,24 @@ import rhx.lazy.core.registry.buildType
 import rhx.lazy.core.registry.registerBlockItem
 import java.util.function.Supplier
 
-internal object ItemCopierRegistries : RegistryModule {
+internal object ReplicatorRegistries : RegistryModule {
     private val blocks = DeferredRegister.createBlocks(MOD_ID)
     private val items = DeferredRegister.createItems(MOD_ID)
     private val blockEntities: DeferredRegister<BlockEntityType<*>> =
         DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MOD_ID)
 
-    val block = blocks.register("item_copier", Supplier(::ItemCopierBlock))
+    val block = blocks.register("replicator", Supplier(::ReplicatorBlock))
     val item =
         items.registerBlockItem(
-            "item_copier",
+            "replicator",
             block,
-        ) { registeredBlock, properties -> ItemCopierBlockItem(registeredBlock, properties) }
+        ) { registeredBlock, properties -> ReplicatorBlockItem(registeredBlock, properties) }
     val blockEntity =
         blockEntities.register(
-            "item_copier",
+            "replicator",
             Supplier {
                 BlockEntityType.Builder
-                    .of({ pos, state -> ItemCopierBlockEntity(pos, state) }, block.get())
+                    .of({ pos, state -> ReplicatorBlockEntity(pos, state) }, block.get())
                     .buildType()
             },
         )

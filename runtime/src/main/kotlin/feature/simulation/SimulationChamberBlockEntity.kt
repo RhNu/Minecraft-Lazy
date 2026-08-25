@@ -19,7 +19,6 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.items.IItemHandlerModifiable
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.ResourceKinds
 import rhx.lazy.core.io.StoredOutputSource
 import rhx.lazy.core.process.PreparedCommit
 import rhx.lazy.core.process.WorkController
@@ -32,6 +31,7 @@ import rhx.lazy.core.resource.FluidResourceKind
 import rhx.lazy.core.resource.ItemResourceKind
 import rhx.lazy.core.resource.ResourceFluidHandler
 import rhx.lazy.core.resource.ResourceItemHandler
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceStore
 import rhx.lazy.feature.machine.ProcessingCoreRegistries
 import rhx.lazy.integration.api.LazyInternalApi

@@ -32,6 +32,7 @@ import rhx.lazy.core.displayActionBar
 import rhx.lazy.core.io.IoPanelModel
 import rhx.lazy.core.io.IoPanelUI
 import rhx.lazy.core.lazyId
+import rhx.lazy.core.ui.CompactLongFormatter
 
 internal object EssenceConverterUI {
     private val stylesheet = lazyId("lss/essence_converter.lss")
@@ -317,7 +318,7 @@ internal object EssenceConverterUI {
 
         fun hasContents(): Boolean = blockEntity?.hasContents() == true
 
-        fun amount(): Component = Component.literal((blockEntity?.outputCount ?: 0L).toString())
+        fun amount(): Component = Component.literal(CompactLongFormatter.format(blockEntity?.outputCount ?: 0L))
 
         fun remainder(): Component = Component.literal((blockEntity?.remainderUnits ?: 0).toString())
 

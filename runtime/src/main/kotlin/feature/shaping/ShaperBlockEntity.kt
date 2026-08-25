@@ -10,7 +10,6 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.ResourceKinds
 import rhx.lazy.core.io.StoredOutputSource
 import rhx.lazy.core.material.MaterialIndex
 import rhx.lazy.core.material.MaterialIndexes
@@ -21,6 +20,7 @@ import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
 import rhx.lazy.core.resource.ResourceDelta
 import rhx.lazy.core.resource.ResourceItemHandler
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceStore
 import rhx.lazy.core.resource.ResourceTransaction
 import rhx.lazy.core.resource.StoreDelta

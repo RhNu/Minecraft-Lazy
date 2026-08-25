@@ -6,7 +6,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage
 import rhx.lazy.core.io.InfiniteOutputSource
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.ResourceKinds
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.energyAmount
 import rhx.lazy.integration.api.LazyInternalApi
 

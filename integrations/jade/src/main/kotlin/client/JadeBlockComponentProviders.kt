@@ -2,14 +2,20 @@ package rhx.lazy.integration.jade.client
 
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import rhx.lazy.core.resource.FluidVariant
+import rhx.lazy.core.resource.ItemVariant
+import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.integration.jade.BufferJadeDataProvider
 import rhx.lazy.integration.jade.EnergySourceJadeDataProvider
-import rhx.lazy.integration.jade.ItemCopierJadeDataProvider
 import rhx.lazy.integration.jade.JadeProviderIds
 import rhx.lazy.integration.jade.RepairerJadeDataProvider
+import rhx.lazy.integration.jade.ReplicatorJadeDataProvider
 import rhx.lazy.integration.jade.SimulationChamberJadeDataProvider
 import snownee.jade.api.ITooltip
+import snownee.jade.api.fluid.JadeFluidObject
 import snownee.jade.api.ui.BoxStyle
 import snownee.jade.api.ui.IElementHelper
 
@@ -40,22 +46,47 @@ internal object EnergySourceJadeComponentProvider :
         JadeProviderIds.energySource,
     )
 
-internal object ItemCopierJadeComponentProvider :
-    IoMachineJadeComponentProvider<rhx.lazy.integration.jade.ItemCopierJadeData>(
-        ItemCopierJadeDataProvider,
-        JadeProviderIds.itemCopier,
+internal object ReplicatorJadeComponentProvider :
+    IoMachineJadeComponentProvider<rhx.lazy.integration.jade.ReplicatorJadeData>(
+        ReplicatorJadeDataProvider,
+        JadeProviderIds.replicator,
     ) {
     override fun appendBeforeOutput(
         tooltip: ITooltip,
-        data: rhx.lazy.integration.jade.ItemCopierJadeData,
+        data: rhx.lazy.integration.jade.ReplicatorJadeData,
     ) {
-        if (data.template.isEmpty) {
-            tooltip.add(Component.translatable("jade.lazy.item_copier.unmarked_output"))
+        val resource = data.resource
+        if (resource == null) {
+            tooltip.add(Component.translatable("jade.lazy.replicator.unmarked_output"))
         } else {
-            tooltip.add(IElementHelper.get().smallItem(data.template))
-            tooltip.append(data.template.hoverName)
+            val elements = IElementHelper.get()
+            when (val variant = resource.variant) {
+                is ItemVariant -> tooltip.add(elements.smallItem(variant.template))
+                is FluidVariant -> {
+                    val template = variant.template
+                    tooltip.add(
+                        elements.fluid(
+                            JadeFluidObject.of(template.fluid, resource.amount, template.componentsPatch),
+                        ),
+                    )
+                }
+                else -> Unit
+            }
+            tooltip.append(
+                Component.translatable(
+                    "jade.lazy.replicator.resource",
+                    resourceName(resource),
+                    resource.amount,
+                ),
+            )
         }
-        tooltip.add(Component.translatable("jade.lazy.item_copier.generation_interval", data.intervalTicks))
+        tooltip.add(Component.translatable("jade.lazy.replicator.generation_interval", data.intervalTicks))
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun resourceName(amount: ResourceAmount<out ResourceVariant>): Component {
+        val kind = amount.kind as ResourceKind<ResourceVariant>
+        return kind.variantName(amount.variant)
     }
 }
 

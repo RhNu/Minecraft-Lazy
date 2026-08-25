@@ -16,6 +16,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank
 import net.neoforged.neoforge.items.ItemStackHandler
 import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.feature.buffer.BufferBlockEntity
 import rhx.lazy.feature.buffer.BufferRegistries

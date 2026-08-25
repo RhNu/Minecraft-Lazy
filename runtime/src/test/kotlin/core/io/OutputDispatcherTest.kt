@@ -10,6 +10,7 @@ import net.minecraft.world.item.Items
 import rhx.lazy.core.resource.ItemResourceKind
 import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceStore
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.core.resource.itemAmount

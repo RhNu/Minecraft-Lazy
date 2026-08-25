@@ -1,12 +1,14 @@
 package rhx.lazy.core.resource
 
 import net.minecraft.core.HolderLookup
+import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtOps
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.fluids.FluidStack
+import net.neoforged.neoforge.fluids.FluidType
 import rhx.lazy.integration.api.LazyInternalApi
 
 /**
@@ -14,7 +16,7 @@ import rhx.lazy.integration.api.LazyInternalApi
  * inside an [ItemStack] or [FluidStack] whose count fields are limited to [Int].
  */
 @LazyInternalApi
-public sealed interface ResourceVariant {
+public interface ResourceVariant {
     fun copyVariant(): ResourceVariant
 }
 
@@ -69,6 +71,12 @@ public interface ResourceKind<V : ResourceVariant> {
     val id: ResourceLocation
     val displayName: Component
 
+    /** Natural amount used when a UI marks this resource without an explicit quantity. */
+    val defaultAmount: Long
+        get() = 1L
+
+    fun variantName(variant: V): Component
+
     fun matches(
         first: V,
         second: V,
@@ -92,6 +100,8 @@ public object ItemResourceKind : ResourceKind<ItemVariant> {
     override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath("lazy", "item")
     override val displayName: Component = Component.translatable("gui.lazy.io.capability.item")
 
+    override fun variantName(variant: ItemVariant): Component = variant.template.hoverName
+
     override fun matches(
         first: ItemVariant,
         second: ItemVariant,
@@ -114,6 +124,12 @@ public object ItemResourceKind : ResourceKind<ItemVariant> {
 public object FluidResourceKind : ResourceKind<FluidVariant> {
     override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath("lazy", "fluid")
     override val displayName: Component = Component.translatable("gui.lazy.io.capability.fluid")
+    override val defaultAmount: Long = FluidType.BUCKET_VOLUME.toLong()
+
+    override fun variantName(variant: FluidVariant): Component {
+        val template = variant.template
+        return template.get(DataComponents.CUSTOM_NAME) ?: template.hoverName
+    }
 
     override fun matches(
         first: FluidVariant,
@@ -150,6 +166,8 @@ public object EnergyResourceKind : ResourceKind<EnergyVariant> {
     override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath("neoforge", "energy")
     override val displayName: Component = Component.translatable("gui.lazy.io.capability.energy")
 
+    override fun variantName(variant: EnergyVariant): Component = displayName
+
     override fun matches(
         first: EnergyVariant,
         second: EnergyVariant,
@@ -166,4 +184,38 @@ public object EnergyResourceKind : ResourceKind<EnergyVariant> {
         registries: HolderLookup.Provider,
         tag: CompoundTag,
     ) = EnergyVariant
+}
+
+/**
+ * Runtime catalog for every resource identity understood by Lazy.
+ *
+ * The catalog is deliberately owned by the resource layer rather than IO. Features persist and
+ * exchange resource amounts through this catalog, while integrations may register another kind
+ * during common setup without teaching those features about the partner API.
+ */
+@LazyInternalApi
+public object ResourceKinds {
+    public val ITEM: ResourceKind<ItemVariant> = ItemResourceKind
+    public val FLUID: ResourceKind<FluidVariant> = FluidResourceKind
+    public val ENERGY: ResourceKind<EnergyVariant> = EnergyResourceKind
+
+    private val kinds = linkedMapOf<ResourceLocation, ResourceKind<out ResourceVariant>>()
+
+    init {
+        register(ITEM)
+        register(FLUID)
+        register(ENERGY)
+    }
+
+    public val all: Set<ResourceKind<out ResourceVariant>>
+        get() = kinds.values.toCollection(linkedSetOf())
+
+    public fun register(kind: ResourceKind<out ResourceVariant>) {
+        require(kind.defaultAmount > 0L) { "A resource kind's default amount must be positive: ${kind.id}" }
+        check(kinds.putIfAbsent(kind.id, kind) == null) {
+            "A resource kind is already registered for ${kind.id}"
+        }
+    }
+
+    public operator fun get(id: ResourceLocation): ResourceKind<out ResourceVariant>? = kinds[id]
 }

@@ -8,6 +8,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import rhx.lazy.core.resource.ResourceAmount
 import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceVariant
 import kotlin.test.Test
 import kotlin.test.assertEquals

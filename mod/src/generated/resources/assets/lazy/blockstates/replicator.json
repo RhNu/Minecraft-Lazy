@@ -1,18 +1,18 @@
 {
   "variants": {
     "facing=east": {
-      "model": "lazy:block/item_copier",
+      "model": "lazy:block/replicator",
       "y": 90
     },
     "facing=north": {
-      "model": "lazy:block/item_copier"
+      "model": "lazy:block/replicator"
     },
     "facing=south": {
-      "model": "lazy:block/item_copier",
+      "model": "lazy:block/replicator",
       "y": 180
     },
     "facing=west": {
-      "model": "lazy:block/item_copier",
+      "model": "lazy:block/replicator",
       "y": 270
     }
   }

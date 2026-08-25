@@ -4,6 +4,7 @@ import com.lowdragmc.lowdraglib2.gui.factory.HeldItemUIMenuType
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
 import net.minecraft.world.item.ItemStack
 import rhx.lazy.core.resource.ResourceKind
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceVariant
 
 /** The card's own screen is the IO panel and nothing else: it holds no items to interact with. */

@@ -61,7 +61,7 @@
   "render_type": "minecraft:cutout",
   "textures": {
     "bottom": "lazy:block/machine/bottom",
-    "overlay": "lazy:block/overlay/item_copier",
+    "overlay": "lazy:block/overlay/replicator",
     "particle": "#side",
     "side": "lazy:block/machine/side",
     "top": "lazy:block/machine/top"

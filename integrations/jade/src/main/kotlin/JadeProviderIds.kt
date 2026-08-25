@@ -7,7 +7,7 @@ internal object JadeProviderIds {
     val bufferFluidStorage = lazyId("buffer_fluid_storage")
     val energySource = lazyId("energy_source")
     val energySourceStorage = lazyId("energy_source_storage")
-    val itemCopier = lazyId("item_copier")
+    val replicator = lazyId("replicator")
     val repairer = lazyId("repairer")
     val shaperItemStorage = lazyId("shaper_item_storage")
     val simulationChamber = lazyId("simulation_chamber")

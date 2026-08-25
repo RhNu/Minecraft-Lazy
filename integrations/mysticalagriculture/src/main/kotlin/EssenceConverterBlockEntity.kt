@@ -10,10 +10,10 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable
 import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper
 import rhx.lazy.core.io.IoAdapter
 import rhx.lazy.core.io.IoManagedBlockEntity
-import rhx.lazy.core.io.ResourceKinds
 import rhx.lazy.core.io.StoredOutputSource
 import rhx.lazy.core.resource.ItemResourceKind
 import rhx.lazy.core.resource.ResourceItemHandler
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceStore
 import rhx.lazy.core.resource.itemAmount
 import rhx.lazy.integration.api.LazyInternalApi

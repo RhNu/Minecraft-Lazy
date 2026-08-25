@@ -24,7 +24,7 @@ import rhx.lazy.core.ui.client.LargeItemSlotRenderer
  */
 internal class LargeItemSlot(
     slot: Slot,
-    private val countFormatter: LargeItemCountFormatter = CompactItemCountFormatter,
+    private val countFormatter: LargeItemCountFormatter = compactItemCountFormatter,
 ) : ItemSlot(slot) {
     private var displayStack = normalizeDisplayStack(slot.item)
     private var displayCount = if (slot.item.isEmpty) 0L else slot.item.count.toLong()
@@ -74,7 +74,7 @@ internal fun UIContainer<*, *>.largeItemSlot(
     handler: IItemHandlerModifiable,
     index: Int,
     countProvider: (() -> Long)? = null,
-    countFormatter: LargeItemCountFormatter = CompactItemCountFormatter,
+    countFormatter: LargeItemCountFormatter = compactItemCountFormatter,
     spec: (ItemSlotSpec<LargeItemSlot>.() -> Unit)? = null,
     init: ItemSlotElement<LargeItemSlot>.() -> Unit = {},
 ): ItemSlotElement<LargeItemSlot> {

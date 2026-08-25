@@ -12,12 +12,12 @@ import rhx.lazy.MOD_ID
 import rhx.lazy.core.io.NetworkOutputProvider
 import rhx.lazy.core.io.NetworkTargetRef
 import rhx.lazy.core.io.NetworkTargetResolution
-import rhx.lazy.core.io.ResourceKinds
 import rhx.lazy.core.io.TransferResult
 import rhx.lazy.core.resource.EnergyVariant
 import rhx.lazy.core.resource.FluidVariant
 import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
+import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceVariant
 
 internal class BeyondDimensionsNetworkProvider(
@@ -90,6 +90,8 @@ internal class BeyondDimensionsNetworkProvider(
                     BeyondDimensionsStorageResult.OutcomeUnknown -> TransferResult.OutcomeUnknown
                     else -> TransferResult.TemporarilyUnavailable
                 }
+
+            else -> TransferResult.TemporarilyUnavailable
         }
     }
 
