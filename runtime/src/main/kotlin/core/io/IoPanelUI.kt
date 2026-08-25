@@ -9,13 +9,11 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement
 import com.lowdragmc.lowdraglib2.gui.ui.column
 import com.lowdragmc.lowdraglib2.gui.ui.element
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label
 import com.lowdragmc.lowdraglib2.gui.ui.elements.button
 import com.lowdragmc.lowdraglib2.gui.ui.elements.label
 import com.lowdragmc.lowdraglib2.gui.ui.row
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager
-import dev.vfyjxf.taffy.style.TaffyDimension
 import dev.vfyjxf.taffy.style.TaffyPosition
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
@@ -26,6 +24,8 @@ import rhx.lazy.core.displayActionBar
 import rhx.lazy.core.lazyId
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceVariant
+import rhx.lazy.core.ui.lazyModalDialog
+import rhx.lazy.core.ui.openLazyModal
 import rhx.lazy.integration.api.LazyInternalApi
 
 @LazyInternalApi
@@ -54,34 +54,7 @@ public object IoPanelUI {
         model: IoPanelModel,
     ): (UIElement) -> Unit {
         val panel = createPanel(model, standalone = false)
-        val dialog =
-            Dialog()
-                .setAutoClose(false)
-                .setClickOutsideClose(false)
-                .darkenBackground()
-                .apply {
-                    style { dialogStyle -> dialogStyle.zIndex(1) }
-                    width(TaffyDimension.maxContent())
-                }
-        dialog.titleBar.setDisplay(false)
-        dialog.buttonContainer.setDisplay(false)
-        dialog.addContent(panel.element)
-        dialog.setDisplay(false)
-
-        fun setModalCapture(active: Boolean) {
-            dialog.getModularUI()?.apply {
-                if (!active) clearFocus()
-                shouldCloseOnEsc(!active)
-                shouldCloseOnKeyInventory(!active)
-            }
-        }
-        dialog.addEventListener("keyDown") { event ->
-            if (event.keyCode == KEY_E || event.keyCode == KEY_ESCAPE) {
-                dialog.setDisplay(false)
-                setModalCapture(false)
-                event.stopPropagation()
-            }
-        }
+        val dialog = lazyModalDialog(panel.element, zIndex = 1)
 
         parent
             .button(
@@ -89,11 +62,7 @@ public object IoPanelUI {
                     noText()
                     cls = { +"lazy-io__trigger" }
                     style = { tooltips(Component.translatable("gui.lazy.io.open")) }
-                    onClick = {
-                        setModalCapture(true)
-                        dialog.setDisplay(true)
-                        dialog.focus()
-                    }
+                    onClick = { dialog.openLazyModal() }
                 },
             ).element
             .apply { addPreIcon(ItemStackTexture(ItemStack(Items.COMPARATOR))) }
@@ -544,8 +513,6 @@ private val SideIoMode.faceClass: String
     get() = "lazy-io__face--${name.lowercase()}"
 
 private const val LEFT_MOUSE_BUTTON = 0
-private const val KEY_E = 69
-private const val KEY_ESCAPE = 256
 private const val SELECTED_CLASS = "lazy-io__button--selected"
 
 private const val CONTENT_PADDING = 4

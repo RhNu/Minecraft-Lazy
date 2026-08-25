@@ -24,7 +24,7 @@
 .lazy-io__title {
   width: 100%;
   height: 10;
-  horizontal-align: center;
+  horizontal-align: left;
   vertical-align: center;
   text-color: #404040;
   text-shadow: false;

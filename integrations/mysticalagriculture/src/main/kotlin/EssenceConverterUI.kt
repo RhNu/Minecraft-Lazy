@@ -57,6 +57,12 @@ internal object EssenceConverterUI {
                     }
                 },
             ) {
+                label(
+                    {
+                        text = Component.translatable("block.lazy.essence_converter")
+                        cls = { +"lazy-essence-converter__title" }
+                    },
+                )
                 row(
                     {
                         cls = { +"lazy-essence-converter__status" }

@@ -86,6 +86,8 @@ Integration 运行任务可通过 `-Plazy.integrations=<ids>` 选择子集。有
 
 GUI、HUD、binding/RPC 和方块实体托管优先使用 LDLib2。公共 UI 结构不能引用客户端专属类；两侧创建的固定界面必须具有一致元素树。
 
+布局状态、事件分侧与二级窗口的项目约束见 [LDLib2 实现要点](ldlib2.md)。
+
 | 操作 | 通道 | 服务端责任 |
 | --- | --- | --- |
 | 只读展示 | S2C binding 或紧凑快照 | 提供当前事实状态 |

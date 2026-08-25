@@ -27,7 +27,6 @@ import com.lowdragmc.lowdraglib2.gui.ui.inventorySlots
 import com.lowdragmc.lowdraglib2.gui.ui.row
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager
 import com.lowdragmc.lowdraglib2.integration.xei.IngredientIO
-import dev.vfyjxf.taffy.style.TaffyDimension
 import dev.vfyjxf.taffy.style.TaffyPosition
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
@@ -44,6 +43,9 @@ import rhx.lazy.core.resource.ResourceContainerExtractors
 import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.core.ui.CompactLongFormatter
+import rhx.lazy.core.ui.closeLazyModal
+import rhx.lazy.core.ui.lazyModalDialog
+import rhx.lazy.core.ui.openLazyModal
 
 internal object ReplicatorUI {
     private val stylesheet = lazyId("lss/replicator.lss")
@@ -434,25 +436,7 @@ internal object ReplicatorUI {
                 }
             amountField = field
 
-            dialog =
-                Dialog()
-                    .setAutoClose(false)
-                    .setClickOutsideClose(false)
-                    .darkenBackground()
-                    .apply {
-                        style { it.zIndex(2) }
-                        width(TaffyDimension.maxContent())
-                    }
-            dialog.titleBar.setDisplay(false)
-            dialog.buttonContainer.setDisplay(false)
-            dialog.addContent(content)
-            dialog.setDisplay(false)
-            dialog.addEventListener("keyDown") { event ->
-                if (event.keyCode == KEY_E || event.keyCode == KEY_ESCAPE) {
-                    close()
-                    event.stopPropagation()
-                }
-            }
+            dialog = lazyModalDialog(content)
         }
 
         private fun UIContainer<*, *>.amountStepButton(
@@ -485,13 +469,7 @@ internal object ReplicatorUI {
 
         fun open() {
             if (!enabled) return
-            dialog.getModularUI()?.apply {
-                shouldCloseOnEsc(false)
-                shouldCloseOnKeyInventory(false)
-            }
-            dialog.setDisplay(true)
-            dialog.focus()
-            amountField.focus()
+            dialog.openLazyModal(amountField)
         }
 
         fun setEnabled(enabled: Boolean) {
@@ -499,12 +477,7 @@ internal object ReplicatorUI {
         }
 
         private fun close() {
-            dialog.setDisplay(false)
-            dialog.getModularUI()?.apply {
-                clearFocus()
-                shouldCloseOnEsc(true)
-                shouldCloseOnKeyInventory(true)
-            }
+            dialog.closeLazyModal()
         }
     }
 
@@ -603,6 +576,4 @@ internal object ReplicatorUI {
     private const val LEFT_MOUSE_BUTTON = 0
     private const val RIGHT_MOUSE_BUTTON = 1
     private const val MIDDLE_MOUSE_BUTTON = 2
-    private const val KEY_E = 69
-    private const val KEY_ESCAPE = 256
 }

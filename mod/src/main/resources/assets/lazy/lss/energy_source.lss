@@ -9,7 +9,7 @@
 .lazy-energy-source__title {
   width: 68;
   height: 10;
-  horizontal-align: center;
+  horizontal-align: left;
   text-color: #404040;
   text-shadow: false;
 }

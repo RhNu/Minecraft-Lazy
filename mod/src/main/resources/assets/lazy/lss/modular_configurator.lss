@@ -9,6 +9,7 @@
 .lazy-modular-configurator__title {
   width: 162;
   height: 10;
+  horizontal-align: left;
   text-color: #404040;
   text-shadow: false;
 }
