@@ -45,17 +45,26 @@ public interface ClientIntegration {
     public fun install(context: IntegrationClientContext)
 }
 
-/** Mod presence snapshot installed once by the distribution entrypoint for framework-owned integrations. */
+/** Mod presence snapshot shared by independently constructed distribution entrypoints. */
 @LazyInternalApi
 public object IntegrationModSet {
+    private val installationLock = Any()
+
+    @Volatile
     private var installedMods: Set<String>? = null
 
     public val loadedMods: Set<String>
         get() = checkNotNull(installedMods) { "Lazy integration mod set has not been installed" }
 
     public fun install(modIds: Set<String>) {
-        check(installedMods == null) { "Lazy integration mod set was already installed" }
-        installedMods = modIds.toSet()
+        val snapshot = modIds.toSet()
+        synchronized(installationLock) {
+            val current = installedMods
+            check(current == null || current == snapshot) {
+                "Lazy integration mod set was already installed with a different snapshot"
+            }
+            installedMods = snapshot
+        }
     }
 
     public fun isLoaded(modId: String): Boolean = modId in loadedMods

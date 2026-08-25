@@ -1,6 +1,7 @@
 package rhx.lazy
 
 import net.neoforged.api.distmarker.Dist
+import net.neoforged.fml.ModList
 import net.neoforged.fml.ModLoadingContext
 import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.common.NeoForge
@@ -13,6 +14,9 @@ import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 @Mod(value = MOD_ID, dist = [Dist.CLIENT])
 public object LazyClient {
     init {
+        val loadedMods = ModList.get().mods.mapTo(mutableSetOf()) { modInfo -> modInfo.modId }
+        IntegrationModSet.install(loadedMods)
+
         val context =
             IntegrationClientContext(
                 ModLoadingContext.get().activeContainer,
@@ -20,6 +24,6 @@ public object LazyClient {
                 NeoForge.EVENT_BUS,
             )
         LazyRuntimeClient.install(context)
-        GeneratedClientIntegrationCatalog.install(context, IntegrationModSet.loadedMods)
+        GeneratedClientIntegrationCatalog.install(context, loadedMods)
     }
 }
