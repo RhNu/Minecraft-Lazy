@@ -72,9 +72,11 @@ internal object EncapsulatedSpaceService {
                 }
                 val active = space.copy(status = EncapsulatedSpaceStatus.ACTIVE)
                 state.put(active)
+                EncapsulatedSpaceChunkLoading.force(level, active)
                 EncapsulatedSpaceResult.Success(active)
             } catch (exception: RuntimeException) {
                 LazyRuntime.logger.error("Failed to create encapsulated space {}", space.id, exception)
+                runCatching { EncapsulatedSpaceChunkLoading.unforce(level, space) }
                 runCatching { withLoadedChunks(level, space) { clear(level, space) } }
                 state.remove(space.id)
                 EncapsulatedSpaceResult.Failure(CREATE_FAILED)
@@ -138,6 +140,7 @@ internal object EncapsulatedSpaceService {
                     .forEach { entity -> entity.discard() }
                 clear(level, space)
             }
+            EncapsulatedSpaceChunkLoading.unforce(level, space)
             state.remove(space.id)
             EncapsulatedSpaceResult.Success()
         } catch (exception: RuntimeException) {
@@ -152,11 +155,14 @@ internal object EncapsulatedSpaceService {
         val state = EncapsulatedSpaceState.get(server)
         state.allSpaces().forEach { space ->
             when (space.status) {
-                EncapsulatedSpaceStatus.ACTIVE -> Unit
+                EncapsulatedSpaceStatus.ACTIVE -> EncapsulatedSpaceChunkLoading.force(level, space)
                 EncapsulatedSpaceStatus.CREATING -> {
                     runCatching { withLoadedChunks(level, space) { generate(level, space) } }
-                        .onSuccess { state.put(space.copy(status = EncapsulatedSpaceStatus.ACTIVE)) }
-                        .onFailure { error ->
+                        .onSuccess {
+                            val active = space.copy(status = EncapsulatedSpaceStatus.ACTIVE)
+                            state.put(active)
+                            EncapsulatedSpaceChunkLoading.force(level, active)
+                        }.onFailure { error ->
                             LazyRuntime.logger.error("Failed to recover space creation {}", space.id, error)
                             runCatching { withLoadedChunks(level, space) { clear(level, space) } }
                             state.remove(space.id)
@@ -170,8 +176,10 @@ internal object EncapsulatedSpaceService {
                                 .forEach { entity -> entity.discard() }
                             clear(level, space)
                         }
-                    }.onSuccess { state.remove(space.id) }
-                        .onFailure { error -> LazyRuntime.logger.error("Failed to resume space deletion {}", space.id, error) }
+                    }.onSuccess {
+                        EncapsulatedSpaceChunkLoading.unforce(level, space)
+                        state.remove(space.id)
+                    }.onFailure { error -> LazyRuntime.logger.error("Failed to resume space deletion {}", space.id, error) }
                 }
             }
         }

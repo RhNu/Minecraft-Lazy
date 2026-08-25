@@ -19,6 +19,7 @@ import rhx.lazy.feature.simulation.SimulationNetworking
 import rhx.lazy.feature.simulation.SimulationRecipeReloads
 import rhx.lazy.feature.teleporter.TeleporterConfigs
 import rhx.lazy.feature.teleporter.TeleporterUI
+import rhx.lazy.feature.voidworld.EncapsulatedSpaceChunkLoading
 import rhx.lazy.feature.voidworld.VoidWorldEvents
 import rhx.lazy.integration.api.IntegrationCommonContext
 import rhx.lazy.integration.api.IntegrationConfigContext
@@ -40,6 +41,7 @@ public object LazyRuntime {
         NeoForgeMod.enableMilkFluid()
         LazyRegistries.register(context.modBus)
         TeleporterUI.register()
+        context.modBus.addListener(EncapsulatedSpaceChunkLoading::register)
         context.modBus.addListener(MaterialForms::registerDataPackRegistry)
         context.modBus.addListener(MaterialIndexReloads::onConfigLoading)
         context.modBus.addListener(MaterialIndexReloads::onConfigReloading)
