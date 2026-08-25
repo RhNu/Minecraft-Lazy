@@ -34,7 +34,7 @@ internal fun lazyModalDialog(
             addContent(content)
             setDisplay(false)
             addEventListener("keyDown") { event ->
-                if (event.keyCode == KEY_E || event.keyCode == KEY_ESCAPE) {
+                if (event.keyCode == KEY_ESCAPE) {
                     closeLazyModal()
                     event.stopPropagation()
                 }
@@ -60,5 +60,4 @@ internal fun Dialog.closeLazyModal() {
     }
 }
 
-private const val KEY_E = 69
 private const val KEY_ESCAPE = 256
