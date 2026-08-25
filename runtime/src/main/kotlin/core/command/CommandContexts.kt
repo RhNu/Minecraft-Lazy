@@ -5,6 +5,7 @@ import com.mojang.brigadier.context.CommandContext
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
+import rhx.lazy.integration.api.LazyInternalApi
 
 internal fun CommandContext<CommandSourceStack>.serverPlayerOrNull(failureTranslationKey: String): ServerPlayer? {
     val player = source.entity as? ServerPlayer
@@ -14,7 +15,8 @@ internal fun CommandContext<CommandSourceStack>.serverPlayerOrNull(failureTransl
     return player
 }
 
-internal inline fun CommandContext<CommandSourceStack>.withServerPlayer(
+@LazyInternalApi
+public fun CommandContext<CommandSourceStack>.withServerPlayer(
     failureTranslationKey: String,
     action: (ServerPlayer) -> Unit,
 ): Int {

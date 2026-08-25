@@ -32,3 +32,14 @@ Protection commands require operator permission level 2.
 - A value of `0` prevents normal damage while protection is enabled.
 - Damage that bypasses invulnerability is not affected.
 - Resetting removes the saved setting and leaves protection disabled with a value of `0`.
+
+## TaCZ infinite ammo
+
+The TaCZ commands require operator permission level 2 and are available when TaCZ is loaded.
+
+- <CommandLink command="/lazy tacz infammo">Show the current setting</CommandLink>
+- <CommandLink command="/lazy tacz infammo on">Enable infinite ammo</CommandLink>
+- <CommandLink command="/lazy tacz infammo off">Disable infinite ammo</CommandLink>
+- <CommandLink command="/lazy tacz infammo reset">Reset the setting</CommandLink>
+
+When enabled, TaCZ reloads fill the magazine without consuming compatible ammunition from the player's inventory.

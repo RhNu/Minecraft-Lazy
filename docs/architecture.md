@@ -12,7 +12,7 @@ Lazy 将运行时、可选集成、发布入口和数据生成拆成独立编译
 | --- | --- | --- |
 | `integration-api` | Integration context、生命周期接口、内部 API 标记 | 最小公共依赖 |
 | `runtime` | 核心设施、注册、内置内容、公共 SPI | `integration-api` |
-| `integrations/*` | 单一第三方模组适配与其专属 DataGen contribution | `runtime`、`integration-api`、声明的 Integration 依赖、partner API |
+| `integrations/*` | 单一第三方模组适配、条件类变换与其专属 DataGen contribution | `runtime`、`integration-api`、声明的 Integration 依赖、partner API |
 | `mod` | 模组入口、资源、聚合 JAR、运行配置与发布 | 聚合运行时及选定 Integration 产物 |
 | `datagen` | DataGen 入口、Provider 和生成资源编排 | 窄 DataGen export 与声明参与的 Integration |
 | `codegen/*` | Integration 注解、descriptor 校验与 catalog 生成 | 独立编译期契约 |
@@ -30,6 +30,8 @@ Lazy 将运行时、可选集成、发布入口和数据生成拆成独立编译
 
 `@LazyInternalApi` 表示 Lazy 自身的跨模块契约，不代表对外稳定 API。文件级批量标记不会表达真实边界，因此标记必须落在实际跨模块声明上。
 
+`runtime` 提供与第三方无关的窄扩展点，例如共享命令根的子命令贡献；Integration 只注册自身贡献，不重复拥有核心入口。第三方模组名、partner 类型、专属持久状态和目标类变换不得进入 `runtime`。
+
 ## Integration 装配
 
 Integration 的声明、生成和安装形成一条编译期可追踪链路：
@@ -43,6 +45,8 @@ Integration 的声明、生成和安装形成一条编译期可追踪链路：
 | DataGen | contribution catalog | 只加载参与当前生成任务的贡献 |
 
 依赖图必须在配置或编译阶段完成闭包、side 与循环校验。第三方拥有入口生命周期的集成仍保持模块隔离，其发现方式见 [Integration 生命周期规格](spec/integration-lifecycles.md)。
+
+Integration 自有的 Mixin config 也由 DSL 声明。构建阶段校验资源所有权，并将 Integration 的必需模组投影为 NeoForge Mixin 加载条件；核心 Mixin config 不枚举可选集成类。
 
 ## DataGen 所有权
 

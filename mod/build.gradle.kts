@@ -96,6 +96,40 @@ val integrationProjectsById =
             .substringBefore('~')
     }
 
+data class IntegrationMixinRecord(
+    val integrationId: String,
+    val config: String,
+    val requiredModIds: List<String>,
+)
+
+val integrationMixinRecords =
+    integrationProjects.flatMap { integrationProject ->
+        val integrationId =
+            integrationProject.extensions.extraProperties
+                .get("lazy.integration.catalogRecord")
+                .toString()
+                .substringBefore('~')
+        val requiredModIds =
+            integrationCatalogRecords
+                .getValue(integrationId)
+                .requiredMods
+                .map { requirement -> requirement.substringBefore('|') }
+                .distinct()
+                .sorted()
+        integrationProject.extensions.extraProperties
+            .get("lazy.integration.mixinConfigs")
+            .toString()
+            .split(',')
+            .filter(String::isNotBlank)
+            .map { config -> IntegrationMixinRecord(integrationId, config, requiredModIds) }
+    }
+
+val duplicateMixinConfigs = integrationMixinRecords.groupBy(IntegrationMixinRecord::config).filterValues { it.size > 1 }
+require(duplicateMixinConfigs.isEmpty()) {
+    "Mixin configs must be owned by exactly one integration: " +
+        duplicateMixinConfigs.mapValues { (_, records) -> records.map(IntegrationMixinRecord::integrationId) }
+}
+
 val integrationMetadataRecords =
     integrationProjects
         .flatMap { integrationProject ->
@@ -240,6 +274,15 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
                     "ldlib2_version_range",
                     "guideme_version_range",
                 ).associateWith { key -> providers.gradleProperty(key).get() }
+            val integrationMixins =
+                integrationMixinRecords.joinToString("\n\n") { record ->
+                    val requiredMods = record.requiredModIds.joinToString(", ") { modId -> "\"$modId\"" }
+                    """
+                    [[mixins]]
+                    config="${record.config}"
+                    requiredMods=[$requiredMods]
+                    """.trimIndent()
+                }
             val integrationDependencies =
                 integrationMetadataRecords
                     .groupBy(IntegrationMetadataRecord::modId)
@@ -262,7 +305,11 @@ val generateModMetadata by tasks.registering(ProcessResources::class) {
                         reason="Enables Lazy integration(s): ${owners.joinToString(", ")}"
                         """.trimIndent()
                     }.joinToString("\n\n")
-            baseProperties + ("integration_dependencies" to integrationDependencies)
+            baseProperties +
+                mapOf(
+                    "integration_mixins" to integrationMixins,
+                    "integration_dependencies" to integrationDependencies,
+                )
         }
     inputs.properties(replacements.get())
     doFirst { expand(replacements.get()) }

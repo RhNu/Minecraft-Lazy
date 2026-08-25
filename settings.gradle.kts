@@ -28,6 +28,7 @@ include(
     ":integrations:mekanism",
     ":integrations:mysticalagriculture",
     ":integrations:silentgear",
+    ":integrations:tacz",
     ":mod",
     ":datagen",
 )

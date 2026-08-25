@@ -12,6 +12,7 @@
 | required mods | 决定 Integration 是否可安装 |
 | optional mods | 描述可用但不构成安装前提的能力 |
 | Integration 依赖 | 形成拓扑安装与运行选择闭包 |
+| Mixin config | 声明由该 Integration 独占的条件类变换资源 |
 | DataGen 状态 | 约束 contribution 与生成运行环境 |
 
 版本范围引用由构建配置解析；本文不复制模组列表和版本。
@@ -26,6 +27,19 @@
 | 安装条件 | side 与必需模组满足 | 客户端 side 且必需模组满足 |
 
 KSP 在模块内验证入口与 descriptor 一致，并生成能访问 `internal` 实现的 bridge。聚合处理器验证整个依赖图，再生成静态 catalog。运行时只消费生成结果，不重新建立关系清单。
+
+## 条件类变换
+
+第三方目标类的 Mixin、状态访问和配套配置归对应 Integration 所有。`mixinConfig` 声明由构建逻辑展开到 NeoForge 元数据，并自动使用该 Integration 的 required mods 作为加载条件。
+
+| 边界 | 要求 |
+| --- | --- |
+| Integration DSL | config 路径唯一，且资源存在于声明模块 |
+| 生成元数据 | `requiredMods` 与 Integration 安装前提来自同一声明 |
+| `runtime` | 不出现 partner 模组名、目标类名或条件加载插件 |
+| Integration 模块 | Mixin、目标适配、专属状态与注册实现共同存放 |
+
+条件 Mixin 在 Integration 生命周期入口执行前由加载器处理，因此不依赖运行时 catalog 或 `IntegrationModSet` 判断模组存在性。
 
 ## 第三方拥有的入口
 
@@ -67,6 +81,7 @@ DataGen 运行环境由参与闭包派生，不在 `datagen` 中维护另一份 
 | 阶段 | 要求 |
 | --- | --- |
 | Gradle 配置 | 未知 Integration、side 不兼容和无法解析的选择立即失败 |
+| Mixin 声明 | config 缺失、路径非法或跨 Integration 重名立即失败 |
 | KSP | 重复 ID、入口不匹配、循环和依赖闭包错误携带模块上下文 |
 | 运行时安装 | 异常携带 Integration ID 与生命周期阶段并终止当前启动 |
 | 第三方回调 | 由 owner 的框架触发，错误仍应能定位到对应 Integration |

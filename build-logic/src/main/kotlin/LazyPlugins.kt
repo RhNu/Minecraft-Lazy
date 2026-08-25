@@ -130,6 +130,7 @@ public class LazyIntegrationPlugin : Plugin<Project> {
                 requiredMods.set(extension.requiredMods)
                 optionalMods.set(extension.optionalMods)
                 integrationDependencies.set(extension.integrationDependencies)
+                mixinConfigs.set(extension.mixinConfigs)
                 dataGen.set(extension.dataGen)
                 outputFile.set(project.layout.buildDirectory.file("integration/descriptor.json"))
             }
@@ -149,6 +150,21 @@ public class LazyIntegrationPlugin : Plugin<Project> {
         project.afterEvaluate {
             val integrationId = extension.id.get()
             require(integrationId.matches(Regex("[a-z0-9_.-]+"))) { "Invalid Lazy integration id: $integrationId" }
+            val mixinConfigs = extension.mixinConfigs.get()
+            require(mixinConfigs.distinct().size == mixinConfigs.size) {
+                "Integration '$integrationId' declares duplicate Mixin configs: $mixinConfigs"
+            }
+            mixinConfigs.forEach { path ->
+                require(
+                    path.matches(Regex("[a-z0-9_.-]+(?:/[a-z0-9_.-]+)*\\.json")) &&
+                        path.split('/').none { segment -> segment == "." || segment == ".." },
+                ) {
+                    "Integration '$integrationId' has an invalid Mixin config path: $path"
+                }
+                require(project.file("src/main/resources/$path").isFile) {
+                    "Integration '$integrationId' Mixin config does not exist: src/main/resources/$path"
+                }
+            }
             val bridgeName =
                 integrationId.split('-', '_', '.').joinToString("") { part -> part.replaceFirstChar(Char::uppercaseChar) }
             project.extensions.getByType(ExtraPropertiesExtension::class.java).set(
@@ -169,6 +185,10 @@ public class LazyIntegrationPlugin : Plugin<Project> {
                 (extension.requiredMods.get() + extension.optionalMods.get()).joinToString("\n") { mod ->
                     "$integrationId~${extension.side.get().name}~$mod"
                 },
+            )
+            project.extensions.getByType(ExtraPropertiesExtension::class.java).set(
+                "lazy.integration.mixinConfigs",
+                mixinConfigs.joinToString(","),
             )
             project.extensions.configure<KspExtension> {
                 arg("lazy.integration.id", integrationId)

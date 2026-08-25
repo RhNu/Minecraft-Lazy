@@ -26,6 +26,7 @@ public abstract class LazyIntegrationExtension @Inject constructor(
     public val requiredMods: ListProperty<String> = objects.listProperty(String::class.java).convention(emptyList())
     public val optionalMods: ListProperty<String> = objects.listProperty(String::class.java).convention(emptyList())
     public val integrationDependencies: ListProperty<String> = objects.listProperty(String::class.java).convention(emptyList())
+    public val mixinConfigs: ListProperty<String> = objects.listProperty(String::class.java).convention(emptyList())
     public val dataGen: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
 
     public fun requiredMod(
@@ -44,5 +45,9 @@ public abstract class LazyIntegrationExtension @Inject constructor(
 
     public fun dependsOn(id: String) {
         integrationDependencies.add(id)
+    }
+
+    public fun mixinConfig(path: String) {
+        mixinConfigs.add(path)
     }
 }

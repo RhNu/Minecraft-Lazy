@@ -30,6 +30,9 @@ public abstract class GenerateIntegrationDescriptor : DefaultTask() {
     public abstract val integrationDependencies: ListProperty<String>
 
     @get:Input
+    public abstract val mixinConfigs: ListProperty<String>
+
+    @get:Input
     public abstract val dataGen: Property<Boolean>
 
     @get:OutputFile
@@ -46,6 +49,7 @@ public abstract class GenerateIntegrationDescriptor : DefaultTask() {
                 appendLine("  \"requiredMods\": ${requiredMods.get().toJsonArray()},")
                 appendLine("  \"optionalMods\": ${optionalMods.get().toJsonArray()},")
                 appendLine("  \"dependencies\": ${integrationDependencies.get().toJsonArray()},")
+                appendLine("  \"mixinConfigs\": ${mixinConfigs.get().toJsonArray()},")
                 appendLine("  \"dataGen\": ${dataGen.get()}")
                 appendLine("}")
             }

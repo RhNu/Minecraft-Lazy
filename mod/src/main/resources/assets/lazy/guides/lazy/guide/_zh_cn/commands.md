@@ -32,3 +32,14 @@ navigation:
 - 设为 `0` 并开启保护后，普通伤害不会生效。
 - 能够无视无敌状态的伤害不受影响。
 - 重置后会清除已保存设置；保护关闭，数值恢复为 `0`。
+
+## TaCZ 无限弹药
+
+TaCZ 命令需要 2 级管理员权限，并且只在加载 TaCZ 时可用。
+
+- <CommandLink command="/lazy tacz infammo">查看当前设置</CommandLink>
+- <CommandLink command="/lazy tacz infammo on">开启无限弹药</CommandLink>
+- <CommandLink command="/lazy tacz infammo off">关闭无限弹药</CommandLink>
+- <CommandLink command="/lazy tacz infammo reset">重置设置</CommandLink>
+
+开启后，TaCZ 装弹会填满弹匣，但不会消耗玩家物品栏中的匹配弹药。

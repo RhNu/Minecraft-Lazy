@@ -5,17 +5,34 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent
 import rhx.lazy.MOD_ID
 import rhx.lazy.feature.protection.ProtectionCommand
 import rhx.lazy.feature.rise.RiseCommand
+import rhx.lazy.integration.api.LazyInternalApi
 
-internal object LazyCommands {
-    private val subcommands: List<LazySubcommand> =
-        listOf(
-            RiseCommand,
-            ProtectionCommand,
+@LazyInternalApi
+public object LazyCommands {
+    private val subcommands: MutableMap<String, LazySubcommand> =
+        linkedMapOf(
+            "rise" to RiseCommand,
+            "protection" to ProtectionCommand,
         )
 
-    fun register(event: RegisterCommandsEvent) {
+    public fun contribute(
+        id: String,
+        subcommand: LazySubcommand,
+    ) {
+        require(id.matches(Regex("[a-z0-9_.-]+"))) { "Invalid Lazy subcommand contribution id: $id" }
+        synchronized(subcommands) {
+            val existing = subcommands.putIfAbsent(id, subcommand)
+            check(existing == null || existing === subcommand) {
+                "Lazy subcommand contribution '$id' is already registered"
+            }
+        }
+    }
+
+    internal fun register(event: RegisterCommandsEvent) {
         val root = Commands.literal(MOD_ID)
-        subcommands.forEach { subcommand -> subcommand.attachTo(root) }
+        synchronized(subcommands) {
+            subcommands.values.forEach { subcommand -> subcommand.attachTo(root) }
+        }
         event.dispatcher.register(root)
     }
 }
