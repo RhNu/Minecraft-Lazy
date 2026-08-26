@@ -18,10 +18,10 @@ class SimulationJobTest {
         val job =
             SimulationJob(
                 target,
-                SimulationBatch.Item(listOf(SimulationItemOutput(ItemStack(Items.ROTTEN_FLESH))), emptyList(), emptyList(), 12),
+                SimulationBatch.Item(listOf(SimulationItemOutput(ItemStack(Items.ROTTEN_FLESH))), emptyList(), emptyList(), 64),
                 duration = 100,
                 speedMultiplier = 4,
-                outputMultiplier = 12,
+                outputMultiplier = 36,
                 tools = listOf(weapon, ItemStack.EMPTY, ItemStack.EMPTY),
                 progressTicks = 25,
             )
@@ -30,13 +30,41 @@ class SimulationJobTest {
 
         assertTrue(job.target.`is`(Items.ZOMBIE_SPAWN_EGG))
         assertTrue(job.tools.first().`is`(Items.DIAMOND_SWORD))
-        assertEquals(12L, job.outputMultiplier)
+        assertEquals(64L, job.batch.remaining)
+        assertEquals(36L, job.outputMultiplier)
 
         val restored = requireNotNull(SimulationJob.parse(registries, job.save(registries)))
         assertEquals(25, restored.progressTicks)
         assertEquals(100, restored.duration)
         assertEquals(4, restored.speedMultiplier)
-        assertEquals(12L, restored.outputMultiplier)
+        assertEquals(64L, restored.batch.remaining)
+        assertEquals(36L, restored.outputMultiplier)
         assertTrue(restored.target.`is`(Items.ZOMBIE_SPAWN_EGG))
+    }
+
+    @Test
+    fun `legacy jobs preserve their remaining rolls without applying the old combined multiplier`() {
+        val job =
+            SimulationJob(
+                ItemStack(Items.ZOMBIE_SPAWN_EGG),
+                SimulationBatch.Item(listOf(SimulationItemOutput(ItemStack(Items.ROTTEN_FLESH))), emptyList(), emptyList(), 2304),
+                duration = 100,
+                speedMultiplier = 18,
+                outputMultiplier = 2304,
+                tools = emptyList(),
+                progressTicks = 100,
+            )
+        val legacyTag = job.save(registries).also { it.remove("format") }
+
+        val restored = requireNotNull(SimulationJob.parse(registries, legacyTag))
+
+        assertEquals(2304L, restored.batch.remaining)
+        assertEquals(1L, restored.outputMultiplier)
+    }
+
+    @Test
+    fun `output scaling uses checked long arithmetic`() {
+        assertEquals(2304L, scaleSimulationAmount(64, 36))
+        assertTrue(runCatching { scaleSimulationAmount(Long.MAX_VALUE, 2) }.exceptionOrNull() is ArithmeticException)
     }
 }

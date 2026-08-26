@@ -13,10 +13,15 @@ import rhx.lazy.core.resource.ResourceAmount
 /** Collects one random result slice, merging exact variants with checked [Long] arithmetic. */
 internal class SimulationOutputAccumulator(
     private val level: ServerLevel,
+    private val outputMultiplier: Long,
     private val processItem: (ServerLevel, ItemStack) -> List<ItemStack> = { _, stack -> listOf(stack) },
 ) {
     private val items = mutableListOf<ItemAmount>()
     private val fluids = mutableListOf<FluidAmount>()
+
+    init {
+        require(outputMultiplier > 0L)
+    }
 
     fun add(
         stack: ItemStack,
@@ -37,11 +42,12 @@ internal class SimulationOutputAccumulator(
         amount: Long = stack.amount.toLong(),
     ) {
         if (stack.isEmpty || amount <= 0L) return
+        val scaledAmount = scaleSimulationAmount(amount, outputMultiplier)
         val existing = fluids.firstOrNull { FluidStack.isSameFluidSameComponents(it.template, stack) }
         if (existing == null) {
-            fluids += FluidAmount(stack.copyWithAmount(1), amount)
+            fluids += FluidAmount(stack.copyWithAmount(1), scaledAmount)
         } else {
-            existing.amount = Math.addExact(existing.amount, amount)
+            existing.amount = Math.addExact(existing.amount, scaledAmount)
         }
     }
 
@@ -70,11 +76,17 @@ internal class SimulationOutputAccumulator(
 
     private fun addProcessed(stack: ItemStack) {
         if (stack.isEmpty) return
+        val scaledAmount = scaleSimulationAmount(stack.count.toLong(), outputMultiplier)
         val existing = items.firstOrNull { ItemStack.isSameItemSameComponents(it.template, stack) }
         if (existing == null) {
-            items += ItemAmount(stack.copyWithCount(1), stack.count.toLong())
+            items += ItemAmount(stack.copyWithCount(1), scaledAmount)
         } else {
-            existing.amount = Math.addExact(existing.amount, stack.count.toLong())
+            existing.amount = Math.addExact(existing.amount, scaledAmount)
         }
     }
 }
+
+internal fun scaleSimulationAmount(
+    amount: Long,
+    outputMultiplier: Long,
+): Long = Math.multiplyExact(amount, outputMultiplier)

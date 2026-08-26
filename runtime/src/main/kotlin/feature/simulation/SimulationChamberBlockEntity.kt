@@ -96,9 +96,8 @@ public class SimulationChamberBlockEntity(
         activeJob?.outputMultiplier
             ?: ProcessingCoreRegistries
                 .tier(inputs[CORE_SLOT])
-                ?.let { tier ->
-                    Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.simulationOutputMultiplier().toLong())
-                }
+                ?.simulationOutputMultiplier()
+                ?.toLong()
             ?: 0L
 
     fun hasWaitingOutputs(): Boolean = workController.status == WorkStatus.BLOCKED
@@ -184,7 +183,7 @@ public class SimulationChamberBlockEntity(
         val tools = inputs.subList(TOOL_SLOT_START, INPUT_SLOTS)
         val simulation = SimulationRecipeResolver.resolve(level, inputs[TARGET_SLOT], tools) ?: return
         val tier = ProcessingCoreRegistries.tier(inputs[CORE_SLOT]) ?: return
-        val rolls = Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.simulationOutputMultiplier().toLong())
+        val rolls = inputs[CORE_SLOT].count.toLong()
         if (rolls <= 0L) return
         activeJob =
             SimulationJob(
@@ -192,7 +191,7 @@ public class SimulationChamberBlockEntity(
                 batch = SimulationBatch.from(simulation, rolls),
                 duration = simulation.duration,
                 speedMultiplier = tier.simulationSpeedMultiplier(),
-                outputMultiplier = rolls,
+                outputMultiplier = tier.simulationOutputMultiplier().toLong(),
                 tools = tools,
             )
         setChanged()
@@ -216,7 +215,7 @@ public class SimulationChamberBlockEntity(
         val units = min(job.batch.remaining, workBudget.toLong()).toInt()
         if (units <= 0) return WorkStep.Idle
         val loadout = SimulationToolModules.loadout(job.tools)
-        val accumulator = SimulationOutputAccumulator(level, loadout::processOutput)
+        val accumulator = SimulationOutputAccumulator(level, job.outputMultiplier, loadout::processOutput)
         return try {
             when (val batch = job.batch) {
                 is SimulationBatch.Item -> {
