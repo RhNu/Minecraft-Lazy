@@ -22,6 +22,7 @@ cucumber = "8.0.16"
 mystical-agriculture = "8.0.27"
 mystical-agradditions = "8.0.14"
 applied-flux-file = "8204513"
+applied-mekanistics = "1.6.3"
 tacz = "1.1.8-hotfix-r6"
 tacz-file = "wPvGWIj9"
 
@@ -44,6 +45,7 @@ cucumber = { module = "maven.modrinth:cucumber", version.ref = "cucumber" }
 mystical-agriculture = { module = "maven.modrinth:mystical-agriculture", version.ref = "mystical-agriculture" }
 mystical-agradditions = { module = "maven.modrinth:mystical-agradditions", version.ref = "mystical-agradditions" }
 applied-flux = { module = "curse.maven:applied-flux-965012", version.ref = "applied-flux-file" }
+applied-mekanistics = { module = "maven.modrinth:applied-mekanistics", version.ref = "applied-mekanistics" }
 tacz = { module = "maven.modrinth:tacz-1.21.1", version.ref = "tacz-file" }
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-gradle-plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }

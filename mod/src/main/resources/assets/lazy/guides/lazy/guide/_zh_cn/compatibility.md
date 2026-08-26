@@ -14,6 +14,7 @@ navigation:
 
 - **应用能源 2：** 机器可以把物品和流体送入已经链接的 ME 网络。链接方法见 [IO 与自动化](io.md)。
 - **Applied Flux：** 让 AE2 网络输出也能接收 FE。
+- **Applied Mekanistics：** 让 AE2 网络输出也能接收 Mekanism 化学品。
 - **Beyond Dimensions：** 机器可以把物品、流体和 FE 送入玩家的主网络。
 
 ## 装备与信息

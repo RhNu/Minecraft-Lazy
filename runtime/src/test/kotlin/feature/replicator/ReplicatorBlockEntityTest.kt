@@ -12,6 +12,8 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import rhx.lazy.core.ManagedBlockEntity
+import rhx.lazy.core.io.IoConfiguration
+import rhx.lazy.core.io.IoMode
 import rhx.lazy.core.resource.FluidVariant
 import rhx.lazy.core.resource.ItemVariant
 import rhx.lazy.core.resource.ResourceAmount
@@ -142,7 +144,7 @@ class ReplicatorBlockEntityTest {
         val storage = FakeNetworkStorage()
         val provider = FakeNetworkOutputProvider(storage)
 
-        assertEquals(emptySet(), replicator.ioController.capabilities)
+        assertEquals(ResourceKinds.all, replicator.ioController.capabilities)
         replicator.setFluidTemplate(FluidStack(Fluids.WATER, 8_000))
         replicator.setAmount(8_000L)
 
@@ -152,6 +154,29 @@ class ReplicatorBlockEntityTest {
 
         assertEquals(8_000L, storage.storedFluidAmount)
         assertEquals(Fluids.WATER, storage.storedFluid.fluid)
+    }
+
+    @Test
+    fun `blank replicator accepts a placed network configuration before its resource is marked`() {
+        val replicator = newReplicator()
+        val storage = FakeNetworkStorage()
+        val provider = FakeNetworkOutputProvider(storage, setOf(ResourceKinds.ITEM, ResourceKinds.FLUID))
+
+        assertTrue(
+            replicator.ioController.applyConfiguration(
+                IoConfiguration(mode = IoMode.NETWORK, networkTarget = provider.target),
+            ),
+        )
+        assertEquals(IoMode.NETWORK, replicator.ioController.mode)
+        assertEquals(provider.target, replicator.ioController.target)
+
+        replicator.setItemTemplate(ItemStack(Items.DIAMOND))
+        replicator.setAmount(64L)
+        replicator.onServerTick()
+
+        assertEquals(setOf(ResourceKinds.ITEM), replicator.ioController.capabilities)
+        assertEquals(64L, storage.storedItemAmount)
+        assertEquals(Items.DIAMOND, storage.storedItem.item)
     }
 
     @Test

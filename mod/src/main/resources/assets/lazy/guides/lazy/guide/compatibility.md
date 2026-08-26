@@ -14,6 +14,7 @@ Lazy adds extra features when supported mods are installed.
 
 - **Applied Energistics 2:** Machines can send items and fluids to a linked ME network. See [IO and automation](io.md) for linking steps.
 - **Applied Flux:** AE2 network output also accepts FE.
+- **Applied Mekanistics:** AE2 network output also accepts Mekanism chemicals.
 - **Beyond Dimensions:** Machines can send items, fluids, and FE to your primary network.
 
 ## Equipment and information

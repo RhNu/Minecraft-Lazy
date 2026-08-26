@@ -180,6 +180,8 @@ public class ReplicatorBlockEntity(
     private inner class ReplicatorIoAdapter : IoAdapter {
         override val acceptsInput = false
         override val outputSource = this@ReplicatorBlockEntity.outputSource
+        override val capabilities: Set<ResourceKind<out ResourceVariant>>
+            get() = resource?.kind?.let(::setOf) ?: ResourceKinds.all
 
         override fun readyToPush(): Boolean = resource != null && advanceSchedule()
     }

@@ -19,6 +19,7 @@ include(
     ":integration-api",
     ":runtime",
     ":integrations:ae2",
+    ":integrations:appmek",
     ":integrations:appflux",
     ":integrations:beyonddimensions",
     ":integrations:curios",

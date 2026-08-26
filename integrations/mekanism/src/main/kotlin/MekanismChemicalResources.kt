@@ -22,10 +22,12 @@ import rhx.lazy.core.resource.ResourceKind
 import rhx.lazy.core.resource.ResourceKinds
 import rhx.lazy.core.resource.ResourceSprite
 import rhx.lazy.core.resource.ResourceVariant
+import rhx.lazy.integration.api.LazyInternalApi
 import java.util.EnumMap
 import java.util.function.BooleanSupplier
 
-internal class ChemicalVariant private constructor(
+@LazyInternalApi
+public class ChemicalVariant private constructor(
     stack: ChemicalStack,
 ) : ResourceVariant {
     private val storedTemplate = stack.copyWithAmount(1L)
@@ -44,7 +46,8 @@ internal class ChemicalVariant private constructor(
     }
 }
 
-internal object ChemicalResourceKind : ResourceKind<ChemicalVariant> {
+@LazyInternalApi
+public object ChemicalResourceKind : ResourceKind<ChemicalVariant> {
     override val id: ResourceLocation = ResourceLocation.fromNamespaceAndPath("mekanism", "chemical")
     override val displayName: Component = Component.translatable("gui.lazy.io.capability.mekanism_chemical")
     override val defaultAmount: Long = 1_000L
