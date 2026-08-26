@@ -21,5 +21,6 @@ internal fun Project.configureLazyRepositories() {
         maven("https://maven.theillusivec4.top/") { content { includeGroup("top.theillusivec4.curios") } }
         maven("https://www.cursemaven.com") { content { includeGroup("curse.maven") } }
         maven("https://modmaven.dev") { content { includeGroup("mekanism") } }
+        maven("https://maven.shadowsoffire.dev/releases") { content { includeGroup("dev.shadowsoffire") } }
     }
 }

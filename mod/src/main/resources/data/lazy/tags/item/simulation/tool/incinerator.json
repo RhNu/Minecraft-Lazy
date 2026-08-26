@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "minecraft:lava_bucket"
+    "minecraft:lava_bucket",
+    "minecraft:magma_block"
   ]
 }

@@ -3,6 +3,7 @@ package rhx.lazy.feature.simulation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -20,16 +21,14 @@ class SimulationToolModulesTest {
     }
 
     @Test
-    fun `output filters from different tools combine`() {
+    fun `output processors from different tools contribute to the loadout`() {
         val loadout =
             SimulationToolModules.buildLoadout(
                 listOf(rejectModule(Items.DIAMOND_SWORD, Items.BONE), rejectModule(Items.LAVA_BUCKET, Items.ROTTEN_FLESH)),
                 listOf(ItemStack(Items.DIAMOND_SWORD), ItemStack(Items.LAVA_BUCKET)),
             )
 
-        assertFalse(loadout.acceptsOutput(ItemStack(Items.BONE)))
-        assertFalse(loadout.acceptsOutput(ItemStack(Items.ROTTEN_FLESH)))
-        assertTrue(loadout.acceptsOutput(ItemStack(Items.STRING)))
+        assertFalse(loadout === SimulationToolLoadout.EMPTY)
     }
 
     @Test
@@ -49,12 +48,27 @@ class SimulationToolModulesTest {
 
         assertSame(SimulationToolLoadout.EMPTY, loadout)
         assertTrue(loadout.weapon.isEmpty)
-        assertTrue(loadout.acceptsOutput(ItemStack(Items.DIAMOND_SWORD)))
     }
 
     @Test
     fun `an empty stack is never claimed`() {
         assertFalse(SimulationToolModules.claims(ItemStack.EMPTY))
+    }
+
+    @Test
+    fun `a grindstone is a simulation tool`() {
+        assertTrue(GrindstoneToolModule.claims(ItemStack(Items.GRINDSTONE)))
+    }
+
+    @Test
+    fun `output processors use priority before tool-slot order`() {
+        val loadout =
+            SimulationToolModules.buildLoadout(
+                listOf(processorModule(Items.DIAMOND_SWORD, 100), processorModule(Items.LAVA_BUCKET, 0)),
+                listOf(ItemStack(Items.DIAMOND_SWORD), ItemStack(Items.LAVA_BUCKET)),
+            )
+
+        assertEquals(listOf(0, 100), loadout.processorPriorities())
     }
 
     private val weaponModule =
@@ -70,12 +84,28 @@ class SimulationToolModulesTest {
     private fun rejectModule(
         trigger: net.minecraft.world.item.Item,
         rejected: net.minecraft.world.item.Item,
-    ) = object : SimulationToolModule {
-        override fun claims(stack: ItemStack) = stack.`is`(trigger)
+    ): SimulationToolModule =
+        object : SimulationToolModule {
+            override fun claims(stack: ItemStack) = stack.`is`(trigger)
 
-        override fun contribute(
-            stack: ItemStack,
-            builder: SimulationToolLoadout.Builder,
-        ) = builder.rejectOutputs { output -> output.`is`(rejected) }
-    }
+            override fun contribute(
+                stack: ItemStack,
+                builder: SimulationToolLoadout.Builder,
+            ) = builder.processOutputs { _, output ->
+                if (output.`is`(rejected)) emptyList() else listOf(output)
+            }
+        }
+
+    private fun processorModule(
+        trigger: net.minecraft.world.item.Item,
+        priority: Int,
+    ): SimulationToolModule =
+        object : SimulationToolModule {
+            override fun claims(stack: ItemStack): Boolean = stack.`is`(trigger)
+
+            override fun contribute(
+                stack: ItemStack,
+                builder: SimulationToolLoadout.Builder,
+            ) = builder.processOutputs(priority) { _, output -> listOf(output) }
+        }
 }

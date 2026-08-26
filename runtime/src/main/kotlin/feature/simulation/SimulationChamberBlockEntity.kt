@@ -216,7 +216,7 @@ public class SimulationChamberBlockEntity(
         val units = min(job.batch.remaining, workBudget.toLong()).toInt()
         if (units <= 0) return WorkStep.Idle
         val loadout = SimulationToolModules.loadout(job.tools)
-        val accumulator = SimulationOutputAccumulator(loadout::acceptsOutput)
+        val accumulator = SimulationOutputAccumulator(level, loadout::processOutput)
         return try {
             when (val batch = job.batch) {
                 is SimulationBatch.Item -> {

@@ -1,5 +1,6 @@
 package rhx.lazy.feature.simulation
 
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.fluids.FluidStack
 import rhx.lazy.core.process.PreparedCommit
@@ -11,7 +12,8 @@ import rhx.lazy.core.resource.ResourceAmount
 
 /** Collects one random result slice, merging exact variants with checked [Long] arithmetic. */
 internal class SimulationOutputAccumulator(
-    private val acceptsItem: (ItemStack) -> Boolean = { true },
+    private val level: ServerLevel,
+    private val processItem: (ServerLevel, ItemStack) -> List<ItemStack> = { _, stack -> listOf(stack) },
 ) {
     private val items = mutableListOf<ItemAmount>()
     private val fluids = mutableListOf<FluidAmount>()
@@ -21,12 +23,13 @@ internal class SimulationOutputAccumulator(
         amount: Long = stack.count.toLong(),
     ) {
         if (stack.isEmpty || amount <= 0L) return
-        val existing = items.firstOrNull { ItemStack.isSameItemSameComponents(it.template, stack) }
-        if (existing == null) {
-            items += ItemAmount(stack.copyWithCount(1), amount)
-        } else {
-            existing.amount = Math.addExact(existing.amount, amount)
+        val count = stack.count.toLong()
+        val copies = amount / count
+        val remainder = (amount % count).toInt()
+        repeat(Math.toIntExact(copies)) {
+            processItem(level, stack).forEach(::addProcessed)
         }
+        if (remainder > 0) processItem(level, stack.copyWithCount(remainder)).forEach(::addProcessed)
     }
 
     fun add(
@@ -46,7 +49,6 @@ internal class SimulationOutputAccumulator(
         PreparedCommit(
             items =
                 items.mapNotNull { entry ->
-                    if (!acceptsItem(entry.template)) return@mapNotNull null
                     ItemVariant.of(entry.template)?.let { ResourceAmount(ItemResourceKind, it, entry.amount) }
                 },
             fluids =
@@ -65,4 +67,14 @@ internal class SimulationOutputAccumulator(
         val template: FluidStack,
         var amount: Long,
     )
+
+    private fun addProcessed(stack: ItemStack) {
+        if (stack.isEmpty) return
+        val existing = items.firstOrNull { ItemStack.isSameItemSameComponents(it.template, stack) }
+        if (existing == null) {
+            items += ItemAmount(stack.copyWithCount(1), stack.count.toLong())
+        } else {
+            existing.amount = Math.addExact(existing.amount, stack.count.toLong())
+        }
+    }
 }

@@ -23,6 +23,9 @@ mystical-agriculture = "8.0.27"
 mystical-agradditions = "8.0.14"
 applied-flux-file = "8204513"
 applied-mekanistics = "1.6.3"
+apotheosis = "1.21.1-8.7.0"
+apothic-attributes = "1.21.1-2.10.0"
+placebo = "1.21.1-9.9.2"
 tacz = "1.1.8-hotfix-r6"
 tacz-file = "wPvGWIj9"
 
@@ -46,6 +49,9 @@ mystical-agriculture = { module = "maven.modrinth:mystical-agriculture", version
 mystical-agradditions = { module = "maven.modrinth:mystical-agradditions", version.ref = "mystical-agradditions" }
 applied-flux = { module = "curse.maven:applied-flux-965012", version.ref = "applied-flux-file" }
 applied-mekanistics = { module = "maven.modrinth:applied-mekanistics", version.ref = "applied-mekanistics" }
+apotheosis = { module = "dev.shadowsoffire:Apotheosis", version.ref = "apotheosis" }
+apothic-attributes = { module = "dev.shadowsoffire:ApothicAttributes", version.ref = "apothic-attributes" }
+placebo = { module = "dev.shadowsoffire:Placebo", version.ref = "placebo" }
 tacz = { module = "maven.modrinth:tacz-1.21.1", version.ref = "tacz-file" }
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-gradle-plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }

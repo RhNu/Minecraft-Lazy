@@ -1,17 +1,20 @@
 package rhx.lazy.feature.simulation
 
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
+import rhx.lazy.integration.api.LazyInternalApi
 
 /**
  * One kind of tool the chamber understands. A module decides which stacks it reacts to and what
  * they contribute; nothing about the chamber itself knows what a weapon or an incinerator is.
  */
-internal interface SimulationToolModule {
+@LazyInternalApi
+public interface SimulationToolModule {
     /** Stacks this module reacts to. Also decides what the tool slots accept at all. */
-    fun claims(stack: ItemStack): Boolean
+    public fun claims(stack: ItemStack): Boolean
 
-    fun contribute(
+    public fun contribute(
         stack: ItemStack,
         builder: SimulationToolLoadout.Builder,
     )
@@ -21,60 +24,86 @@ internal interface SimulationToolModule {
  * The combined effect of everything sitting in the tool slots, rebuilt whenever a batch advances.
  *
  * Effects come in two shapes: single valued ones like the kill weapon, where the first tool slot
- * that offers one wins, and additive ones like output filters, which simply stack.
+ * that offers one wins, and additive output transformations, which simply stack.
  */
-internal class SimulationToolLoadout private constructor(
-    val weapon: ItemStack,
-    private val rejects: List<(ItemStack) -> Boolean>,
+@LazyInternalApi
+public class SimulationToolLoadout private constructor(
+    public val weapon: ItemStack,
+    private val itemProcessors: List<ItemProcessor>,
 ) {
-    fun acceptsOutput(stack: ItemStack): Boolean = rejects.none { reject -> reject(stack) }
+    internal fun processOutput(
+        level: ServerLevel,
+        stack: ItemStack,
+    ): List<ItemStack> =
+        itemProcessors.fold(listOf(stack)) { outputs, processor ->
+            outputs.flatMap { output -> processor.processor(level, output) }
+        }
 
-    class Builder {
+    internal fun processorPriorities(): List<Int> = itemProcessors.map(ItemProcessor::priority)
+
+    @LazyInternalApi
+    public class Builder {
         private var weapon: ItemStack = ItemStack.EMPTY
-        private val rejects = mutableListOf<(ItemStack) -> Boolean>()
+        private val itemProcessors = mutableListOf<ItemProcessor>()
+        private var processorOrder = 0
 
         /** First one wins: later tool slots holding a weapon are inert rather than overriding. */
-        fun weapon(stack: ItemStack) {
+        public fun weapon(stack: ItemStack) {
             if (weapon.isEmpty) weapon = stack
         }
 
-        fun rejectOutputs(filter: (ItemStack) -> Boolean) {
-            rejects += filter
+        /**
+         * Adds an output transformation. Lower priorities run first regardless of tool-slot order.
+         * A transformation may return an empty list to destroy an output.
+         */
+        public fun processOutputs(
+            priority: Int = 0,
+            processor: (ServerLevel, ItemStack) -> List<ItemStack>,
+        ) {
+            itemProcessors += ItemProcessor(priority, processorOrder++, processor)
         }
 
-        fun build(): SimulationToolLoadout =
-            if (weapon.isEmpty && rejects.isEmpty()) {
+        internal fun build(): SimulationToolLoadout =
+            if (weapon.isEmpty && itemProcessors.isEmpty()) {
                 EMPTY
             } else {
-                SimulationToolLoadout(weapon, rejects.toList())
+                SimulationToolLoadout(weapon, itemProcessors.sortedWith(compareBy(ItemProcessor::priority, ItemProcessor::order)))
             }
     }
 
     companion object {
         val EMPTY = SimulationToolLoadout(ItemStack.EMPTY, emptyList())
     }
+
+    private data class ItemProcessor(
+        val priority: Int,
+        val order: Int,
+        val processor: (ServerLevel, ItemStack) -> List<ItemStack>,
+    )
 }
 
-internal object SimulationToolModules {
+@LazyInternalApi
+public object SimulationToolModules {
     private val modules = linkedMapOf<ResourceLocation, SimulationToolModule>()
 
     init {
         register(WeaponToolModule.ID, WeaponToolModule)
         register(IncineratorToolModule.ID, IncineratorToolModule)
+        register(GrindstoneToolModule.ID, GrindstoneToolModule)
     }
 
     @Synchronized
-    fun register(
+    public fun register(
         id: ResourceLocation,
         module: SimulationToolModule,
     ) {
         require(modules.putIfAbsent(id, module) == null) { "Duplicate simulation tool module $id" }
     }
 
-    fun claims(stack: ItemStack): Boolean = !stack.isEmpty && snapshot().any { module -> module.claims(stack) }
+    public fun claims(stack: ItemStack): Boolean = !stack.isEmpty && snapshot().any { module -> module.claims(stack) }
 
     /** Slot order is precedence order, so the loadout is built by walking the slots front to back. */
-    fun loadout(tools: List<ItemStack>): SimulationToolLoadout =
+    public fun loadout(tools: List<ItemStack>): SimulationToolLoadout =
         if (tools.all(ItemStack::isEmpty)) SimulationToolLoadout.EMPTY else buildLoadout(snapshot(), tools)
 
     internal fun buildLoadout(

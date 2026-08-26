@@ -20,6 +20,7 @@ include(
     ":runtime",
     ":integrations:ae2",
     ":integrations:appmek",
+    ":integrations:apotheosis",
     ":integrations:appflux",
     ":integrations:beyonddimensions",
     ":integrations:curios",

@@ -30,7 +30,8 @@ Use a blank <ItemLink id="lazy:data_model" /> on a supported living entity, then
 
 - The chamber uses one target/seed slot plus three unordered context slots. Each recipe condition needs a different slot, while extra behavior tools are allowed.
 - The first weapon is used as the simulated killing tool.
-- A lava bucket removes drops that would normally burn in lava.
+- A lava bucket or magma block removes drops that would normally burn in lava. With Apotheosis installed, affix equipment is salvaged first; gems are never salvaged.
+- A grindstone removes every enchanted drop after lava processing.
 - Changing tools during an active job affects only the next job.
 
 Simple mature crops and conventional saplings are discovered automatically. Complex fruit leaves, vines, colonies, and environment-dependent plants are supplied by their Integration or by datapack/KubeJS recipes. The chamber evaluates their mature block loot tables without placing or breaking blocks and without firing third-party interaction events.
