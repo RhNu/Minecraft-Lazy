@@ -21,7 +21,7 @@ public class SimulationConfig(
     val rollBudgetPerTick =
         builder.int(
             "rollBudgetPerTick",
-            16,
+            64,
             1..4096,
             "Maximum virtual output rolls processed by one chamber per server tick.",
         )

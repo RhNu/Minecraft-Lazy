@@ -1,6 +1,7 @@
 package rhx.lazy.core.io
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -19,6 +20,67 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class OutputDispatcherTest {
+    @Test
+    fun `face dispatch reuses its budget while a pair keeps accepting`() {
+        val store = ResourceStore(ItemResourceKind, 1, 1000)
+        store.insert(requireNotNull(itemAmount(ItemStack(Items.IRON_INGOT), 1000)))
+        val offered = mutableListOf<Long>()
+
+        dispatchFaceOffers(
+            StoredOutputSource(listOf(store)),
+            setOf(Direction.DOWN),
+            TransferBudget(3),
+            0,
+        ) { _, amount ->
+            offered += amount.amount
+            64L
+        }
+
+        assertEquals(listOf(1000L, 936L, 872L), offered)
+        assertEquals(808L, store.amount(0))
+    }
+
+    @Test
+    fun `face dispatch stops retrying a pair after rejection`() {
+        val store = ResourceStore(ItemResourceKind, 1, 1000)
+        store.insert(requireNotNull(itemAmount(ItemStack(Items.IRON_INGOT), 1000)))
+        var attempts = 0
+
+        dispatchFaceOffers(
+            StoredOutputSource(listOf(store)),
+            setOf(Direction.DOWN),
+            TransferBudget(64),
+            0,
+        ) { _, _ ->
+            attempts++
+            if (attempts == 1) 32L else 0L
+        }
+
+        assertEquals(2, attempts)
+        assertEquals(968L, store.amount(0))
+    }
+
+    @Test
+    fun `face cursor resumes with the next accepting pair`() {
+        val store = ResourceStore(ItemResourceKind, 2, 1000)
+        store.insert(requireNotNull(itemAmount(ItemStack(Items.STONE), 500)))
+        store.insert(requireNotNull(itemAmount(ItemStack(Items.DIAMOND), 500)))
+        val source = StoredOutputSource(listOf(store))
+        val offeredItems = mutableListOf<net.minecraft.world.item.Item>()
+
+        val cursor =
+            dispatchFaceOffers(source, setOf(Direction.DOWN), TransferBudget(3), 0) { _, amount ->
+                offeredItems += (amount.variant as ItemVariant).template.item
+                64L
+            }
+        dispatchFaceOffers(source, setOf(Direction.DOWN), TransferBudget(1), cursor) { _, amount ->
+            offeredItems += (amount.variant as ItemVariant).template.item
+            64L
+        }
+
+        assertEquals(listOf(Items.STONE, Items.DIAMOND, Items.STONE, Items.DIAMOND), offeredItems)
+    }
+
     @Test
     fun `network cursor rotates between stored identities`() {
         val store = ResourceStore(ItemResourceKind, 2, 100)

@@ -114,34 +114,10 @@ internal class OutputDispatcher(
         directions: Set<Direction>,
         budget: TransferBudget,
     ): IoPushResult {
-        if (directions.isEmpty() || budget.exhausted) return IoPushResult.Success
-        val entries = source.entries()
-        if (entries.isEmpty()) return IoPushResult.Success
-        val orderedDirections = directions.sortedBy(Direction::ordinal)
-        val pairs = entries.flatMap { entry -> orderedDirections.map { direction -> entry to direction } }
-        val remaining = entries.associate { (it.port to it.slot) to it.amount.amount }.toMutableMap()
-        if (pairs.isEmpty()) return IoPushResult.Success
-
-        var visited = 0
-        while (visited < pairs.size && !budget.exhausted) {
-            val index = (faceCursor + visited) % pairs.size
-            val (entry, direction) = pairs[index]
-            val key = entry.port to entry.slot
-            val available = if (source.finite) remaining[key] ?: 0L else entry.amount.amount
-            if (available <= 0L) {
-                visited++
-                continue
+        faceCursor =
+            dispatchFaceOffers(source, directions, budget, faceCursor) { direction, amount ->
+                offerToFace(level, direction, amount)
             }
-            if (!budget.consume()) break
-            val offer = if (available == entry.amount.amount) entry.amount else copyAmount(entry.amount, available)
-            val accepted = offerToFace(level, direction, offer)
-            if (accepted > 0L) {
-                val extracted = source.extract(entry, accepted.coerceAtMost(available))
-                if (source.finite) remaining[key] = available - extracted
-            }
-            visited++
-        }
-        faceCursor = (faceCursor + visited).mod(pairs.size)
         return IoPushResult.Success
     }
 
@@ -189,6 +165,49 @@ internal class OutputDispatcher(
                 ?: return 0L
         return transfer.offer(level, direction, amount)
     }
+}
+
+/**
+ * Fairly spends a bounded face-call budget. A pair that moves anything returns to the back of the
+ * queue, while a rejected pair is left alone until the next dispatch cycle.
+ */
+internal fun dispatchFaceOffers(
+    source: OutputSource,
+    directions: Set<Direction>,
+    budget: TransferBudget,
+    startCursor: Int,
+    offer: (Direction, ResourceAmount<out ResourceVariant>) -> Long,
+): Int {
+    if (directions.isEmpty() || budget.exhausted) return startCursor
+    val entries = source.entries()
+    if (entries.isEmpty()) return startCursor
+    val orderedDirections = directions.sortedBy(Direction::ordinal)
+    val pairs = entries.flatMap { entry -> orderedDirections.map { direction -> entry to direction } }
+    if (pairs.isEmpty()) return startCursor
+
+    val remaining = entries.associate { (it.port to it.slot) to it.amount.amount }.toMutableMap()
+    val queue = ArrayDeque<Int>(pairs.size)
+    val normalizedCursor = startCursor.mod(pairs.size)
+    repeat(pairs.size) { offset -> queue.addLast((normalizedCursor + offset) % pairs.size) }
+    var nextCursor = normalizedCursor
+
+    while (queue.isNotEmpty() && !budget.exhausted) {
+        val index = queue.removeFirst()
+        val (entry, direction) = pairs[index]
+        val key = entry.port to entry.slot
+        val available = if (source.finite) remaining[key] ?: 0L else entry.amount.amount
+        if (available <= 0L) continue
+        if (!budget.consume()) break
+
+        val offered = if (available == entry.amount.amount) entry.amount else copyAmount(entry.amount, available)
+        val accepted = offer(direction, offered).coerceIn(0L, available)
+        val extracted = if (accepted > 0L) source.extract(entry, accepted) else 0L
+        val left = if (source.finite) available - extracted else entry.amount.amount
+        if (source.finite) remaining[key] = left
+        if (extracted > 0L && left > 0L) queue.addLast(index)
+        nextCursor = queue.firstOrNull() ?: ((index + 1) % pairs.size)
+    }
+    return nextCursor
 }
 
 private interface OutputPort {
