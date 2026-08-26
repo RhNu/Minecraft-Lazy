@@ -26,11 +26,13 @@ import rhx.lazy.feature.simulation.AutomaticSimulationClientSnapshot
 import rhx.lazy.feature.simulation.AutomaticSimulationDisplay
 import rhx.lazy.feature.simulation.DataModelItem
 import rhx.lazy.feature.simulation.EntitySimulationTargets
-import rhx.lazy.feature.simulation.ResolvedSimulation
+import rhx.lazy.feature.simulation.SimulationBlockLootOutput
 import rhx.lazy.feature.simulation.SimulationFluidOutput
 import rhx.lazy.feature.simulation.SimulationItemOutput
 import rhx.lazy.feature.simulation.SimulationRecipeResolver
 import rhx.lazy.feature.simulation.SimulationRegistries
+import rhx.lazy.feature.simulation.simulationBlockLootDisplay
+import rhx.lazy.feature.simulation.simulationToolDisplayStacks
 import rhx.lazy.integration.annotation.LazyFrameworkEntrypoint
 
 @JeiPlugin
@@ -68,14 +70,14 @@ internal class SimulationJeiPlugin : IModPlugin {
                             .value()
                             .input.items
                             .firstOrNull() ?: return@forEach
-                    val resolved = SimulationRecipeResolver.resolve(level, representative) as? ResolvedSimulation.Item ?: return@forEach
-                    if (resolved.id != holder.id()) return@forEach
+                    val recipe = holder.value()
                     add(
                         ItemDisplay(
-                            holder.value().input,
-                            resolved.itemOutputs.map(ItemOutputDisplay::from) +
-                                resolved.blockLootOutputs.flatMap { it.displayItems }.map(ItemOutputDisplay::lootTable),
-                            resolved.fluidOutputs.map(FluidOutputDisplay::from),
+                            recipe.input,
+                            recipe.group,
+                            recipe.tools.map(::toolStacks),
+                            recipe.itemOutputs.map(ItemOutputDisplay::from) + blockLootDisplays(level, recipe.blockLootOutputs),
+                            recipe.fluidOutputs.map(FluidOutputDisplay::from),
                         ),
                     )
                 }
@@ -93,6 +95,8 @@ internal class SimulationJeiPlugin : IModPlugin {
                     val runtimeFluids = recipe.fluidOutputs.map(FluidOutputDisplay::from)
                     EntityDisplay(
                         EntitySimulationTargets.equivalentInputs(recipe.entity),
+                        recipe.group,
+                        recipe.tools.map(::toolStacks),
                         runtimeItems +
                             recipe.displayItemOutputs
                                 .filter { display -> runtimeItems.none { ItemStack.isSameItemSameComponents(it.stack, display) } }
@@ -135,10 +139,12 @@ internal class SimulationJeiPlugin : IModPlugin {
         displays.map { automatic ->
             ItemDisplay(
                 Ingredient.of(automatic.input),
+                automatic.simulation.group,
+                automatic.simulation.tools.map(::toolStacks),
                 automatic.simulation.itemOutputs.map(ItemOutputDisplay::from) +
-                    automatic.simulation.blockLootOutputs
-                        .flatMap { it.displayItems }
-                        .map(ItemOutputDisplay::lootTable),
+                    automatic.simulation.blockLootOutputs.flatMap { output ->
+                        output.displayItems.map { ItemOutputDisplay.blockLoot(it, output) }
+                    },
                 automatic.simulation.fluidOutputs.map(FluidOutputDisplay::from),
             )
         }
@@ -179,7 +185,11 @@ internal class SimulationJeiPlugin : IModPlugin {
             recipe: ItemDisplay,
             focuses: IFocusGroup,
         ) {
-            builder.addInputSlot(INPUT_X, INPUT_Y).addIngredients(recipe.input)
+            builder
+                .addInputSlot(INPUT_X, INPUT_Y)
+                .addIngredients(recipe.input)
+                .addRichTooltipCallback { _, tooltip -> tooltip.add(groupTooltip(recipe.group)) }
+            addTools(builder, recipe.tools)
             addOutputs(builder, recipe.items, recipe.fluids)
         }
 
@@ -212,7 +222,11 @@ internal class SimulationJeiPlugin : IModPlugin {
             recipe: EntityDisplay,
             focuses: IFocusGroup,
         ) {
-            builder.addInputSlot(INPUT_X, INPUT_Y).addItemStacks(recipe.inputs)
+            builder
+                .addInputSlot(INPUT_X, INPUT_Y)
+                .addItemStacks(recipe.inputs)
+                .addRichTooltipCallback { _, tooltip -> tooltip.add(groupTooltip(recipe.group)) }
+            addTools(builder, recipe.tools)
             addOutputs(builder, recipe.items, recipe.fluids)
         }
 
@@ -229,12 +243,16 @@ internal class SimulationJeiPlugin : IModPlugin {
 
     private data class ItemDisplay(
         val input: Ingredient,
+        val group: ResourceLocation,
+        val tools: List<List<ItemStack>>,
         val items: List<ItemOutputDisplay>,
         val fluids: List<FluidOutputDisplay>,
     )
 
     private data class EntityDisplay(
         val inputs: List<ItemStack>,
+        val group: ResourceLocation,
+        val tools: List<List<ItemStack>>,
         val items: List<ItemOutputDisplay>,
         val fluids: List<FluidOutputDisplay>,
     )
@@ -244,11 +262,17 @@ internal class SimulationJeiPlugin : IModPlugin {
         val chance: Float?,
         val minRolls: Int,
         val maxRolls: Int,
+        val blockLoot: Boolean = false,
     ) {
         companion object {
             fun from(output: SimulationItemOutput) = ItemOutputDisplay(output.stack.copy(), output.chance, output.minRolls, output.maxRolls)
 
             fun lootTable(stack: ItemStack) = ItemOutputDisplay(stack.copy(), null, 0, 0)
+
+            fun blockLoot(
+                stack: ItemStack,
+                output: SimulationBlockLootOutput,
+            ) = ItemOutputDisplay(stack.copy(), output.chance, output.minRolls, output.maxRolls, true)
         }
     }
 
@@ -269,8 +293,10 @@ internal class SimulationJeiPlugin : IModPlugin {
     companion object {
         private const val CATEGORY_WIDTH = 150
         private const val CATEGORY_HEIGHT = 108
-        private const val INPUT_X = 66
+        private const val INPUT_X = 33
         private const val INPUT_Y = 2
+        private const val TOOL_X = 57
+        private const val TOOL_STEP = 24
         private const val LOOT_X = 9
         private const val LOOT_Y = 30
         private const val GRID_COLUMNS = 7
@@ -306,7 +332,30 @@ internal class SimulationJeiPlugin : IModPlugin {
             }
         }
 
-        private fun ItemOutputDisplay.tooltip(): Component = outputTooltip(chance, minRolls, maxRolls)
+        private fun addTools(
+            builder: IRecipeLayoutBuilder,
+            tools: List<List<ItemStack>>,
+        ) {
+            tools.take(3).forEachIndexed { index, stacks ->
+                builder.addInputSlot(TOOL_X + index * TOOL_STEP, INPUT_Y).addItemStacks(stacks)
+            }
+        }
+
+        private fun toolStacks(requirement: rhx.lazy.feature.simulation.SimulationToolRequirement): List<ItemStack> =
+            simulationToolDisplayStacks(requirement)
+
+        private fun blockLootDisplays(
+            level: net.minecraft.world.level.Level,
+            outputs: List<SimulationBlockLootOutput>,
+        ): List<ItemOutputDisplay> =
+            outputs.flatMap { output -> simulationBlockLootDisplay(level, output).map { ItemOutputDisplay.blockLoot(it, output) } }
+
+        private fun ItemOutputDisplay.tooltip(): Component =
+            if (blockLoot) {
+                Component.translatable("jei.lazy.simulation.block_loot_output", chance?.times(100f) ?: 100f, minRolls, maxRolls)
+            } else {
+                outputTooltip(chance, minRolls, maxRolls)
+            }
 
         private fun FluidOutputDisplay.tooltip(): Component = outputTooltip(chance, minRolls, maxRolls)
 

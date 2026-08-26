@@ -21,5 +21,5 @@ internal object SimulationNetworking {
         context.enqueueWork { AutomaticSimulationClientSnapshot.replace(payload.displays) }
     }
 
-    private const val NETWORK_VERSION = "1"
+    private const val NETWORK_VERSION = "2"
 }

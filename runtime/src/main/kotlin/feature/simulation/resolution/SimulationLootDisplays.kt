@@ -93,8 +93,25 @@ internal fun blockLoot(
     level: Level,
     state: BlockState,
     tool: ItemStack = ItemStack.EMPTY,
+    chance: Float = 1f,
+    minRolls: Int = 1,
+    maxRolls: Int = 1,
 ) = SimulationBlockLootOutput(
     state,
     SimulationLootDisplays.items(level, state, tool),
     tool,
+    chance,
+    minRolls,
+    maxRolls,
 )
+
+@rhx.lazy.integration.api.LazyInternalApi
+public fun simulationBlockLootDisplay(
+    level: Level,
+    output: SimulationBlockLootOutput,
+): List<ItemStack> =
+    if (output.displayItems.isNotEmpty()) {
+        output.displayItems.map(ItemStack::copy)
+    } else {
+        SimulationLootDisplays.items(level, output.state, output.tool)
+    }

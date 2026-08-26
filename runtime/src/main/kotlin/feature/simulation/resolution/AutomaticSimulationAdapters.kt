@@ -19,6 +19,8 @@ public data class AutomaticSimulationCandidate(
     val itemOutputs: List<SimulationItemOutput> = emptyList(),
     val fluidOutputs: List<SimulationFluidOutput> = emptyList(),
     val blockLootOutputs: List<SimulationBlockLootOutput> = emptyList(),
+    val tools: List<SimulationToolRequirement> = emptyList(),
+    val group: ResourceLocation = source,
 )
 
 @LazyInternalApi
@@ -29,6 +31,8 @@ public fun interface AutomaticSimulationAdapter {
     ): AutomaticSimulationCandidate?
 
     fun settingsFingerprint(): Any? = null
+
+    fun toolRequirements(): List<SimulationToolRequirement> = emptyList()
 }
 
 @LazyInternalApi
@@ -55,17 +59,27 @@ public object AutomaticSimulationAdapters {
     fun resolve(
         level: Level,
         stack: ItemStack,
+        tools: List<ItemStack> = emptyList(),
+    ): List<AutomaticSimulationCandidate> {
+        val candidates = candidates(level, stack).filter { simulationToolsMatch(it.tools, tools) }
+        return selectAutomaticSimulationCandidate(candidates)?.let(::listOf).orEmpty()
+    }
+
+    fun candidates(
+        level: Level,
+        stack: ItemStack,
     ): List<AutomaticSimulationCandidate> {
         if (stack.`is`(SimulationTags.blacklist)) return emptyList()
-        val candidates =
-            synchronized(this) { sources.values.toList() }
-                .filterNot { registration -> stack.`is`(registration.blacklist) }
-                .mapNotNull { registration -> registration.adapter.resolve(level, stack) }
-        return selectAutomaticSimulationCandidate(candidates)?.let(::listOf).orEmpty()
+        return synchronized(this) { sources.values.toList() }
+            .filterNot { registration -> stack.`is`(registration.blacklist) }
+            .mapNotNull { registration -> registration.adapter.resolve(level, stack) }
     }
 
     fun settingsFingerprint(): List<Pair<ResourceLocation, Any?>> =
         synchronized(this) { sources.map { (source, registration) -> source to registration.adapter.settingsFingerprint() } }
+
+    fun toolRequirements(): List<SimulationToolRequirement> =
+        synchronized(this) { sources.values.flatMap { it.adapter.toolRequirements() } }
 
     private class Registration(
         val adapter: AutomaticSimulationAdapter,
@@ -80,6 +94,7 @@ internal fun selectAutomaticSimulationCandidate(candidates: List<AutomaticSimula
 
 private val candidateComparator =
     compareByDescending<AutomaticSimulationCandidate>(AutomaticSimulationCandidate::priority)
+        .thenByDescending { it.tools.size }
         .thenBy { it.source.toString() }
         .thenBy { it.id.toString() }
 

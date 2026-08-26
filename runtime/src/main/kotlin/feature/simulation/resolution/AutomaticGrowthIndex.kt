@@ -143,9 +143,11 @@ internal object AutomaticGrowthIndex {
             candidates
                 .mapNotNull { candidate ->
                     val state = matureState(candidate) ?: return@mapNotNull null
+                    val displayItems = SimulationLootDisplays.items(level, state)
+                    if (displayItems.isEmpty()) return@mapNotNull null
                     AutomaticGrowthTarget(
                         state,
-                        SimulationLootDisplays.items(level, state),
+                        displayItems,
                         candidate.evidence,
                     )
                 },
@@ -210,10 +212,9 @@ private fun supportsMatureState(
 ): Boolean {
     if (block is CropBlock) return true
     val hasAge = ageProperty(block) != null
-    if (AutomaticGrowthEvidence.CROP_TAG in evidence) return hasAge
     return hasAge &&
         AutomaticGrowthEvidence.BONEMEALABLE in evidence &&
-        (AutomaticGrowthEvidence.SEED_TAG in evidence || AutomaticGrowthEvidence.VILLAGER_SEED_TAG in evidence)
+        AutomaticGrowthEvidence.BLOCK_ITEM_MAPPING in evidence
 }
 
 private fun matureState(candidate: AutomaticGrowthCandidate): BlockState? {

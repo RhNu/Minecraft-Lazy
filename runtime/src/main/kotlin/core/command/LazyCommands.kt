@@ -5,6 +5,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent
 import rhx.lazy.MOD_ID
 import rhx.lazy.feature.protection.ProtectionCommand
 import rhx.lazy.feature.rise.RiseCommand
+import rhx.lazy.feature.simulation.SimulationCommand
 import rhx.lazy.integration.api.LazyInternalApi
 
 @LazyInternalApi
@@ -13,6 +14,7 @@ public object LazyCommands {
         linkedMapOf(
             "rise" to RiseCommand,
             "protection" to ProtectionCommand,
+            "simulation" to SimulationCommand,
         )
 
     public fun contribute(

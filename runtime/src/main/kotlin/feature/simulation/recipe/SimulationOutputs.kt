@@ -103,12 +103,22 @@ public data class SimulationBlockLootOutput(
     val state: BlockState,
     val displayItems: List<ItemStack> = emptyList(),
     val tool: ItemStack = ItemStack.EMPTY,
+    val chance: Float = 1f,
+    val minRolls: Int = 1,
+    val maxRolls: Int = 1,
 ) {
+    init {
+        validateOutputRange(chance, minRolls, maxRolls)
+    }
+
     fun encode(buffer: RegistryFriendlyByteBuf) {
         STATE_STREAM_CODEC.encode(buffer, state)
         buffer.writeVarInt(displayItems.size)
         displayItems.forEach { ItemStack.STREAM_CODEC.encode(buffer, it) }
         ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, tool)
+        buffer.writeFloat(chance)
+        buffer.writeVarInt(minRolls)
+        buffer.writeVarInt(maxRolls)
     }
 
     companion object {
@@ -124,8 +134,11 @@ public data class SimulationBlockLootOutput(
                         ItemStack.CODEC.optionalFieldOf("tool").forGetter { output ->
                             Optional.of(output.tool).filter { !it.isEmpty }
                         },
-                    ).apply(instance) { state, displayItems, tool ->
-                        SimulationBlockLootOutput(state, displayItems, tool.orElse(ItemStack.EMPTY))
+                        CHANCE_CODEC.optionalFieldOf("chance", 1f).forGetter(SimulationBlockLootOutput::chance),
+                        NON_NEGATIVE_INT.optionalFieldOf("min_rolls", 1).forGetter(SimulationBlockLootOutput::minRolls),
+                        NON_NEGATIVE_INT.optionalFieldOf("max_rolls", 1).forGetter(SimulationBlockLootOutput::maxRolls),
+                    ).apply(instance) { state, displayItems, tool, chance, minRolls, maxRolls ->
+                        SimulationBlockLootOutput(state, displayItems, tool.orElse(ItemStack.EMPTY), chance, minRolls, maxRolls)
                     }
             }
 
@@ -134,6 +147,9 @@ public data class SimulationBlockLootOutput(
                 STATE_STREAM_CODEC.decode(buffer),
                 List(buffer.readVarInt()) { ItemStack.STREAM_CODEC.decode(buffer) },
                 ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer),
+                buffer.readFloat(),
+                buffer.readVarInt(),
+                buffer.readVarInt(),
             )
 
         private val STATE_STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, BlockState> =

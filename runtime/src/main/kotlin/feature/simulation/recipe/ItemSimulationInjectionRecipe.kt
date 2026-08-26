@@ -7,6 +7,7 @@ import net.minecraft.core.HolderLookup
 import net.minecraft.core.NonNullList
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.Ingredient
 import net.minecraft.world.item.crafting.Recipe
@@ -19,7 +20,14 @@ internal data class ItemSimulationInjectionRecipe(
     val input: Ingredient,
     val itemOutputs: List<SimulationItemOutput> = emptyList(),
     val fluidOutputs: List<SimulationFluidOutput> = emptyList(),
+    val tools: List<SimulationToolRequirement> = emptyList(),
+    val blockLootOutputs: List<SimulationBlockLootOutput> = emptyList(),
+    val group: ResourceLocation = SimulationRecipeGroups.INJECTION,
 ) : Recipe<SingleRecipeInput> {
+    init {
+        requireValidSimulationTools(tools)
+    }
+
     override fun matches(
         input: SingleRecipeInput,
         level: Level,
@@ -58,6 +66,10 @@ internal data class ItemSimulationInjectionRecipe(
                     instance
                         .group(
                             Ingredient.CODEC_NONEMPTY.fieldOf("input").forGetter(ItemSimulationInjectionRecipe::input),
+                            SimulationToolRequirement.CODEC
+                                .listOf()
+                                .optionalFieldOf("tools", emptyList())
+                                .forGetter(ItemSimulationInjectionRecipe::tools),
                             SimulationItemOutput.CODEC
                                 .codec()
                                 .listOf()
@@ -68,30 +80,46 @@ internal data class ItemSimulationInjectionRecipe(
                                 .listOf()
                                 .optionalFieldOf("fluid_outputs", emptyList())
                                 .forGetter(ItemSimulationInjectionRecipe::fluidOutputs),
-                        ).apply(instance, ::ItemSimulationInjectionRecipe)
+                            SimulationBlockLootOutput.CODEC
+                                .codec()
+                                .listOf()
+                                .optionalFieldOf("block_loot_outputs", emptyList())
+                                .forGetter(ItemSimulationInjectionRecipe::blockLootOutputs),
+                            ResourceLocation.CODEC
+                                .optionalFieldOf("group", SimulationRecipeGroups.INJECTION)
+                                .forGetter(ItemSimulationInjectionRecipe::group),
+                        ).apply(instance) { input, tools, itemOutputs, fluidOutputs, blockLootOutputs, group ->
+                            ItemSimulationInjectionRecipe(input, itemOutputs, fluidOutputs, tools, blockLootOutputs, group)
+                        }
                 }.validate(::validate)
 
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, ItemSimulationInjectionRecipe> =
             StreamCodec.of(
                 { buffer, recipe ->
                     Ingredient.CONTENTS_STREAM_CODEC.encode(buffer, recipe.input)
+                    encodeInjectionList(buffer, recipe.tools, SimulationToolRequirement::encode)
                     encodeInjectionList(buffer, recipe.itemOutputs, SimulationItemOutput::encode)
                     encodeInjectionList(buffer, recipe.fluidOutputs, SimulationFluidOutput::encode)
+                    encodeInjectionList(buffer, recipe.blockLootOutputs, SimulationBlockLootOutput::encode)
+                    ResourceLocation.STREAM_CODEC.encode(buffer, recipe.group)
                 },
                 { buffer ->
-                    ItemSimulationInjectionRecipe(
-                        Ingredient.CONTENTS_STREAM_CODEC.decode(buffer),
-                        decodeInjectionList(buffer, SimulationItemOutput::decode),
-                        decodeInjectionList(buffer, SimulationFluidOutput::decode),
-                    ).also { require(validate(it).isSuccess) { validate(it).error().orElseThrow().message() } }
+                    val input = Ingredient.CONTENTS_STREAM_CODEC.decode(buffer)
+                    val tools = decodeInjectionList(buffer, SimulationToolRequirement::decode)
+                    val itemOutputs = decodeInjectionList(buffer, SimulationItemOutput::decode)
+                    val fluidOutputs = decodeInjectionList(buffer, SimulationFluidOutput::decode)
+                    val blockLootOutputs = decodeInjectionList(buffer, SimulationBlockLootOutput::decode)
+                    val group = ResourceLocation.STREAM_CODEC.decode(buffer)
+                    ItemSimulationInjectionRecipe(input, itemOutputs, fluidOutputs, tools, blockLootOutputs, group)
+                        .also { require(validate(it).isSuccess) { validate(it).error().orElseThrow().message() } }
                 },
             )
 
         private fun validate(recipe: ItemSimulationInjectionRecipe): DataResult<ItemSimulationInjectionRecipe> =
             when {
-                recipe.itemOutputs.isEmpty() && recipe.fluidOutputs.isEmpty() ->
+                recipe.itemOutputs.isEmpty() && recipe.fluidOutputs.isEmpty() && recipe.blockLootOutputs.isEmpty() ->
                     DataResult.error { "Simulation injection must have at least one output" }
-                recipe.itemOutputs.size + recipe.fluidOutputs.size > MAX_OUTPUT_ENTRIES ->
+                effectiveOutputCount(recipe.itemOutputs, recipe.fluidOutputs, recipe.blockLootOutputs) > MAX_OUTPUT_ENTRIES ->
                     DataResult.error { "Simulation injection may declare at most $MAX_OUTPUT_ENTRIES outputs" }
                 else -> DataResult.success(recipe)
             }

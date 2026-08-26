@@ -1,9 +1,7 @@
 package rhx.lazy.feature.simulation
 
-import net.minecraft.core.component.DataComponentPatch
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.RecipeHolder
 import net.minecraft.world.item.crafting.RecipeManager
@@ -17,6 +15,8 @@ import java.util.WeakHashMap
 public sealed interface ResolvedSimulation {
     val id: ResourceLocation
     val duration: Int
+    val tools: List<SimulationToolRequirement>
+    val group: ResourceLocation
 
     data class Item(
         override val id: ResourceLocation,
@@ -24,12 +24,16 @@ public sealed interface ResolvedSimulation {
         val itemOutputs: List<SimulationItemOutput>,
         val fluidOutputs: List<SimulationFluidOutput>,
         val blockLootOutputs: List<SimulationBlockLootOutput> = emptyList(),
+        override val tools: List<SimulationToolRequirement> = emptyList(),
+        override val group: ResourceLocation = SimulationRecipeGroups.ITEM,
+        val priority: Int = 0,
     ) : ResolvedSimulation
 
     data class EntityProfile(
         val entityId: ResourceLocation,
         val holder: RecipeHolder<EntitySimulationRecipe>?,
         override val duration: Int,
+        override val tools: List<SimulationToolRequirement> = holder?.value()?.tools.orEmpty(),
     ) : ResolvedSimulation {
         override val id: ResourceLocation =
             holder?.id()
@@ -37,6 +41,8 @@ public sealed interface ResolvedSimulation {
                     MOD_ID,
                     "entity/${entityId.namespace}/${entityId.path}",
                 )
+        override val group: ResourceLocation = holder?.value()?.group ?: SimulationRecipeGroups.ENTITY
+        val priority: Int = holder?.value()?.priority ?: Int.MIN_VALUE
     }
 }
 
@@ -47,136 +53,204 @@ public data class AutomaticSimulationDisplay(
 )
 
 @LazyInternalApi
+public sealed interface SimulationResolution {
+    public data class Success(
+        val simulation: ResolvedSimulation,
+    ) : SimulationResolution
+
+    public data class Conflict(
+        val ids: List<ResourceLocation>,
+    ) : SimulationResolution
+
+    public data object Unavailable : SimulationResolution
+}
+
+@LazyInternalApi
+public data class SimulationInspectionCandidate(
+    val kind: String,
+    val id: ResourceLocation,
+    val group: ResourceLocation,
+    val priority: Int,
+    val tools: List<SimulationToolRequirement>,
+    val targetMatches: Boolean,
+    val toolsMatch: Boolean,
+)
+
+@LazyInternalApi
+public data class SimulationInspection(
+    val candidates: List<SimulationInspectionCandidate>,
+    val resolution: SimulationResolution,
+)
+
+@LazyInternalApi
 public object SimulationRecipeResolver {
-    private val indices = WeakHashMap<RecipeManager, RecipeIndex>()
+    private val registries = WeakHashMap<RecipeManager, UnifiedSimulationVariantRegistry>()
 
     fun resolve(
         level: Level,
         stack: ItemStack,
-    ): ResolvedSimulation? {
-        if (stack.isEmpty) return null
-        val index = indexFor(level)
-        when (val resolution = EntitySimulationTargets.resolve(stack)) {
-            EntitySimulationTargetResolution.InvalidEntityTarget -> return null
+        tools: List<ItemStack> = emptyList(),
+    ): ResolvedSimulation? =
+        when (val result = resolveDetailed(level, stack, tools)) {
+            is SimulationResolution.Success -> result.simulation
+            is SimulationResolution.Conflict -> {
+                logConflict(stack, tools, result.ids)
+                null
+            }
+            SimulationResolution.Unavailable -> null
+        }
+
+    fun resolveDetailed(
+        level: Level,
+        stack: ItemStack,
+        tools: List<ItemStack> = emptyList(),
+    ): SimulationResolution {
+        if (stack.isEmpty) return SimulationResolution.Unavailable
+        val registry = registryFor(level)
+        when (val targetResolution = EntitySimulationTargets.resolve(stack)) {
+            EntitySimulationTargetResolution.InvalidEntityTarget -> return SimulationResolution.Unavailable
             EntitySimulationTargetResolution.NotEntityTarget -> Unit
             is EntitySimulationTargetResolution.Resolved -> {
-                val target = resolution.target
-                if (!target.isAllowed) return null
-                val profile = index.entityRecipes[target.id]
-                return ResolvedSimulation.EntityProfile(
-                    target.id,
-                    profile,
-                    profile?.value()?.durationTicks() ?: SimulationConfigs.settings.defaultDuration.get(),
-                )
+                val target = targetResolution.target
+                if (!target.isAllowed) return SimulationResolution.Unavailable
+                return when (val selection = selectVariants(registry.entityVariants(target.id), tools)) {
+                    is RankedSelection.Conflict -> SimulationResolution.Conflict(selection.values.map { it.id })
+                    is RankedSelection.Selected -> {
+                        val holder = (selection.value as SimulationVariant.Entity).holder
+                        SimulationResolution.Success(
+                            ResolvedSimulation.EntityProfile(target.id, holder, holder.value().durationTicks()),
+                        )
+                    }
+                    RankedSelection.None ->
+                        SimulationResolution.Success(
+                            ResolvedSimulation.EntityProfile(
+                                target.id,
+                                null,
+                                SimulationConfigs.settings.defaultDuration.get(),
+                            ),
+                        )
+                }
             }
         }
 
-        explicitItemRecipe(index, stack)?.let { return applyInjections(index, stack, resolvedExplicit(it)) }
-        if (level.isClientSide) return AutomaticSimulationClientSnapshot.find(stack)
-        return automaticItemRecipe(level, index, stack)?.let { applyInjections(index, stack, it) }
+        val variants = registry.variants(level, stack)
+        val base: ResolvedSimulation.Item =
+            when (val selection = selectVariants(variants.filterIsInstance<SimulationVariant.Explicit>(), tools)) {
+                is RankedSelection.Conflict -> return SimulationResolution.Conflict(selection.values.map { it.id })
+                is RankedSelection.Selected -> resolvedExplicit(selection.value.holder)
+                RankedSelection.None -> {
+                    val automatic = variants.filterIsInstance<SimulationVariant.Automatic>()
+                    when (val automaticSelection = selectAutomaticVariants(automatic, tools)) {
+                        is RankedSelection.Conflict ->
+                            return SimulationResolution.Conflict(automaticSelection.values.map { it.id })
+                        is RankedSelection.Selected ->
+                            resolvedAutomatic(automaticSelection.value)
+                                ?: return SimulationResolution.Unavailable
+                        RankedSelection.None -> return SimulationResolution.Unavailable
+                    }
+                }
+            }
+
+        val selectedAutomatic = variants.filterIsInstance<SimulationVariant.Automatic>().firstOrNull { it.id == base.id }
+        if (level.isClientSide && selectedAutomatic?.snapshot != null) return SimulationResolution.Success(base)
+        val injections =
+            variants
+                .filterIsInstance<SimulationVariant.Injection>()
+                .filter { simulationToolsMatch(it.tools, tools) }
+                .map { it.holder }
+        return composeItemSimulation(base, injections)
+            ?.let { hydrateBlockLootDisplays(level, it) }
+            ?.let(SimulationResolution::Success)
+            ?: SimulationResolution.Unavailable
+    }
+
+    fun supportsTarget(
+        level: Level,
+        stack: ItemStack,
+    ): Boolean {
+        if (stack.isEmpty) return false
+        when (val entity = EntitySimulationTargets.resolve(stack)) {
+            EntitySimulationTargetResolution.InvalidEntityTarget -> return false
+            EntitySimulationTargetResolution.NotEntityTarget -> Unit
+            is EntitySimulationTargetResolution.Resolved -> return entity.target.isAllowed
+        }
+        return registryFor(level)
+            .variants(level, stack)
+            .any { it.kind == SimulationVariantKind.EXPLICIT || it.kind == SimulationVariantKind.AUTOMATIC }
+    }
+
+    fun supportsTool(
+        level: Level,
+        stack: ItemStack,
+    ): Boolean = !stack.isEmpty && registryFor(level).acceptsContext(stack)
+
+    fun inspect(
+        level: Level,
+        stack: ItemStack,
+        tools: List<ItemStack> = emptyList(),
+    ): SimulationInspection {
+        val registry = registryFor(level)
+        val variants =
+            when (val target = EntitySimulationTargets.resolve(stack)) {
+                is EntitySimulationTargetResolution.Resolved -> registry.entityVariants(target.target.id)
+                else -> registry.variants(level, stack)
+            }
+        return SimulationInspection(
+            variants
+                .map { variant ->
+                    SimulationInspectionCandidate(
+                        variant.kind.name.lowercase(),
+                        variant.id,
+                        variant.group,
+                        variant.priority,
+                        variant.tools,
+                        true,
+                        simulationToolsMatch(variant.tools, tools),
+                    )
+                }.sortedWith(compareBy({ it.kind }, { it.group.toString() }, { it.id.toString() })),
+            resolveDetailed(level, stack, tools),
+        )
     }
 
     fun automaticSimulations(level: Level): List<AutomaticSimulationDisplay> {
         if (level.isClientSide) return AutomaticSimulationClientSnapshot.all()
-        val index = indexFor(level)
-        refreshAutomaticSettings(index)
-        index.automaticDisplays?.let { return it }
+        val registry = registryFor(level)
+        registry.automaticDisplays?.let { return it }
         return BuiltInRegistries.ITEM
             .asSequence()
             .map(::ItemStack)
-            .mapNotNull { input ->
-                if (explicitItemRecipe(index, input) != null) return@mapNotNull null
-                val automatic = automaticItemRecipe(level, index, input) ?: return@mapNotNull null
-                val effective = applyInjections(index, input, automatic) ?: return@mapNotNull null
-                AutomaticSimulationDisplay(input, effective)
+            .flatMap { input ->
+                val variants = registry.variants(level, input)
+                val injections = variants.filterIsInstance<SimulationVariant.Injection>()
+                variants
+                    .filterIsInstance<SimulationVariant.Automatic>()
+                    .mapNotNull { automatic ->
+                        val base = resolvedAutomatic(automatic) ?: return@mapNotNull null
+                        val sampleTools = automatic.tools.mapNotNull(::displayStackFor)
+                        val matches = injections.filter { simulationToolsMatch(it.tools, sampleTools) }.map { it.holder }
+                        composeItemSimulation(base, matches)
+                            ?.let { hydrateBlockLootDisplays(level, it) }
+                            ?.let { AutomaticSimulationDisplay(input, it) }
+                    }.asSequence()
             }.toList()
-            .also { index.automaticDisplays = it }
+            .also { registry.automaticDisplays = it }
     }
 
     @Synchronized
     fun invalidate() {
-        indices.clear()
+        registries.clear()
         AutomaticGrowthIndex.invalidate()
         SimulationLootDisplays.invalidate()
     }
 
     @Synchronized
-    private fun indexFor(level: Level): RecipeIndex {
-        val manager = level.recipeManager
-        return indices.getOrPut(manager) {
-            val itemRecipes =
-                manager
-                    .getAllRecipesFor(SimulationRegistries.itemRecipeType.get())
-                    .sortedWith(
-                        compareByDescending<RecipeHolder<ItemSimulationRecipe>> { it.value().priority }.thenBy { it.id().toString() },
-                    )
-            val injections =
-                manager
-                    .getAllRecipesFor(SimulationRegistries.itemInjectionRecipeType.get())
-                    .sortedBy { it.id().toString() }
-            val entityRecipes =
-                manager
-                    .getAllRecipesFor(SimulationRegistries.entityRecipeType.get())
-                    .groupBy { it.value().entity }
-                    .mapValues { (_, recipes) ->
-                        recipes
-                            .sortedWith(
-                                compareByDescending<RecipeHolder<EntitySimulationRecipe>> { it.value().priority }
-                                    .thenBy { it.id().toString() },
-                            ).first()
-                    }
-            RecipeIndex(itemRecipes, injections, entityRecipes, AutomaticSimulationSettings.current())
-        }
+    internal fun invalidateTargetCaches() {
+        registries.values.forEach(UnifiedSimulationVariantRegistry::clearTargetCaches)
     }
 
-    private fun explicitItemRecipe(
-        index: RecipeIndex,
-        stack: ItemStack,
-    ): RecipeHolder<ItemSimulationRecipe>? {
-        val key = TargetKey(stack)
-        if (key in index.itemMatches) return index.itemMatches[key]
-        return selectExplicitSimulation(index.itemRecipes, stack).also { index.itemMatches[key] = it }
-    }
-
-    private fun automaticItemRecipe(
-        level: Level,
-        index: RecipeIndex,
-        stack: ItemStack,
-    ): ResolvedSimulation.Item? {
-        refreshAutomaticSettings(index)
-        val key = TargetKey(stack)
-        if (key in index.automaticMatches) return index.automaticMatches[key]
-        val candidates = AutomaticSimulationAdapters.resolve(level, stack)
-        if (candidates.isEmpty()) {
-            index.automaticMatches[key] = null
-            return null
-        }
-        val primary = candidates.first()
-        val resolved =
-            ResolvedSimulation
-                .Item(
-                    primary.id,
-                    primary.duration,
-                    candidates.flatMap(AutomaticSimulationCandidate::itemOutputs).map(::copy),
-                    candidates.flatMap(AutomaticSimulationCandidate::fluidOutputs).map(::copy),
-                    candidates.flatMap(AutomaticSimulationCandidate::blockLootOutputs).map(::copy),
-                ).takeIf(::validOutputCount)
-        index.automaticMatches[key] = resolved
-        return resolved
-    }
-
-    private fun applyInjections(
-        index: RecipeIndex,
-        stack: ItemStack,
-        base: ResolvedSimulation.Item,
-    ): ResolvedSimulation.Item? {
-        val key = TargetKey(stack)
-        val matches =
-            index.injectionMatches.getOrPut(key) {
-                index.injections.filter { it.value().input.test(stack) }
-            }
-        return composeItemSimulation(base, matches)
-    }
+    @Synchronized
+    private fun registryFor(level: Level): UnifiedSimulationVariantRegistry =
+        registries.getOrPut(level.recipeManager) { UnifiedSimulationVariantRegistry(level.recipeManager) }
 
     private fun validOutputCount(simulation: ResolvedSimulation.Item): Boolean {
         val count = effectiveOutputCount(simulation.itemOutputs, simulation.fluidOutputs, simulation.blockLootOutputs)
@@ -197,16 +271,46 @@ public object SimulationRecipeResolver {
             recipe.durationTicks(),
             recipe.itemOutputs.map(::copy),
             recipe.fluidOutputs.map(::copy),
+            recipe.blockLootOutputs.map(::copy),
+            recipe.tools,
+            recipe.group,
+            recipe.priority,
         )
     }
 
-    private fun refreshAutomaticSettings(index: RecipeIndex) {
-        val settings = AutomaticSimulationSettings.current()
-        if (settings == index.automaticSettings) return
-        index.automaticSettings = settings
-        index.automaticMatches.clear()
-        index.automaticDisplays = null
+    private fun resolvedAutomatic(variant: SimulationVariant.Automatic): ResolvedSimulation.Item? {
+        variant.snapshot?.let { return it }
+        val candidate = requireNotNull(variant.candidate)
+        return ResolvedSimulation
+            .Item(
+                candidate.id,
+                candidate.duration,
+                candidate.itemOutputs.map(::copy),
+                candidate.fluidOutputs.map(::copy),
+                candidate.blockLootOutputs.map(::copy),
+                candidate.tools,
+                candidate.group,
+                candidate.priority,
+            ).takeIf(::validOutputCount)
     }
+
+    private fun hydrateBlockLootDisplays(
+        level: Level,
+        simulation: ResolvedSimulation.Item,
+    ): ResolvedSimulation.Item =
+        simulation.copy(
+            blockLootOutputs =
+                simulation.blockLootOutputs.map { output ->
+                    if (output.displayItems.isNotEmpty()) {
+                        copy(output)
+                    } else {
+                        output.copy(
+                            displayItems = SimulationLootDisplays.items(level, output.state, output.tool),
+                            tool = output.tool.copy(),
+                        )
+                    }
+                },
+        )
 
     private fun copy(output: SimulationItemOutput) = output.copy(stack = output.stack.copy())
 
@@ -215,37 +319,87 @@ public object SimulationRecipeResolver {
     private fun copy(output: SimulationBlockLootOutput) =
         output.copy(displayItems = output.displayItems.map(ItemStack::copy), tool = output.tool.copy())
 
-    private class RecipeIndex(
-        val itemRecipes: List<RecipeHolder<ItemSimulationRecipe>>,
-        val injections: List<RecipeHolder<ItemSimulationInjectionRecipe>>,
-        val entityRecipes: Map<ResourceLocation, RecipeHolder<EntitySimulationRecipe>>,
-        var automaticSettings: AutomaticSimulationSettings,
-    ) {
-        val itemMatches = hashMapOf<TargetKey, RecipeHolder<ItemSimulationRecipe>?>()
-        val injectionMatches = hashMapOf<TargetKey, List<RecipeHolder<ItemSimulationInjectionRecipe>>>()
-        val automaticMatches = hashMapOf<TargetKey, ResolvedSimulation.Item?>()
-        var automaticDisplays: List<AutomaticSimulationDisplay>? = null
-    }
+    private val loggedConflicts = hashSetOf<String>()
 
-    private data class TargetKey(
-        val item: Item,
-        val components: DataComponentPatch,
+    private fun logConflict(
+        stack: ItemStack,
+        tools: List<ItemStack>,
+        ids: List<ResourceLocation>,
     ) {
-        constructor(stack: ItemStack) : this(stack.item, stack.componentsPatch)
+        val key =
+            "${BuiltInRegistries.ITEM.getKey(stack.item)}|" +
+                "${tools.joinToString { BuiltInRegistries.ITEM.getKey(it.item).toString() }}|${ids.joinToString()}"
+        if (!loggedConflicts.add(key)) return
+        LazyRuntime.logger.error("Simulation recipe conflict for {} with tools {}: {}", stack, tools, ids)
     }
 }
 
 internal fun selectExplicitSimulation(
     recipes: List<RecipeHolder<ItemSimulationRecipe>>,
     stack: ItemStack,
-): RecipeHolder<ItemSimulationRecipe>? =
-    recipes
-        .asSequence()
-        .filter { it.value().input.test(stack) }
-        .minWithOrNull(
-            compareByDescending<RecipeHolder<ItemSimulationRecipe>> { it.value().priority }
-                .thenBy { it.id().toString() },
-        )
+    tools: List<ItemStack> = emptyList(),
+): RankedSelection<RecipeHolder<ItemSimulationRecipe>> =
+    selectRecipe(recipes.filter { it.value().input.test(stack) }, tools) { it.value().priority to it.value().tools }
+
+internal sealed interface RankedSelection<out T> {
+    data class Selected<T>(
+        val value: T,
+    ) : RankedSelection<T>
+
+    data class Conflict<T>(
+        val values: List<T>,
+    ) : RankedSelection<T>
+
+    data object None : RankedSelection<Nothing>
+}
+
+private fun <T : SimulationVariant> selectVariants(
+    values: List<T>,
+    tools: List<ItemStack>,
+): RankedSelection<T> = selectRanked(values.filter { simulationToolsMatch(it.tools, tools) }) { it.priority to it.tools }
+
+private fun <T> selectRecipe(
+    values: List<T>,
+    tools: List<ItemStack>,
+    rank: (T) -> Pair<Int, List<SimulationToolRequirement>>,
+): RankedSelection<T> = selectRanked(values.filter { simulationToolsMatch(rank(it).second, tools) }, rank)
+
+private fun <T> selectRanked(
+    matches: List<T>,
+    rank: (T) -> Pair<Int, List<SimulationToolRequirement>>,
+): RankedSelection<T> {
+    if (matches.isEmpty()) return RankedSelection.None
+    val bestPriority = matches.maxOf { rank(it).first }
+    val priorityMatches = matches.filter { rank(it).first == bestPriority }
+    val bestToolCount = priorityMatches.maxOf { rank(it).second.size }
+    val best = priorityMatches.filter { rank(it).second.size == bestToolCount }
+    return if (best.size == 1) RankedSelection.Selected(best.single()) else RankedSelection.Conflict(best)
+}
+
+private fun selectAutomaticVariants(
+    variants: List<SimulationVariant.Automatic>,
+    tools: List<ItemStack>,
+): RankedSelection<SimulationVariant.Automatic> {
+    val matches = variants.filter { simulationToolsMatch(it.tools, tools) }
+    val claimed = matches.filter(SimulationVariant.Automatic::claimsInput)
+    return selectRanked(if (claimed.isEmpty()) matches else claimed) { it.priority to it.tools }
+}
+
+private fun displayStackFor(requirement: SimulationToolRequirement): ItemStack? =
+    when (requirement) {
+        is SimulationToolRequirement.Item ->
+            requirement.ingredient.items
+                .firstOrNull()
+                ?.copy()
+        is SimulationToolRequirement.BlockTag ->
+            BuiltInRegistries.BLOCK
+                .getTag(requirement.tag)
+                .orElse(null)
+                ?.firstOrNull()
+                ?.value()
+                ?.asItem()
+                ?.let(::ItemStack)
+    }
 
 internal fun composeItemSimulation(
     base: ResolvedSimulation.Item?,
@@ -257,6 +411,7 @@ internal fun composeItemSimulation(
         base.copy(
             itemOutputs = base.itemOutputs + sorted.flatMap { it.value().itemOutputs }.map(::copyItemOutput),
             fluidOutputs = base.fluidOutputs + sorted.flatMap { it.value().fluidOutputs }.map(::copyFluidOutput),
+            blockLootOutputs = base.blockLootOutputs + sorted.flatMap { it.value().blockLootOutputs }.map(::copyBlockLootOutput),
         )
     val count = effectiveOutputCount(result.itemOutputs, result.fluidOutputs, result.blockLootOutputs)
     if (count <= MAX_OUTPUT_ENTRIES) return result
@@ -272,3 +427,6 @@ internal fun composeItemSimulation(
 private fun copyItemOutput(output: SimulationItemOutput) = output.copy(stack = output.stack.copy())
 
 private fun copyFluidOutput(output: SimulationFluidOutput) = output.copy(stack = output.stack.copy())
+
+private fun copyBlockLootOutput(output: SimulationBlockLootOutput) =
+    output.copy(displayItems = output.displayItems.map(ItemStack::copy), tool = output.tool.copy())

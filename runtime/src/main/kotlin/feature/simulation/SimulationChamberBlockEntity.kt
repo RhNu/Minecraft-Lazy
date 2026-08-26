@@ -181,7 +181,8 @@ public class SimulationChamberBlockEntity(
     }
 
     private fun startJob(level: ServerLevel) {
-        val simulation = SimulationRecipeResolver.resolve(level, inputs[TARGET_SLOT]) ?: return
+        val tools = inputs.subList(TOOL_SLOT_START, INPUT_SLOTS)
+        val simulation = SimulationRecipeResolver.resolve(level, inputs[TARGET_SLOT], tools) ?: return
         val tier = ProcessingCoreRegistries.tier(inputs[CORE_SLOT]) ?: return
         val rolls = Math.multiplyExact(inputs[CORE_SLOT].count.toLong(), tier.simulationOutputMultiplier().toLong())
         if (rolls <= 0L) return
@@ -192,7 +193,7 @@ public class SimulationChamberBlockEntity(
                 duration = simulation.duration,
                 speedMultiplier = tier.simulationSpeedMultiplier(),
                 outputMultiplier = rolls,
-                tools = inputs.subList(TOOL_SLOT_START, INPUT_SLOTS),
+                tools = tools,
             )
         setChanged()
         refreshDisplayState()
@@ -221,9 +222,13 @@ public class SimulationChamberBlockEntity(
                 is SimulationBatch.Item -> {
                     repeat(units) {
                         batch.blockLootOutputs.forEach { output ->
-                            net.minecraft.world.level.block.Block
-                                .getDrops(output.state, level, blockPos, null, null, output.tool)
-                                .forEach(accumulator::add)
+                            if (level.random.nextFloat() < output.chance) {
+                                repeat(level.random.nextIntBetweenInclusive(output.minRolls, output.maxRolls)) {
+                                    net.minecraft.world.level.block.Block
+                                        .getDrops(output.state, level, blockPos, null, null, output.tool)
+                                        .forEach(accumulator::add)
+                                }
+                            }
                         }
                     }
                     rollOutputs(level.random, batch.itemOutputs, batch.fluidOutputs, units, accumulator)
@@ -332,9 +337,10 @@ public class SimulationChamberBlockEntity(
         stack: ItemStack,
     ): Boolean =
         when (slot) {
-            TARGET_SLOT -> level?.let { SimulationRecipeResolver.resolve(it, stack) } != null
+            TARGET_SLOT -> level?.let { SimulationRecipeResolver.supportsTarget(it, stack) } == true
             CORE_SLOT -> ProcessingCoreRegistries.tier(stack) != null
-            in TOOL_SLOT_START until INPUT_SLOTS -> SimulationToolModules.claims(stack)
+            in TOOL_SLOT_START until INPUT_SLOTS ->
+                SimulationToolModules.claims(stack) || level?.let { SimulationRecipeResolver.supportsTool(it, stack) } == true
             else -> false
         }
 

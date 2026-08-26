@@ -42,6 +42,10 @@ internal data class AutomaticSimulationSnapshotPayload(
         ) {
             buffer.writeResourceLocation(simulation.id)
             buffer.writeVarInt(simulation.duration)
+            buffer.writeResourceLocation(simulation.group)
+            buffer.writeInt(simulation.priority)
+            buffer.writeVarInt(simulation.tools.size)
+            simulation.tools.forEach { SimulationToolRequirement.encode(it, buffer) }
             buffer.writeVarInt(simulation.itemOutputs.size)
             simulation.itemOutputs.forEach { it.encode(buffer) }
             buffer.writeVarInt(simulation.fluidOutputs.size)
@@ -51,13 +55,23 @@ internal data class AutomaticSimulationSnapshotPayload(
         }
 
         private fun decode(buffer: RegistryFriendlyByteBuf): ResolvedSimulation.Item =
-            ResolvedSimulation.Item(
-                ResourceLocation.STREAM_CODEC.decode(buffer),
-                buffer.readVarInt(),
-                List(buffer.readVarInt()) { SimulationItemOutput.decode(buffer) },
-                List(buffer.readVarInt()) { SimulationFluidOutput.decode(buffer) },
-                List(buffer.readVarInt()) { SimulationBlockLootOutput.decode(buffer) },
-            )
+            run {
+                val id = ResourceLocation.STREAM_CODEC.decode(buffer)
+                val duration = buffer.readVarInt()
+                val group = ResourceLocation.STREAM_CODEC.decode(buffer)
+                val priority = buffer.readInt()
+                val tools = List(buffer.readVarInt()) { SimulationToolRequirement.decode(buffer) }
+                ResolvedSimulation.Item(
+                    id,
+                    duration,
+                    List(buffer.readVarInt()) { SimulationItemOutput.decode(buffer) },
+                    List(buffer.readVarInt()) { SimulationFluidOutput.decode(buffer) },
+                    List(buffer.readVarInt()) { SimulationBlockLootOutput.decode(buffer) },
+                    tools,
+                    group,
+                    priority,
+                )
+            }
     }
 }
 
@@ -68,12 +82,24 @@ public object AutomaticSimulationClientSnapshot {
 
     fun replace(newDisplays: List<AutomaticSimulationDisplay>) {
         displays = newDisplays
+        SimulationRecipeResolver.invalidateTargetCaches()
         listeners.forEach { it(newDisplays) }
     }
 
     fun all(): List<AutomaticSimulationDisplay> = displays
 
-    fun find(stack: ItemStack): ResolvedSimulation.Item? = displays.firstOrNull { it.input.item === stack.item }?.simulation
+    fun find(
+        stack: ItemStack,
+        tools: List<ItemStack> = emptyList(),
+    ): ResolvedSimulation.Item? =
+        displays
+            .asSequence()
+            .filter { it.input.item === stack.item && simulationToolsMatch(it.simulation.tools, tools) }
+            .sortedWith(compareByDescending<AutomaticSimulationDisplay> { it.simulation.tools.size }.thenBy { it.simulation.id.toString() })
+            .firstOrNull()
+            ?.simulation
+
+    fun supports(stack: ItemStack): Boolean = displays.any { it.input.item === stack.item }
 
     fun addListener(listener: (List<AutomaticSimulationDisplay>) -> Unit) {
         listeners += listener

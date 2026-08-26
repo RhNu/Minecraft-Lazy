@@ -29,9 +29,12 @@ public data class EntitySimulationRecipe(
     val fluidOutputs: List<SimulationFluidOutput> = emptyList(),
     val displayItemOutputs: List<ItemStack> = emptyList(),
     val displayFluidOutputs: List<FluidStack> = emptyList(),
+    val tools: List<SimulationToolRequirement> = emptyList(),
+    val group: ResourceLocation = SimulationRecipeGroups.ENTITY,
 ) : Recipe<RecipeInput> {
     init {
         require(duration >= ItemSimulationRecipe.USE_CONFIG_DEFAULT) { "Simulation duration must be positive when specified" }
+        requireValidSimulationTools(tools)
         require(rollLootTable || itemOutputs.isNotEmpty() || fluidOutputs.isNotEmpty()) {
             "Entity simulation must roll a loot table or declare an output"
         }
@@ -101,6 +104,10 @@ public data class EntitySimulationRecipe(
                             .optionalFieldOf("duration", ItemSimulationRecipe.USE_CONFIG_DEFAULT)
                             .forGetter(EntitySimulationRecipe::duration),
                         Codec.INT.optionalFieldOf("priority", 0).forGetter(EntitySimulationRecipe::priority),
+                        SimulationToolRequirement.CODEC
+                            .listOf()
+                            .optionalFieldOf("tools", emptyList())
+                            .forGetter(EntitySimulationRecipe::tools),
                         Codec.BOOL.optionalFieldOf("roll_loot_table", true).forGetter(EntitySimulationRecipe::rollLootTable),
                         ResourceLocation.CODEC.optionalFieldOf("loot_table").forGetter(EntitySimulationRecipe::lootTable),
                         SimulationItemOutput.CODEC
@@ -121,7 +128,36 @@ public data class EntitySimulationRecipe(
                             .listOf()
                             .optionalFieldOf("display_fluid_outputs", emptyList())
                             .forGetter(EntitySimulationRecipe::displayFluidOutputs),
-                    ).apply(instance, ::EntitySimulationRecipe)
+                        ResourceLocation.CODEC
+                            .optionalFieldOf("group", SimulationRecipeGroups.ENTITY)
+                            .forGetter(EntitySimulationRecipe::group),
+                    ).apply(instance) {
+                        entity,
+                        duration,
+                        priority,
+                        tools,
+                        rollLootTable,
+                        lootTable,
+                        itemOutputs,
+                        fluidOutputs,
+                        displayItemOutputs,
+                        displayFluidOutputs,
+                        group,
+                        ->
+                        EntitySimulationRecipe(
+                            entity,
+                            duration,
+                            priority,
+                            rollLootTable,
+                            lootTable,
+                            itemOutputs,
+                            fluidOutputs,
+                            displayItemOutputs,
+                            displayFluidOutputs,
+                            tools,
+                            group,
+                        )
+                    }
             }
 
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, EntitySimulationRecipe> =
@@ -130,6 +166,7 @@ public data class EntitySimulationRecipe(
                     ResourceLocation.STREAM_CODEC.encode(buffer, recipe.entity)
                     buffer.writeVarInt(recipe.duration)
                     buffer.writeInt(recipe.priority)
+                    encodeList(buffer, recipe.tools, SimulationToolRequirement::encode)
                     buffer.writeBoolean(recipe.rollLootTable)
                     buffer.writeBoolean(recipe.lootTable.isPresent)
                     recipe.lootTable.ifPresent { ResourceLocation.STREAM_CODEC.encode(buffer, it) }
@@ -137,12 +174,17 @@ public data class EntitySimulationRecipe(
                     encodeList(buffer, recipe.fluidOutputs, SimulationFluidOutput::encode)
                     encodeList(buffer, recipe.displayItemOutputs) { value, target -> ItemStack.STREAM_CODEC.encode(target, value) }
                     encodeList(buffer, recipe.displayFluidOutputs) { value, target -> FluidStack.STREAM_CODEC.encode(target, value) }
+                    ResourceLocation.STREAM_CODEC.encode(buffer, recipe.group)
                 },
                 { buffer ->
+                    val entity = ResourceLocation.STREAM_CODEC.decode(buffer)
+                    val duration = buffer.readVarInt()
+                    val priority = buffer.readInt()
+                    val tools = decodeList(buffer, SimulationToolRequirement::decode)
                     EntitySimulationRecipe(
-                        ResourceLocation.STREAM_CODEC.decode(buffer),
-                        buffer.readVarInt(),
-                        buffer.readInt(),
+                        entity,
+                        duration,
+                        priority,
                         buffer.readBoolean(),
                         if (buffer.readBoolean()) {
                             Optional.of(ResourceLocation.STREAM_CODEC.decode(buffer))
@@ -153,6 +195,8 @@ public data class EntitySimulationRecipe(
                         decodeList(buffer, SimulationFluidOutput::decode),
                         decodeList(buffer) { ItemStack.STREAM_CODEC.decode(it) },
                         decodeList(buffer) { FluidStack.STREAM_CODEC.decode(it) },
+                        tools,
+                        ResourceLocation.STREAM_CODEC.decode(buffer),
                     )
                 },
             )

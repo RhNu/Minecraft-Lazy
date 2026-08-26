@@ -7,6 +7,7 @@ import net.minecraft.core.HolderLookup
 import net.minecraft.core.NonNullList
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.Ingredient
 import net.minecraft.world.item.crafting.Recipe
@@ -23,11 +24,17 @@ public data class ItemSimulationRecipe(
     val priority: Int = 0,
     val itemOutputs: List<SimulationItemOutput> = emptyList(),
     val fluidOutputs: List<SimulationFluidOutput> = emptyList(),
+    val tools: List<SimulationToolRequirement> = emptyList(),
+    val blockLootOutputs: List<SimulationBlockLootOutput> = emptyList(),
+    val group: ResourceLocation = SimulationRecipeGroups.ITEM,
 ) : Recipe<SingleRecipeInput> {
     init {
         require(duration >= USE_CONFIG_DEFAULT) { "Simulation duration must be positive when specified" }
-        require(itemOutputs.isNotEmpty() || fluidOutputs.isNotEmpty()) { "Simulation recipe must have at least one output" }
-        require(itemOutputs.size + fluidOutputs.size <= MAX_OUTPUT_ENTRIES) {
+        requireValidSimulationTools(tools)
+        require(itemOutputs.isNotEmpty() || fluidOutputs.isNotEmpty() || blockLootOutputs.isNotEmpty()) {
+            "Simulation recipe must have at least one output"
+        }
+        require(effectiveOutputCount(itemOutputs, fluidOutputs, blockLootOutputs) <= MAX_OUTPUT_ENTRIES) {
             "Simulation recipe may declare at most $MAX_OUTPUT_ENTRIES outputs"
         }
     }
@@ -84,6 +91,10 @@ public data class ItemSimulationRecipe(
                         com.mojang.serialization.Codec.INT
                             .optionalFieldOf("priority", 0)
                             .forGetter(ItemSimulationRecipe::priority),
+                        SimulationToolRequirement.CODEC
+                            .listOf()
+                            .optionalFieldOf("tools", emptyList())
+                            .forGetter(ItemSimulationRecipe::tools),
                         SimulationItemOutput.CODEC
                             .codec()
                             .listOf()
@@ -94,7 +105,17 @@ public data class ItemSimulationRecipe(
                             .listOf()
                             .optionalFieldOf("fluid_outputs", emptyList())
                             .forGetter(ItemSimulationRecipe::fluidOutputs),
-                    ).apply(instance, ::ItemSimulationRecipe)
+                        SimulationBlockLootOutput.CODEC
+                            .codec()
+                            .listOf()
+                            .optionalFieldOf("block_loot_outputs", emptyList())
+                            .forGetter(ItemSimulationRecipe::blockLootOutputs),
+                        ResourceLocation.CODEC
+                            .optionalFieldOf("group", SimulationRecipeGroups.ITEM)
+                            .forGetter(ItemSimulationRecipe::group),
+                    ).apply(instance) { input, duration, priority, tools, itemOutputs, fluidOutputs, blockLootOutputs, group ->
+                        ItemSimulationRecipe(input, duration, priority, itemOutputs, fluidOutputs, tools, blockLootOutputs, group)
+                    }
             }
 
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, ItemSimulationRecipe> =
@@ -103,17 +124,22 @@ public data class ItemSimulationRecipe(
                     Ingredient.CONTENTS_STREAM_CODEC.encode(buffer, recipe.input)
                     buffer.writeVarInt(recipe.duration)
                     buffer.writeInt(recipe.priority)
+                    encodeList(buffer, recipe.tools, SimulationToolRequirement::encode)
                     encodeList(buffer, recipe.itemOutputs, SimulationItemOutput::encode)
                     encodeList(buffer, recipe.fluidOutputs, SimulationFluidOutput::encode)
+                    encodeList(buffer, recipe.blockLootOutputs, SimulationBlockLootOutput::encode)
+                    ResourceLocation.STREAM_CODEC.encode(buffer, recipe.group)
                 },
                 { buffer ->
-                    ItemSimulationRecipe(
-                        Ingredient.CONTENTS_STREAM_CODEC.decode(buffer),
-                        buffer.readVarInt(),
-                        buffer.readInt(),
-                        decodeList(buffer, SimulationItemOutput::decode),
-                        decodeList(buffer, SimulationFluidOutput::decode),
-                    )
+                    val input = Ingredient.CONTENTS_STREAM_CODEC.decode(buffer)
+                    val duration = buffer.readVarInt()
+                    val priority = buffer.readInt()
+                    val tools = decodeList(buffer, SimulationToolRequirement::decode)
+                    val itemOutputs = decodeList(buffer, SimulationItemOutput::decode)
+                    val fluidOutputs = decodeList(buffer, SimulationFluidOutput::decode)
+                    val blockLootOutputs = decodeList(buffer, SimulationBlockLootOutput::decode)
+                    val group = ResourceLocation.STREAM_CODEC.decode(buffer)
+                    ItemSimulationRecipe(input, duration, priority, itemOutputs, fluidOutputs, tools, blockLootOutputs, group)
                 },
             )
     }

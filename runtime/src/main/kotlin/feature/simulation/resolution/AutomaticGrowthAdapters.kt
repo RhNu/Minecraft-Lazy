@@ -24,43 +24,21 @@ internal object TreeSimulationAdapter : AutomaticSimulationAdapter {
         if (!stack.`is`(ItemTags.SAPLINGS)) return null
         val inputId = BuiltInRegistries.ITEM.getKey(stack.item)
         val pair = automaticTreePair(inputId) ?: return null
-        val log = item(pair.log) ?: return null
-        val leaves = item(pair.leaves) ?: return null
-        val outputs =
-            buildList {
-                add(SimulationItemOutput(ItemStack(log), minRolls = 1, maxRolls = 4))
-                add(SimulationItemOutput(stack.copyWithCount(1), chance = 0.05f))
-                add(SimulationItemOutput(ItemStack(leaves), minRolls = 1, maxRolls = 3))
-                vanillaTreeExtras(inputId).let(::addAll)
-            }
+        val log = BuiltInRegistries.BLOCK.getOptional(pair.log).orElse(null) ?: return null
+        val leaves = BuiltInRegistries.BLOCK.getOptional(pair.leaves).orElse(null) ?: return null
         return AutomaticSimulationCandidate(
             SOURCE,
             automaticId(SOURCE, inputId.namespace, pair.base),
             SimulationConfigs.settings.defaultDuration.get(),
             PRIORITY,
-            itemOutputs = outputs,
+            blockLootOutputs =
+                listOf(
+                    blockLoot(level, log.defaultBlockState(), minRolls = 1, maxRolls = 4),
+                    blockLoot(level, leaves.defaultBlockState(), ItemStack(Items.SHEARS), minRolls = 1, maxRolls = 3),
+                    blockLoot(level, leaves.defaultBlockState(), minRolls = 1, maxRolls = 3),
+                ),
         )
     }
-
-    private fun vanillaTreeExtras(input: ResourceLocation): List<SimulationItemOutput> {
-        if (input.namespace != "minecraft") return emptyList()
-        return when (input.path) {
-            "oak_sapling", "dark_oak_sapling" -> listOf(SimulationItemOutput(ItemStack(Items.APPLE), 0.05f))
-            "jungle_sapling" -> listOf(SimulationItemOutput(ItemStack(Items.COCOA_BEANS), 0.05f))
-            "mangrove_propagule" ->
-                listOf(
-                    SimulationItemOutput(ItemStack(Items.MANGROVE_ROOTS), 0.05f),
-                    SimulationItemOutput(ItemStack(Items.MUDDY_MANGROVE_ROOTS), 0.01f),
-                )
-            else -> emptyList()
-        }
-    }
-
-    private fun item(id: ResourceLocation): Item? =
-        BuiltInRegistries.ITEM
-            .getOptional(id)
-            .orElse(null)
-            ?.takeUnless { it === Items.AIR }
 
     private const val PRIORITY = 200
 }
