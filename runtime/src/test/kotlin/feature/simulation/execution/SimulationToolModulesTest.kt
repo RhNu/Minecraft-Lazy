@@ -61,6 +61,27 @@ class SimulationToolModulesTest {
     }
 
     @Test
+    fun `cooking blocks are simulation tools`() {
+        assertTrue(FurnaceToolModule.claims(ItemStack(Items.FURNACE)))
+        assertTrue(BlastFurnaceToolModule.claims(ItemStack(Items.BLAST_FURNACE)))
+        assertTrue(SmokerToolModule.claims(ItemStack(Items.SMOKER)))
+    }
+
+    @Test
+    fun `cooking result preserves the whole output batch`() {
+        val result = processCookingResult(ItemStack(Items.BEEF, 7), ItemStack(Items.COOKED_BEEF))
+
+        assertEquals(1, result.size)
+        assertTrue(result.single().`is`(Items.COOKED_BEEF))
+        assertEquals(7, result.single().count)
+    }
+
+    @Test
+    fun `empty cooking result removes the output`() {
+        assertTrue(processCookingResult(ItemStack(Items.BEEF, 7), ItemStack.EMPTY).isEmpty())
+    }
+
+    @Test
     fun `output processors use priority before tool-slot order`() {
         val loadout =
             SimulationToolModules.buildLoadout(

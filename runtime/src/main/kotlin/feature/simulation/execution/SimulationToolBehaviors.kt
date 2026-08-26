@@ -5,6 +5,9 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.item.crafting.AbstractCookingRecipe
+import net.minecraft.world.item.crafting.RecipeType
+import net.minecraft.world.item.crafting.SingleRecipeInput
 import net.minecraft.world.item.enchantment.ItemEnchantments
 import rhx.lazy.core.lazyId
 import rhx.lazy.integration.api.LazyInternalApi
@@ -22,6 +25,42 @@ internal object WeaponToolModule : SimulationToolModule {
         stack: ItemStack,
         builder: SimulationToolLoadout.Builder,
     ) = builder.weapon(stack)
+}
+
+/** A furnace applies a matching smelting recipe to each output batch. */
+internal object FurnaceToolModule : SimulationToolModule {
+    val ID: ResourceLocation = lazyId("furnace")
+
+    override fun claims(stack: ItemStack): Boolean = stack.`is`(Items.FURNACE)
+
+    override fun contribute(
+        stack: ItemStack,
+        builder: SimulationToolLoadout.Builder,
+    ) = builder.processOutputs { level, output -> processCookingRecipe(level, RecipeType.SMELTING, output) }
+}
+
+/** A blast furnace applies a matching blasting recipe to each output batch. */
+internal object BlastFurnaceToolModule : SimulationToolModule {
+    val ID: ResourceLocation = lazyId("blast_furnace")
+
+    override fun claims(stack: ItemStack): Boolean = stack.`is`(Items.BLAST_FURNACE)
+
+    override fun contribute(
+        stack: ItemStack,
+        builder: SimulationToolLoadout.Builder,
+    ) = builder.processOutputs { level, output -> processCookingRecipe(level, RecipeType.BLASTING, output) }
+}
+
+/** A smoker applies a matching smoking recipe to each output batch. */
+internal object SmokerToolModule : SimulationToolModule {
+    val ID: ResourceLocation = lazyId("smoker")
+
+    override fun claims(stack: ItemStack): Boolean = stack.`is`(Items.SMOKER)
+
+    override fun contribute(
+        stack: ItemStack,
+        builder: SimulationToolLoadout.Builder,
+    ) = builder.processOutputs { level, output -> processCookingRecipe(level, RecipeType.SMOKING, output) }
 }
 
 /** Lava buckets and magma blocks melt eligible drops, with integrations able to recover special items first. */
@@ -95,3 +134,23 @@ public object SimulationIncinerationHandlers {
 
 private const val INCINERATION_PRIORITY = 0
 private const val GRINDSTONE_PRIORITY = 100
+
+private fun <T : AbstractCookingRecipe> processCookingRecipe(
+    level: ServerLevel,
+    recipeType: RecipeType<T>,
+    output: ItemStack,
+): List<ItemStack> {
+    val input = SingleRecipeInput(output)
+    val recipe = level.recipeManager.getRecipeFor(recipeType, input, level).orElse(null) ?: return listOf(output)
+    val result = recipe.value().assemble(input, level.registryAccess())
+    return processCookingResult(output, result)
+}
+
+internal fun processCookingResult(
+    output: ItemStack,
+    result: ItemStack,
+): List<ItemStack> {
+    if (result.isEmpty) return emptyList()
+    val resultCount = Math.multiplyExact(output.count.toLong(), result.count.toLong())
+    return listOf(result.copyWithCount(Math.toIntExact(resultCount)))
+}

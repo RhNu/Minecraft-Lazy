@@ -30,6 +30,7 @@ Use a blank <ItemLink id="lazy:data_model" /> on a supported living entity, then
 
 - The chamber uses one target/seed slot plus three unordered context slots. Each recipe condition needs a different slot, while extra behavior tools are allowed.
 - The first weapon is used as the simulated killing tool.
+- A furnace, blast furnace, or smoker applies its matching smelting, blasting, or smoking recipe to output batches. Multiple cooking tools try in slot order.
 - A lava bucket or magma block removes drops that would normally burn in lava. With Apotheosis installed, affix equipment is salvaged first; gems are never salvaged.
 - A grindstone removes every enchanted drop after lava processing.
 - Changing tools during an active job affects only the next job.

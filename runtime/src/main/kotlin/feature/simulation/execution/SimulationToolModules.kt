@@ -24,7 +24,8 @@ public interface SimulationToolModule {
  * The combined effect of everything sitting in the tool slots, rebuilt whenever a batch advances.
  *
  * Effects come in two shapes: single valued ones like the kill weapon, where the first tool slot
- * that offers one wins, and additive output transformations, which simply stack.
+ * that offers one wins, and output transformations, which run in priority order. Equal-priority
+ * transformations retain the order of their tool slots.
  */
 @LazyInternalApi
 public class SimulationToolLoadout private constructor(
@@ -88,6 +89,9 @@ public object SimulationToolModules {
 
     init {
         register(WeaponToolModule.ID, WeaponToolModule)
+        register(FurnaceToolModule.ID, FurnaceToolModule)
+        register(BlastFurnaceToolModule.ID, BlastFurnaceToolModule)
+        register(SmokerToolModule.ID, SmokerToolModule)
         register(IncineratorToolModule.ID, IncineratorToolModule)
         register(GrindstoneToolModule.ID, GrindstoneToolModule)
     }
