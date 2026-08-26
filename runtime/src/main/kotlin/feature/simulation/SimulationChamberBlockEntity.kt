@@ -350,6 +350,7 @@ public class SimulationChamberBlockEntity(
 
     private inner class OutputIoAdapter : IoAdapter {
         override val capabilities = setOf(ResourceKinds.ITEM, ResourceKinds.FLUID)
+        override val acceptsInput = false
         override val outputSource = this@SimulationChamberBlockEntity.outputSource
     }
 

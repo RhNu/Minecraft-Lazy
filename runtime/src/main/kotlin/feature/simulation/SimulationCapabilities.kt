@@ -11,7 +11,8 @@ internal object SimulationCapabilities {
     @SubscribeEvent
     fun register(event: RegisterCapabilitiesEvent) {
         val type = SimulationRegistries.blockEntity.get()
-        IoCapabilityRegistration.items(event, type, { it.inputItemHandler }, { it.outputItemHandler })
+        // The chamber is output-only at the capability boundary: inputs enter exclusively through its GUI.
+        IoCapabilityRegistration.items(event, type, { null }, { it.outputItemHandler })
         IoCapabilityRegistration.fluids(event, type, { null }, { it.outputFluidHandler })
     }
 }

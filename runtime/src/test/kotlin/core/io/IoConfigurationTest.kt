@@ -159,6 +159,15 @@ class IoConfigurationTest {
     }
 
     @Test
+    fun `machine without an input handler rejects inbound items on any side`() {
+        val output = ItemStackHandler(1).apply { setStackInSlot(0, ItemStack(Items.DIAMOND)) }
+        val handler = IoItemHandler(null, output) { SideIoMode.BOTH }
+
+        assertEquals(1, handler.insertItem(0, ItemStack(Items.IRON_INGOT), false).count)
+        assertEquals(Items.DIAMOND, handler.extractItem(0, 1, false).item)
+    }
+
+    @Test
     fun `fluid capability enforces input and output directions`() {
         val input = FluidTank(1_000)
         val output = FluidTank(1_000).apply { fluid = FluidStack(net.minecraft.world.level.material.Fluids.WATER, 500) }

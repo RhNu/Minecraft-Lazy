@@ -14,6 +14,8 @@ import rhx.lazy.core.resource.ResourceVariant
 import rhx.lazy.feature.energy.ENERGY_TRANSFER_LIMIT
 import rhx.lazy.feature.energy.EnergyRegistries
 import rhx.lazy.feature.energy.EnergySourceBlockEntity
+import rhx.lazy.feature.simulation.SimulationChamberBlockEntity
+import rhx.lazy.feature.simulation.SimulationRegistries
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -116,6 +118,18 @@ class IoControllerTest {
 
         source.ioController.cycleSide(RelativeSide.TOP)
         assertEquals(SideIoMode.NONE, source.ioController.configuration.side(RelativeSide.TOP))
+    }
+
+    @Test
+    fun `simulation chamber faces only cycle output states`() {
+        val chamber = SimulationChamberBlockEntity(BlockPos.ZERO, SimulationRegistries.block.get().defaultBlockState())
+        chamber.ioController.setMode(IoMode.FACE)
+
+        chamber.ioController.cycleSide(RelativeSide.TOP)
+        assertEquals(SideIoMode.OUTPUT, chamber.ioController.configuration.side(RelativeSide.TOP))
+
+        chamber.ioController.cycleSide(RelativeSide.TOP)
+        assertEquals(SideIoMode.NONE, chamber.ioController.configuration.side(RelativeSide.TOP))
     }
 
     @Test
