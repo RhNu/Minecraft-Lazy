@@ -22,6 +22,8 @@
 
 | 任务 | 命令 | 结果 |
 | --- | --- | --- |
+| 模块检查 | `./gradlew :<module>:check` | 只编译、测试并格式检查目标模块及必要依赖 |
+| 模块测试 | `./gradlew :<module>:test` | 只运行目标模块测试 |
 | 完整检查 | `./gradlew check` | 叶子项目、build logic、生成器测试与 ktlint |
 | 构建发布物 | `./gradlew build` | `mod` 聚合 JAR 与 sources JAR |
 | 生成数据 | `./gradlew runData` | 更新 `mod/src/generated/resources` |
@@ -33,14 +35,17 @@ Integration 运行任务可通过 `-Plazy.integrations=<ids>` 选择子集。有
 
 ## 变更与验证
 
+验证从最小受影响模块开始。先运行对应的 `:<module>:test`、`:<module>:ktlintCheck` 或 `:<module>:check`；局部任务失败时先修复，不继续扩大任务图。跨模块 API、build logic、根聚合、DataGen、打包或发布边界发生变化时，在局部验证通过后再运行全仓 `check`。孤立模块改动不以全仓 `check` 作为默认首轮验证。
+
 | 变更类型 | 最低验证 | 额外检查 |
 | --- | --- | --- |
-| Kotlin 或 Kotlin DSL | `./gradlew ktlintCheck` 与相关测试 | 跨模块改动运行 `./gradlew check` |
-| 注册、资源或 DataGen | `./gradlew runData`、`./gradlew check` | 检查生成差异是否只包含预期变化 |
-| Integration | 对应模块测试、`./gradlew check` | 在匹配 side 的 Integration 运行环境做烟雾测试 |
+| 单模块 Kotlin | 对应 `:<module>:test` 与 `:<module>:ktlintCheck` | 公共契约受影响时检查直接消费者 |
+| Kotlin DSL 或 build logic | 对应模块检查与 `./gradlew -p build-logic check` | 根聚合或插件行为受影响时运行 `./gradlew check` |
+| 注册、资源或 DataGen | 对应模块检查与 `./gradlew runData` | 检查生成差异；跨模块生成边界运行 `./gradlew check` |
+| Integration | `./gradlew :integrations:<id>:check` | 公共 Integration 契约变更时运行全仓检查，并在匹配 side 的环境做烟雾测试 |
 | 打包与发布配置 | `./gradlew build` | 检查聚合 JAR 与 publication 元数据 |
-| UI、渲染与输入 | `./gradlew check` | 客户端实机检查缩放、交互、本地化与状态更新 |
-| 服务端行为或 capability | `./gradlew check` | 专用服务器或最小复现场景验证 |
+| UI、渲染与输入 | 对应模块检查 | 客户端实机检查缩放、交互、本地化与状态更新 |
+| 服务端行为或 capability | 对应模块检查 | 专用服务器或最小复现场景验证；跨模块协议变化时运行全仓检查 |
 
 验证目标来自变更影响，不在文档中长期保存逐功能手工步骤。需要重复执行的验收应转化为稳定的行为测试或独立检查工具。
 

@@ -40,6 +40,7 @@ public class LazyKotlinLibraryPlugin : Plugin<Project> {
             }
             tasks.withType<Test>().configureEach {
                 useJUnitPlatform()
+                maxParallelForks = 1
                 systemProperty("lazy.projectDir", rootProject.projectDir.absolutePath)
             }
             extensions.configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
@@ -63,21 +64,24 @@ public class LazyNeoForgeLibraryPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         project.pluginManager.apply("lazy.kotlin-library")
         project.pluginManager.apply("net.neoforged.moddev")
-        project.extensions.configure<JavaPluginExtension> {
-            sourceSets.named("test") {
-                resources.srcDir(project.rootProject.file("mod/src/main/resources"))
-                resources.srcDir(project.rootProject.file("mod/src/generated/resources"))
+        val hasTestSources = project.hasTestSources()
+        if (hasTestSources) {
+            project.extensions.configure<JavaPluginExtension> {
+                sourceSets.named("test") {
+                    resources.srcDir(project.rootProject.file("mod/src/main/resources"))
+                    resources.srcDir(project.rootProject.file("mod/src/generated/resources"))
+                }
             }
-        }
-        project.tasks.named("processTestResources") {
-            dependsOn(":mod:generateModMetadata")
+            project.tasks.named("processTestResources") {
+                dependsOn(":mod:generateModMetadata")
+            }
         }
         project.extensions.configure<NeoForgeExtension> {
             version = project.providers.gradleProperty("neo_version").get()
             parchment.minecraftVersion.set(project.providers.gradleProperty("parchment_minecraft_version"))
             parchment.mappingsVersion.set(project.providers.gradleProperty("parchment_mappings_version"))
-            unitTest.enable()
-            if (project.path != ":mod") {
+            if (hasTestSources) unitTest.enable()
+            if (hasTestSources && project.path != ":mod") {
                 val sourceSets = project.extensions.getByType(JavaPluginExtension::class.java).sourceSets
                 val testMetadata = sourceSets.create("neoForgeTestMod") {
                     resources.srcDir(project.rootProject.file("gradle/testmod"))
@@ -200,33 +204,35 @@ public class LazyIntegrationPlugin : Plugin<Project> {
             }
         }
 
-        project.gradle.projectsEvaluated {
-            val dependencyProjects = linkedSetOf<Project>()
-            val pending = ArrayDeque<Project>()
-            listOf("api", "implementation").forEach { configurationName ->
-                project.configurations.findByName(configurationName)?.dependencies
-                    ?.withType(ProjectDependency::class.java)
-                    ?.mapTo(pending) { dependency -> project.rootProject.project(dependency.path) }
-            }
-            while (pending.isNotEmpty()) {
-                val dependencyProject = pending.removeFirst()
-                if (dependencyProjects.add(dependencyProject)) {
-                    listOf("api", "implementation").forEach { configurationName ->
-                        dependencyProject.configurations.findByName(configurationName)?.dependencies
-                            ?.withType(ProjectDependency::class.java)
-                            ?.mapTo(pending) { dependency -> project.rootProject.project(dependency.path) }
+        if (project.hasTestSources()) {
+            project.gradle.projectsEvaluated {
+                val dependencyProjects = linkedSetOf<Project>()
+                val pending = ArrayDeque<Project>()
+                listOf("api", "implementation").forEach { configurationName ->
+                    project.configurations.findByName(configurationName)?.dependencies
+                        ?.withType(ProjectDependency::class.java)
+                        ?.mapTo(pending) { dependency -> project.rootProject.project(dependency.path) }
+                }
+                while (pending.isNotEmpty()) {
+                    val dependencyProject = pending.removeFirst()
+                    if (dependencyProjects.add(dependencyProject)) {
+                        listOf("api", "implementation").forEach { configurationName ->
+                            dependencyProject.configurations.findByName(configurationName)?.dependencies
+                                ?.withType(ProjectDependency::class.java)
+                                ?.mapTo(pending) { dependency -> project.rootProject.project(dependency.path) }
+                        }
                     }
                 }
-            }
-            project.extensions.configure<NeoForgeExtension> {
-                val testedMod = mods.getByName("lazy_test")
-                dependencyProjects.forEach { dependencyProject ->
-                    testedMod.sourceSet(
-                        dependencyProject.extensions
-                            .getByType(JavaPluginExtension::class.java)
-                            .sourceSets
-                            .getByName("main"),
-                    )
+                project.extensions.configure<NeoForgeExtension> {
+                    val testedMod = mods.getByName("lazy_test")
+                    dependencyProjects.forEach { dependencyProject ->
+                        testedMod.sourceSet(
+                            dependencyProject.extensions
+                                .getByType(JavaPluginExtension::class.java)
+                                .sourceSets
+                                .getByName("main"),
+                        )
+                    }
                 }
             }
         }
@@ -266,3 +272,8 @@ public class LazyDatagenPlugin : Plugin<Project> {
         project.pluginManager.apply("com.google.devtools.ksp")
     }
 }
+
+private fun Project.hasTestSources(): Boolean =
+    !fileTree("src/test")
+        .matching { include("**/*.java", "**/*.kt") }
+        .isEmpty
