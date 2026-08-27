@@ -24,6 +24,7 @@ mystical-agradditions = "8.0.14"
 applied-flux-file = "8204513"
 applied-mekanistics = "1.6.3"
 apotheosis = "1.21.1-8.7.0"
+baubley-heart-canisters = "1.21.1-1.4.1"
 apothic-attributes = "1.21.1-2.10.0"
 placebo = "1.21.1-9.9.2"
 tacz = "1.1.8-hotfix-r6"
@@ -50,6 +51,7 @@ mystical-agradditions = { module = "maven.modrinth:mystical-agradditions", versi
 applied-flux = { module = "curse.maven:applied-flux-965012", version.ref = "applied-flux-file" }
 applied-mekanistics = { module = "maven.modrinth:applied-mekanistics", version.ref = "applied-mekanistics" }
 apotheosis = { module = "dev.shadowsoffire:Apotheosis", version.ref = "apotheosis" }
+baubley-heart-canisters = { module = "maven.modrinth:baubley-heart-canisters", version.ref = "baubley-heart-canisters" }
 apothic-attributes = { module = "dev.shadowsoffire:ApothicAttributes", version.ref = "apothic-attributes" }
 placebo = { module = "dev.shadowsoffire:Placebo", version.ref = "placebo" }
 tacz = { module = "maven.modrinth:tacz-1.21.1", version.ref = "tacz-file" }

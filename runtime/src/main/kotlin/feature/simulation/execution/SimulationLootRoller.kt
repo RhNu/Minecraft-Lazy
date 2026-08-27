@@ -62,6 +62,7 @@ internal object SimulationLootRoller {
             val accessor = entity as LivingEntityAccessor
             accessor.`lazy$dropCustomDeathLoot`(level, damageSource, true)
             accessor.`lazy$dropEquipment`()
+            SimulationLivingDropsHandlers.dispatch(entity, damageSource, captured)
         } finally {
             entity.captureDrops(null)
             // The fake player is shared for the whole level, so it never keeps the weapon past this roll.

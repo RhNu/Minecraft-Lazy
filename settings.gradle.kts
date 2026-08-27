@@ -22,6 +22,7 @@ include(
     ":integrations:appmek",
     ":integrations:apotheosis",
     ":integrations:appflux",
+    ":integrations:bhc",
     ":integrations:beyonddimensions",
     ":integrations:curios",
     ":integrations:avaritia-delight",
