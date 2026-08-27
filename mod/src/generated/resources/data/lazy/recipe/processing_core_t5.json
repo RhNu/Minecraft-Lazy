@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:end_crystal"
+    },
+    "N": {
+      "item": "minecraft:nether_star"
+    },
+    "T": {
+      "item": "lazy:processing_core_t4"
+    }
+  },
+  "pattern": [
+    "CNC",
+    "NTN",
+    "CNC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lazy:processing_core_t5"
+  }
+}

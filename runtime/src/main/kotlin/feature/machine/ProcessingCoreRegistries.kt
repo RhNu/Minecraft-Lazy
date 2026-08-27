@@ -15,10 +15,11 @@ internal object ProcessingCoreRegistries : RegistryModule {
     val t2 = core("processing_core_t2", ProcessingCoreTier.T2)
     val t3 = core("processing_core_t3", ProcessingCoreTier.T3)
     val t4 = core("processing_core_t4", ProcessingCoreTier.T4)
+    val t5 = core("processing_core_t5", ProcessingCoreTier.T5)
 
     fun tier(stack: ItemStack): ProcessingCoreTier? = (stack.item as? ProcessingCoreItem)?.tier
 
-    fun allItems(): List<Supplier<out Item>> = listOf(t1, t2, t3, t4)
+    fun allItems(): List<Supplier<out Item>> = listOf(t1, t2, t3, t4, t5)
 
     override fun register(bus: IEventBus) {
         items.register(bus)

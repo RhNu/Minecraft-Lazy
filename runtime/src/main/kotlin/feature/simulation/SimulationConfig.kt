@@ -49,6 +49,8 @@ public class SimulationConfig(
     val t3OutputMultiplier = builder.int("t3OutputMultiplier", 12, 1..1024, "Tier 3 simulation output multiplier.")
     val t4SpeedMultiplier = builder.int("t4SpeedMultiplier", 18, 1..1024, "Tier 4 simulation speed multiplier.")
     val t4OutputMultiplier = builder.int("t4OutputMultiplier", 36, 1..1024, "Tier 4 simulation output multiplier.")
+    val t5SpeedMultiplier = builder.int("t5SpeedMultiplier", 54, 1..1024, "Tier 5 simulation speed multiplier.")
+    val t5OutputMultiplier = builder.int("t5OutputMultiplier", 108, 1..1024, "Tier 5 simulation output multiplier.")
 }
 
 @LazyInternalApi
@@ -65,6 +67,7 @@ internal fun ProcessingCoreTier.simulationSpeedMultiplier(): Int =
         ProcessingCoreTier.T2 -> SimulationConfigs.settings.t2SpeedMultiplier.get()
         ProcessingCoreTier.T3 -> SimulationConfigs.settings.t3SpeedMultiplier.get()
         ProcessingCoreTier.T4 -> SimulationConfigs.settings.t4SpeedMultiplier.get()
+        ProcessingCoreTier.T5 -> SimulationConfigs.settings.t5SpeedMultiplier.get()
     }
 
 internal fun ProcessingCoreTier.simulationOutputMultiplier(): Int =
@@ -73,4 +76,5 @@ internal fun ProcessingCoreTier.simulationOutputMultiplier(): Int =
         ProcessingCoreTier.T2 -> SimulationConfigs.settings.t2OutputMultiplier.get()
         ProcessingCoreTier.T3 -> SimulationConfigs.settings.t3OutputMultiplier.get()
         ProcessingCoreTier.T4 -> SimulationConfigs.settings.t4OutputMultiplier.get()
+        ProcessingCoreTier.T5 -> SimulationConfigs.settings.t5OutputMultiplier.get()
     }

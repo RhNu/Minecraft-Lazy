@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_t4_core": {
+      "conditions": {
+        "items": [
+          {
+            "items": "lazy:processing_core_t4"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "lazy:processing_core_t5"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_t4_core"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "lazy:processing_core_t5"
+    ]
+  }
+}

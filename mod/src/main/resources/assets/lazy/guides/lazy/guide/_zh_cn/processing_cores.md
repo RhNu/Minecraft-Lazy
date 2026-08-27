@@ -9,6 +9,7 @@ item_ids:
   - lazy:processing_core_t2
   - lazy:processing_core_t3
   - lazy:processing_core_t4
+  - lazy:processing_core_t5
 ---
 
 # 处理核心
@@ -18,6 +19,7 @@ item_ids:
   <ItemIcon id="lazy:processing_core_t2" />
   <ItemIcon id="lazy:processing_core_t3" />
   <ItemIcon id="lazy:processing_core_t4" />
+  <ItemIcon id="lazy:processing_core_t5" />
 </ItemGrid>
 
 处理核心可以为支持它的机器提供对应等级的效果。
@@ -32,6 +34,7 @@ item_ids:
 | <ItemLink id="lazy:processing_core_t2" /> | ×2 | ×4 |
 | <ItemLink id="lazy:processing_core_t3" /> | ×6 | ×12 |
 | <ItemLink id="lazy:processing_core_t4" /> | ×18 | ×36 |
+| <ItemLink id="lazy:processing_core_t5" /> | ×54 | ×108 |
 
 表中为默认数值，服务器可以调整。每个放入的核心都会提供对应等级的速度和产出。
 
@@ -44,3 +47,5 @@ item_ids:
 <Recipe id="lazy:processing_core_t3" />
 
 <Recipe id="lazy:processing_core_t4" />
+
+<Recipe id="lazy:processing_core_t5" />

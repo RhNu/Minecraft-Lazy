@@ -9,6 +9,7 @@ item_ids:
   - lazy:processing_core_t2
   - lazy:processing_core_t3
   - lazy:processing_core_t4
+  - lazy:processing_core_t5
 ---
 
 # Processing Cores
@@ -18,6 +19,7 @@ item_ids:
   <ItemIcon id="lazy:processing_core_t2" />
   <ItemIcon id="lazy:processing_core_t3" />
   <ItemIcon id="lazy:processing_core_t4" />
+  <ItemIcon id="lazy:processing_core_t5" />
 </ItemGrid>
 
 Processing Cores provide tiered effects to machines that support them.
@@ -32,6 +34,7 @@ When placed in the [Simulation Chamber](simulation_chamber.md), Processing Cores
 | <ItemLink id="lazy:processing_core_t2" /> | ×2 | ×4 |
 | <ItemLink id="lazy:processing_core_t3" /> | ×6 | ×12 |
 | <ItemLink id="lazy:processing_core_t4" /> | ×18 | ×36 |
+| <ItemLink id="lazy:processing_core_t5" /> | ×54 | ×108 |
 
 These are the default values; the server may change them. Every inserted core contributes its tier's speed and output.
 
@@ -44,3 +47,5 @@ These are the default values; the server may change them. Every inserted core co
 <Recipe id="lazy:processing_core_t3" />
 
 <Recipe id="lazy:processing_core_t4" />
+
+<Recipe id="lazy:processing_core_t5" />

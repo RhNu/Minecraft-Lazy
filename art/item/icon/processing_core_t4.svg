@@ -3,33 +3,33 @@
     height="16"
     viewBox="0 0 16 16"
     shape-rendering="crispEdges">
-    <!-- Processing core T4: netherite frame, violet lens, 4/4 tier pips. -->
+    <!-- Processing core T4: warm netherite frame, ember lens, 4/4 tier pips. -->
 
     <!-- Frame: shared core chassis in the tier metal. -->
     <path fill="#12171f" d="M3 2h10v1h1v10h-1v1H3v-1H2V3h1z" />
-    <rect x="3" y="3" width="10" height="10" fill="#584a4f" />
-    <rect x="3" y="3" width="10" height="1" fill="#9b8a90" />
-    <rect x="3" y="4" width="1" height="8" fill="#77666c" />
-    <rect x="12" y="4" width="1" height="8" fill="#33292d" />
-    <rect x="3" y="12" width="10" height="1" fill="#281f22" />
+    <rect x="3" y="3" width="10" height="10" fill="#59483c" />
+    <rect x="3" y="3" width="10" height="1" fill="#a38a76" />
+    <rect x="3" y="4" width="1" height="8" fill="#7b6452" />
+    <rect x="12" y="4" width="1" height="8" fill="#342820" />
+    <rect x="3" y="12" width="10" height="1" fill="#2a201a" />
 
     <!-- Lens bezel. -->
-    <rect x="4" y="4" width="8" height="8" fill="#150d1a" />
+    <rect x="4" y="4" width="8" height="8" fill="#17100d" />
 
     <!-- Lens field. -->
-    <rect x="5" y="5" width="6" height="6" fill="#2a1245" />
-    <rect x="5" y="5" width="6" height="1" fill="#5b2f8f" />
-    <rect x="5" y="6" width="1" height="4" fill="#3b1c60" />
-    <rect x="10" y="6" width="1" height="4" fill="#1c0c30" />
-    <rect x="5" y="10" width="6" height="1" fill="#180926" />
+    <rect x="5" y="5" width="6" height="6" fill="#3b2119" />
+    <rect x="5" y="5" width="6" height="1" fill="#79503a" />
+    <rect x="5" y="6" width="1" height="4" fill="#563425" />
+    <rect x="10" y="6" width="1" height="4" fill="#27150f" />
+    <rect x="5" y="10" width="6" height="1" fill="#21100c" />
 
     <!-- Simulation mark: same plus glyph the chamber wears, in the tier colour. -->
-    <rect x="7" y="6" width="2" height="1" fill="#d4b4f7" />
-    <rect x="6" y="7" width="1" height="2" fill="#b078e8" />
-    <rect x="7" y="7" width="2" height="2" fill="#f2e4ff" />
-    <rect x="9" y="7" width="1" height="2" fill="#b078e8" />
-    <rect x="7" y="9" width="2" height="1" fill="#8355c4" />
+    <rect x="7" y="6" width="2" height="1" fill="#efc196" />
+    <rect x="6" y="7" width="1" height="2" fill="#d08355" />
+    <rect x="7" y="7" width="2" height="2" fill="#ffe5c7" />
+    <rect x="9" y="7" width="1" height="2" fill="#d08355" />
+    <rect x="7" y="9" width="2" height="1" fill="#9a5438" />
 
     <!-- Tier pips on the bezel lip: four of four lit. -->
-    <rect x="6" y="11" width="4" height="1" fill="#c69cf0" />
+    <rect x="6" y="11" width="4" height="1" fill="#d69a70" />
 </svg>

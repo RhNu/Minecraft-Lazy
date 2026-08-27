@@ -76,6 +76,8 @@ public object DataGenExports {
 
     public fun processingCoreT4(): Item = ProcessingCoreRegistries.t4.get()
 
+    public fun processingCoreT5(): Item = ProcessingCoreRegistries.t5.get()
+
     public fun bootstrapVoidBiome(context: BootstrapContext<Biome>) {
         VoidWorldBootstrap.bootstrapBiome(context)
     }
