@@ -43,26 +43,6 @@ class SimulationJobTest {
     }
 
     @Test
-    fun `legacy jobs preserve their remaining rolls without applying the old combined multiplier`() {
-        val job =
-            SimulationJob(
-                ItemStack(Items.ZOMBIE_SPAWN_EGG),
-                SimulationBatch.Item(listOf(SimulationItemOutput(ItemStack(Items.ROTTEN_FLESH))), emptyList(), emptyList(), 2304),
-                duration = 100,
-                speedMultiplier = 18,
-                outputMultiplier = 2304,
-                tools = emptyList(),
-                progressTicks = 100,
-            )
-        val legacyTag = job.save(registries).also { it.remove("format") }
-
-        val restored = requireNotNull(SimulationJob.parse(registries, legacyTag))
-
-        assertEquals(2304L, restored.batch.remaining)
-        assertEquals(1L, restored.outputMultiplier)
-    }
-
-    @Test
     fun `output scaling uses checked long arithmetic`() {
         assertEquals(2304L, scaleSimulationAmount(64, 36))
         assertTrue(runCatching { scaleSimulationAmount(Long.MAX_VALUE, 2) }.exceptionOrNull() is ArithmeticException)

@@ -27,7 +27,6 @@ internal class SimulationJob(
 
     fun save(registries: HolderLookup.Provider): CompoundTag =
         CompoundTag().apply {
-            putInt(FORMAT_TAG, CURRENT_FORMAT)
             put(TARGET_TAG, target.save(registries))
             put(BATCH_TAG, batch.save(registries))
             putInt(DURATION_TAG, duration)
@@ -60,12 +59,7 @@ internal class SimulationJob(
             val batch = SimulationBatch.parse(registries, tag.getCompound(BATCH_TAG)) ?: return null
             val duration = tag.getInt(DURATION_TAG)
             val speed = tag.getInt(SPEED_TAG)
-            val outputMultiplier =
-                if (tag.getInt(FORMAT_TAG) >= OUTPUT_MULTIPLIER_FORMAT) {
-                    tag.getLong(OUTPUT_MULTIPLIER_TAG)
-                } else {
-                    LEGACY_OUTPUT_MULTIPLIER
-                }
+            val outputMultiplier = tag.getLong(OUTPUT_MULTIPLIER_TAG)
             if (target.isEmpty || duration <= 0 || speed <= 0 || outputMultiplier <= 0L) return null
             val tools = MutableList(SimulationChamberBlockEntity.TOOL_SLOTS) { ItemStack.EMPTY }
             tag.getList(TOOLS_TAG, Tag.TAG_COMPOUND.toInt()).forEach { raw ->
@@ -86,7 +80,6 @@ internal class SimulationJob(
 
         private const val TARGET_TAG = "target"
         private const val BATCH_TAG = "batch"
-        private const val FORMAT_TAG = "format"
         private const val DURATION_TAG = "duration"
         private const val SPEED_TAG = "speed"
         private const val OUTPUT_MULTIPLIER_TAG = "outputMultiplier"
@@ -94,8 +87,5 @@ internal class SimulationJob(
         private const val TOOLS_TAG = "tools"
         private const val SLOT_TAG = "slot"
         private const val STACK_TAG = "stack"
-        private const val CURRENT_FORMAT = 2
-        private const val OUTPUT_MULTIPLIER_FORMAT = 2
-        private const val LEGACY_OUTPUT_MULTIPLIER = 1L
     }
 }

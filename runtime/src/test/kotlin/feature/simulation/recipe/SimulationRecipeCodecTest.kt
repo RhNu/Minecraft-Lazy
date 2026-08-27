@@ -76,19 +76,19 @@ class SimulationRecipeCodecTest {
     }
 
     @Test
-    fun `old item recipe json keeps default group and new json preserves custom group`() {
+    fun `omitted item recipe group uses the default and explicit group is preserved`() {
         val context = registries.createSerializationContext(JsonOps.INSTANCE)
-        val oldJson =
+        val defaultGroupJson =
             JsonParser.parseString(
                 """{"input":{"item":"minecraft:wheat_seeds"},"item_outputs":[{"stack":{"id":"minecraft:wheat"}}]}""",
             )
-        val oldRecipe =
+        val defaultGroupRecipe =
             ItemSimulationRecipe.CODEC
                 .codec()
-                .parse(context, oldJson)
+                .parse(context, defaultGroupJson)
                 .result()
                 .orElseThrow()
-        assertEquals(SimulationRecipeGroups.ITEM, oldRecipe.group)
+        assertEquals(SimulationRecipeGroups.ITEM, defaultGroupRecipe.group)
 
         val customGroup = ResourceLocation.fromNamespaceAndPath("lazy_test", "food_crops")
         val recipe =
